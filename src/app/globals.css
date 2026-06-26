@@ -1,26 +1,42 @@
+/* Wajib untuk Tailwind v4 */
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Pengaturan Dasar Body (Dark Mode) */
+body {
+  background-color: #0a0a0a;
+  color: #ffffff;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Glassmorphism utility class (Untuk Kartu/Panel) */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Custom Scrollbar untuk Modal & Tabel */
+.custom-scrollbar::-webkit-scrollbar { 
+  width: 6px;  /* Lebar scrollbar vertikal */
+  height: 6px; /* Tinggi scrollbar horizontal (untuk tabel) */
+}
+.custom-scrollbar::-webkit-scrollbar-track { 
+  background: transparent; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb { 
+  background: #333; 
+  border-radius: 10px; 
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
+  background: #2b5cd5; /* Berubah menjadi biru Invisual saat disorot */
+}
+
+/* Efek kilauan tombol Clock In */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
   }
 }
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.animate-shimmer {
+  animation: shimmer 1.5s infinite;
 }
