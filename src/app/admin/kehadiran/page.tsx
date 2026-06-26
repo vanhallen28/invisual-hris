@@ -30,7 +30,7 @@ export default function AdminKehadiranPage() {
       // Generate Baris Heatmap berdasarkan karyawan asli
       const dynamicHeatmap = activeEmps.map((emp: any) => {
         // Beri variasi absensi secara acak agar visualnya terlihat hidup
-        const polaAcak = Math.random() > 0.7 
+        const polaAcak: StatusKehadiran[] = Math.random() > 0.7 
           ? ["Hadir", "Hadir", "Telat", "Hadir", "Hadir"] 
           : Math.random() > 0.8 
           ? ["WFH", "WFH", "Hadir", "Cuti/Sakit", "Hadir"]
