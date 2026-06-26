@@ -3,14 +3,13 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import LoadingLogo from "@/components/LoadingLogo";
+import { generatePayslip } from "@/utils/generatePayslip"; // 🔥 IMPORT MESIN PENCETAK PDF
 
 export default function UserProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false); // State Loading PDF
   const [userEmail, setUserEmail] = useState<string>("");
-  
-  // 🔥 STATE BARU: Tombol Toggle untuk melihat Gaji Pokok di HP
   const [showGaji, setShowGaji] = useState(false);
 
   useEffect(() => {
@@ -68,6 +67,18 @@ export default function UserProfilePage() {
     return () => { supabase.removeChannel(channel); };
   }, [userEmail]);
 
+  // 🔥 FUNGSI PEMICU UNDUH PDF
+  const handleDownloadSlip = () => {
+    if (!profile) return;
+    setIsGenerating(true);
+    
+    // Memberikan jeda animasi sedikit agar terasa prosesnya
+    setTimeout(() => {
+      generatePayslip(profile);
+      setIsGenerating(false);
+    }, 1500);
+  };
+
   const formatRupiah = (angka: number) => {
     if (!angka) return "Rp 0";
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(angka);
@@ -85,11 +96,11 @@ export default function UserProfilePage() {
     return `${years > 0 ? years + " Thn " : ""}${months > 0 ? months + " Bln" : ""}`.trim();
   };
 
-  // 🔄 LOADING AWAL HALAMAN — logo.png berputar (pengganti spinner border lama)
   if (isLoading || !profile) {
     return (
       <div className="flex h-[80vh] flex-col items-center justify-center gap-4 text-gray-400">
-        <LoadingLogo size={72} text="Menarik Data..." />
+        <div className="w-12 h-12 border-4 border-white/10 border-t-[#2b5cd5] rounded-full animate-spin"></div>
+        <p className="text-xs font-mono tracking-widest uppercase">Menarik Data...</p>
       </div>
     );
   }
@@ -101,6 +112,7 @@ export default function UserProfilePage() {
   return (
     <div className="w-full flex flex-col gap-6 pb-10 font-sans animate-in fade-in duration-500">
       
+      {/* HEADER PROFIL */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 mb-2">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Detail Profil</h1>
@@ -112,6 +124,7 @@ export default function UserProfilePage() {
         </div>
       </div>
 
+      {/* BANNER PROFIL KARYAWAN */}
       <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 shadow-xl relative overflow-hidden mt-2">
         <div className="absolute top-0 left-0 right-0 h-24 bg-[#1a1a22]"></div>
         <div className="relative z-10 flex flex-col md:flex-row gap-5 items-center md:items-start mt-8">
@@ -137,8 +150,9 @@ export default function UserProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-        {/* KARTU 1: PRIBADI */}
-        <div className="bg-[#141414] border border-white/5 rounded-3xl p-5 md:p-6 shadow-xl hover:border-white/10 transition-colors">
+        
+        {/* KARTU KIRI: PRIBADI */}
+        <div className="bg-[#141414] border border-white/5 rounded-3xl p-5 md:p-6 shadow-xl hover:border-white/10 transition-colors h-max">
           <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4">
              <div className="p-2 bg-[#2b5cd5]/10 rounded-lg text-[#2b5cd5]">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" /></svg>
@@ -165,7 +179,7 @@ export default function UserProfilePage() {
           </div>
         </div>
 
-        {/* KOLOM KANAN: KEPEGAWAIAN & FINANSIAL */}
+        {/* KANAN: KEPEGAWAIAN & FINANSIAL */}
         <div className="flex flex-col gap-5 md:gap-6">
           <div className="bg-[#141414] border border-white/5 rounded-3xl p-5 md:p-6 shadow-xl hover:border-white/10 transition-colors">
             <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4">
@@ -192,14 +206,14 @@ export default function UserProfilePage() {
                <div className="p-2 bg-green-500/10 rounded-lg text-green-400">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                </div>
-               <h2 className="text-base md:text-lg font-bold text-white tracking-wide">Data Finansial</h2>
+               <h2 className="text-base md:text-lg font-bold text-white tracking-wide">Data Finansial & Gaji</h2>
             </div>
             <div className="space-y-4">
               
-              {/* 🔥 PERBAIKAN: Gaji Pokok menggunakan tombol mata khusus mobile (Tap to Show/Hide) */}
+              {/* Info Gaji Pokok (Tutup/Buka) */}
               <div className="bg-green-500/5 border border-green-500/10 p-3 rounded-xl flex justify-between items-center transition-colors">
                 <div className="overflow-hidden pr-2">
-                  <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Gaji Pokok</p>
+                  <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Gaji Pokok Utama</p>
                   <p className={`text-sm md:text-lg text-green-400 font-bold transition-all duration-300 truncate`}>
                     {showGaji ? formatRupiah(profile.gajipokok || profile.gajiPokok || 0) : "Rp ••••••••"}
                   </p>
@@ -218,7 +232,7 @@ export default function UserProfilePage() {
               </div>
 
               <div>
-                <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Bank & Rekening</p>
+                <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Informasi Rekening Transfer</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="bg-white text-black font-black uppercase px-2 py-1 rounded text-[9px] md:text-[10px] shrink-0">
                     {profile.namaBank || "BANK"}
@@ -228,6 +242,25 @@ export default function UserProfilePage() {
                   </span>
                 </div>
               </div>
+
+              {/* 🔥 TOMBOL GENERATE PDF SLIP GAJI — versi dark flat tanpa glow */}
+              <div className="pt-5 mt-5 border-t border-white/5">
+                <button 
+                  onClick={handleDownloadSlip} 
+                  disabled={isGenerating}
+                  className="w-full bg-[#2b5cd5] hover:bg-blue-600 px-4 py-3 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isGenerating ? (
+                    <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+                  )}
+                  <span className="text-xs md:text-sm font-bold text-white uppercase tracking-widest">
+                    {isGenerating ? "Mencetak Dokumen..." : "Unduh Slip Gaji (PDF)"}
+                  </span>
+                </button>
+              </div>
+
             </div>
           </div>
         </div>
