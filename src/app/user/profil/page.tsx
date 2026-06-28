@@ -3,7 +3,8 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { generatePayslip } from "@/utils/generatePayslip"; // 🔥 IMPORT MESIN PENCETAK PDF
+import { generatePayslip } from "@/utils/generatePayslip"; 
+import LoadingLogo from "@/components/LoadingLogo"; // 🔥 INI KUNCI UNTUK MEMANGGIL KOMPONEN ANDA
 
 export default function UserProfilePage() {
   const [profile, setProfile] = useState<any>(null);
@@ -96,11 +97,11 @@ export default function UserProfilePage() {
     return `${years > 0 ? years + " Thn " : ""}${months > 0 ? months + " Bln" : ""}`.trim();
   };
 
+  // 🔥 PERBAIKAN: MEMANGGIL KOMPONEN CUSTOM LOADING LOGO ANDA
   if (isLoading || !profile) {
     return (
       <div className="flex h-[80vh] flex-col items-center justify-center gap-4 text-gray-400">
-        <div className="w-12 h-12 border-4 border-white/10 border-t-[#2b5cd5] rounded-full animate-spin"></div>
-        <p className="text-xs font-mono tracking-widest uppercase">Menarik Data...</p>
+        <LoadingLogo size={72} text="Menarik Data Profil..." />
       </div>
     );
   }
@@ -243,7 +244,7 @@ export default function UserProfilePage() {
                 </div>
               </div>
 
-              {/* 🔥 TOMBOL GENERATE PDF SLIP GAJI — versi dark flat tanpa glow */}
+              {/* 🔥 TOMBOL GENERATE PDF SLIP GAJI */}
               <div className="pt-5 mt-5 border-t border-white/5">
                 <button 
                   onClick={handleDownloadSlip} 
