@@ -1,0 +1,40 @@
+'use client';
+import React, { useState, useEffect } from 'react';
+
+export default function InlineEdit({ value, onSave, className = '', textClassName = '', placeholder = 'Fill...', style = {}, isLink = false, onEnter }: any) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [val, setVal] = useState(value);
+
+  useEffect(() => { setVal(value); }, [value]);
+  
+  const handleSave = () => { 
+    setIsEditing(false); 
+    if (val !== value) onSave(val); 
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex-1 min-w-0 w-full relative flex items-center justify-center overflow-hidden">
+        <input 
+          autoFocus autoComplete="off" spellCheck="false" 
+          value={val} onChange={(e) => setVal(e.target.value)} 
+          onBlur={handleSave} 
+          onKeyDown={(e) => { if (e.key === 'Enter') { handleSave(); if (onEnter) onEnter(); } if (e.key === 'Escape') { setVal(value); setIsEditing(false); } }} 
+          onClick={(e) => e.stopPropagation()} 
+          className={`bg-zinc-950 border border-blue-500 rounded px-1.5 py-0.5 outline-none text-white shadow-inner w-full min-w-0 box-border truncate ${className}`} 
+          style={style} 
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} className={`w-full h-full min-w-0 flex items-center justify-center cursor-text px-1 ${textClassName}`} style={style}>
+       {isLink && val ? (
+          <a href={String(val).startsWith('http') ? String(val) : `https://${val}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="truncate block max-w-full text-blue-400 hover:underline hover:text-blue-300 transition-colors relative z-20">{val}</a>
+       ) : (
+          <span className={`truncate block max-w-full w-full min-h-[16px] ${!val ? 'text-zinc-500 italic font-normal' : ''}`}>{val || placeholder}</span>
+       )}
+    </div>
+  );
+}

@@ -129,9 +129,9 @@ export default function AdminDashboardPage() {
         if (issues.length > 0) detectedAnomalies.push({ idKaryawan: emp.idKaryawan, nama: emp.nama, issues: issues });
       });
 
-      const lateRecords = uniqueAttendances.filter(a => a.status === "Terlambat") || [];
+      const lateRecords = uniqueAttendances.filter(a => a.status === "Terlambat" && !a.anomali_disetujui) || [];
       lateRecords.forEach(late => {
-        detectedAnomalies.push({ idKaryawan: late.idKaryawan, nama: late.nama, issues: [`Terlambat Presensi Masuk (${late.waktuMasuk} WIB)`] });
+        detectedAnomalies.push({ idKaryawan: late.idKaryawan, nama: late.nama, issues: [`Terlambat Presensi Masuk (${late.waktuMasuk} WIB)`], type: 'late', attendanceId: late.id });
       });
 
       setAnomalyList(detectedAnomalies);
@@ -158,6 +158,22 @@ export default function AdminDashboardPage() {
       fetchDashboardData();
     } catch (err) {
       alert("Gagal memperbarui status.");
+    }
+  };
+
+  // Setujui keterlambatan: tandai anomali_disetujui = true (data presensi TETAP tercatat,
+  // hanya tak lagi dianggap anomali). Tidak menyentuh data master karyawan.
+  const handleApproveLate = async (item: any) => {
+    try {
+      let query = supabase.from("attendance").update({ anomali_disetujui: true });
+      query = item.attendanceId
+        ? query.eq("id", item.attendanceId)
+        : query.eq("idKaryawan", item.idKaryawan).eq("tanggal", todayISO);
+      const { error } = await query;
+      if (error) throw error;
+      fetchDashboardData();
+    } catch (err) {
+      alert("Gagal menyetujui keterlambatan.");
     }
   };
 
@@ -528,13 +544,24 @@ export default function AdminDashboardPage() {
                       ))}
                     </div>
                   </div>
-                  {/* TOMBOL PENYEMBUHAN DATA: SEGERA NAVIGASI KE FORM EDIT TANPA RELOAD */}
-                  <button 
-                    onClick={() => handleFixAnomaly(item.idKaryawan)}
-                    className="w-full sm:w-auto px-4 py-2 bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 text-xs font-bold rounded-lg whitespace-nowrap transition-all self-end sm:self-start"
-                  >
-                    Sembuhkan Data
-                  </button>
+                  {/* Keterlambatan cukup DISETUJUI (anomali hilang, data presensi utuh).
+                      Masalah data karyawan tetap perlu diperbaiki via form edit. */}
+                  {item.type === 'late' ? (
+                    <button
+                      onClick={() => handleApproveLate(item)}
+                      className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 bg-[#2b5cd5] hover:bg-blue-600 text-white text-xs font-bold rounded-lg whitespace-nowrap transition-all self-end sm:self-start shadow-[0_0_12px_rgba(43,92,213,0.4)]"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.061l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" /></svg>
+                      Setujui
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleFixAnomaly(item.idKaryawan)}
+                      className="w-full sm:w-auto px-4 py-2 bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 text-xs font-bold rounded-lg whitespace-nowrap transition-all self-end sm:self-start"
+                    >
+                      Sembuhkan Data
+                    </button>
+                  )}
                 </div>
               ))}
             </div>

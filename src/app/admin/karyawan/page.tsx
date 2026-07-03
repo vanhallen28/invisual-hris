@@ -34,8 +34,9 @@ export default function AdminKaryawanPage() {
     idKaryawan: "", nama: "", email: "", noPonsel: "", nikKtp: "",
     alamatDomisili: "", jabatan: "UI/UX Designer", status: "PKWT (Kontrak)",
     tanggalBergabung: "", sisaCuti: 12, gajiPokok: "", namaBank: "", 
-    noRekening: "", isAktif: true
+    noRekening: "", isAktif: true, role: "member"
   });
+  const [roleMap, setRoleMap] = useState<Record<string, string>>({}); // user_id -> role Tracker
 
   const fetchEmployees = async () => {
     setIsLoading(true);
@@ -43,6 +44,8 @@ export default function AdminKaryawanPage() {
       const { data, error } = await supabase.from("employees").select("*").order("nama", { ascending: true });
       if (error) throw error;
       setEmployees(data || []);
+      const { data: mem } = await supabase.from("members").select("id, role");
+      if (mem) { const map: Record<string, string> = {}; mem.forEach((m: any) => { map[m.id] = m.role; }); setRoleMap(map); }
     } catch (error: any) {
       showToast("Gagal mengambil data dari server.", "error");
     } finally {
@@ -116,7 +119,7 @@ export default function AdminKaryawanPage() {
       idKaryawan: "", nama: "", email: "", noPonsel: "", nikKtp: "",
       alamatDomisili: "", jabatan: "UI/UX Designer", status: "PKWT (Kontrak)",
       tanggalBergabung: new Date().toISOString().split('T')[0],
-      sisaCuti: 12, gajiPokok: "", namaBank: "", noRekening: "", isAktif: true
+      sisaCuti: 12, gajiPokok: "", namaBank: "", noRekening: "", isAktif: true, role: "member"
     });
     setShowModal(true);
   };
@@ -137,7 +140,8 @@ export default function AdminKaryawanPage() {
       gajiPokok: emp.gajiPokok || emp.gajipokok || "", 
       namaBank: emp.namaBank || "",
       noRekening: emp.noRekening || "",
-      isAktif: emp.isAktif ?? true
+      isAktif: emp.isAktif ?? true,
+      role: (emp.user_id && roleMap[emp.user_id]) || "member"
     });
     setShowModal(true);
   };
@@ -165,24 +169,27 @@ export default function AdminKaryawanPage() {
     };
 
     try {
-      if (isEditMode) {
-        setEmployees(prev => prev.map(emp => emp.idKaryawan === formData.idKaryawan ? { ...emp, ...payload } : emp));
-        setShowModal(false);
-        showToast("Data karyawan berhasil diperbarui!", "success");
-
-        const { error } = await supabase.from("employees").update(payload).eq("idKaryawan", formData.idKaryawan);
-        if (error) throw error;
-      } else {
-        setEmployees(prev => [...prev, payload].sort((a, b) => a.nama.localeCompare(b.nama)));
-        setShowModal(false);
-        showToast("Karyawan baru berhasil ditambahkan!", "success");
-
-        const { error } = await supabase.from("employees").insert([payload]);
-        if (error) throw error;
-      }
+      const res = await fetch('/api/employees', {
+        method: isEditMode ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          isEditMode
+            ? { ...payload, idKaryawan: formData.idKaryawan, role: formData.role }
+            : { ...payload, role: formData.role }
+        ),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'Gagal menyimpan data.');
+      setShowModal(false);
+      showToast(
+        isEditMode
+          ? "Data karyawan & role berhasil diperbarui!"
+          : "Karyawan baru dibuat — akun login & role Tracker aktif.",
+        "success"
+      );
+      fetchEmployeesBackground();
     } catch (err: any) {
-      showToast(`Gagal menyimpan ke Database: ${err.message}`, "error");
-      fetchEmployeesBackground(); // Rollback jika ada error koneksi
+      showToast(`Gagal menyimpan: ${err.message}`, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -191,17 +198,23 @@ export default function AdminKaryawanPage() {
   const executeDelete = async () => {
     if (!deleteConfirm) return;
     const { id, nama } = deleteConfirm;
-    
+
     setEmployees(prev => prev.filter(emp => emp.idKaryawan !== id));
     setDeleteConfirm(null);
-    showToast(`Data ${nama} berhasil dihapus permanen.`, "success");
+    showToast(`Menghapus ${nama}…`, "success");
 
     try {
-      const { error } = await supabase.from("employees").delete().eq("idKaryawan", id);
-      if (error) throw error;
-    } catch (err: any) { 
+      const res = await fetch('/api/employees', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idKaryawan: id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || 'Gagal menghapus.');
+      showToast(`${nama} dihapus permanen (akun & role Tracker ikut terhapus).`, "success");
+    } catch (err: any) {
       showToast(`Gagal menghapus data: ${err.message}`, "error");
-      fetchEmployeesBackground(); 
+      fetchEmployeesBackground();
     }
   };
 
@@ -328,6 +341,11 @@ export default function AdminKaryawanPage() {
                         {emp.status}
                       </span>
                       <span className="text-xs text-gray-400 font-medium">{emp.jabatan || emp.departemen || "Belum ada jabatan"}</span>
+                      {emp.user_id && (
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider block w-max mt-1.5 ${roleMap[emp.user_id] === 'manager' ? 'bg-[#2b5cd5]/15 text-[#8ba7ff] border border-[#2b5cd5]/25' : 'bg-white/5 text-gray-400 border border-white/10'}`}>
+                          {roleMap[emp.user_id] === 'manager' ? '★ Manager' : 'Member'}
+                        </span>
+                      )}
                     </td>
 
                     <td className="px-6 py-5 text-center">
@@ -527,6 +545,14 @@ export default function AdminKaryawanPage() {
                   <div className="md:col-span-3">
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Tanggal Resmi Bergabung</label>
                     <input type="date" value={formData.tanggalBergabung} onChange={(e) => setFormData({...formData, tanggalBergabung: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none [color-scheme:dark]" />
+                  </div>
+                  <div className="md:col-span-3">
+                    <label className="block text-[11px] font-bold text-[#8ba7ff] mb-1.5 uppercase">Role Akses · Daily Task Tracker</label>
+                    <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full bg-[#1c1c1c] border border-[#2b5cd5]/30 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#2b5cd5] outline-none">
+                      <option value="member">Member — hanya melihat &amp; mengerjakan tugasnya sendiri (My Tasks)</option>
+                      <option value="manager">Manager — mengelola seluruh board (buat, assign, atur semua tugas)</option>
+                    </select>
+                    <p className="text-[10px] text-gray-600 mt-1.5">Menentukan tampilan menu Daily Task karyawan. Bisa diubah kapan saja lewat tombol Edit.</p>
                   </div>
                 </div>
               </div>
