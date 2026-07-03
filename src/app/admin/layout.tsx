@@ -17,7 +17,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-[#000000] text-gray-200 flex flex-col md:flex-row font-sans">
-      
+
+      {/* HEADER MOBILE (admin) — logo + subtitle, seragam dengan portal karyawan */}
+      <header className="md:hidden w-full bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/5 px-5 py-4 sticky top-0 z-[99] flex items-center justify-between shadow-sm">
+        <div className="flex flex-col items-start justify-center">
+          <img src="/invisual-light.svg" alt="Invisual Studio" className="h-[22px] brightness-0 invert opacity-90 object-contain" style={{ width: "auto" }} />
+          <p className="text-[7.5px] font-black text-gray-500 uppercase tracking-widest mt-1.5 font-mono leading-none">Human Resource Information System</p>
+        </div>
+        <div className="w-8 h-8 rounded-full bg-[#2b5cd5]/10 text-[#b3c5ff] flex items-center justify-center font-black text-[10px] border border-[#2b5cd5]/20 shadow-inner shrink-0">HR</div>
+      </header>
+
       {/* SIDEBAR DESKTOP */}
       <aside className="hidden md:flex flex-col w-64 border-r border-white/10 bg-[#0a0a0a] min-h-screen shrink-0 sticky top-0">
         
