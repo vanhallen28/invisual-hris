@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import LoadingLogo from "@/components/LoadingLogo";
 import { useParams, useRouter } from "next/navigation";
 import { Employee } from "@/lib/types";
 import Link from "next/link";
@@ -124,9 +125,8 @@ export default function DetailKaryawanPage() {
 
   if (!employee) {
     return (
-      <div className="flex h-[80vh] flex-col items-center justify-center gap-4 text-gray-400">
-        <div className="w-10 h-10 border-4 border-[#2b5cd5] border-t-transparent rounded-full animate-spin"></div>
-        <p>Memuat enkripsi profil dari server Supabase...</p>
+      <div className="flex h-[80vh] items-center justify-center">
+        <LoadingLogo size={64} withRing text="Memuat profil" />
       </div>
     );
   }

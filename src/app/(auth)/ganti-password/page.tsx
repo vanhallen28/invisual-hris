@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import LoadingLogo from "@/components/LoadingLogo";
 
 export default function GantiPasswordPage() {
   const router = useRouter();
@@ -67,7 +68,7 @@ export default function GantiPasswordPage() {
   if (checking) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-sm text-gray-500">Memeriksa sesi…</p>
+        <LoadingLogo size={64} withRing text="Memeriksa sesi" />
       </div>
     );
   }

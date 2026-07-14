@@ -44,6 +44,8 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
   const teamMembers = membersRows.map((m: any) => ({ id: m.id, name: m.name, color: m.color || 'bg-[#579bfc]', initials: m.initials || '?' }));
   const meRow = membersRows.find((m: any) => m.id === currentUserId);
   const currentUserRole = (meRow?.role) || 'member';
+  // Akses Content Hub (kolom members.content_hub) — default boleh
+  const canContentHub = meRow?.content_hub !== false;
 
   // Pembatasan board per-manajer (tabel board_access).
   // Manajer TANPA baris di board_access → akses semua board (perilaku default).
@@ -127,5 +129,5 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
   }))
   .filter((ws: any) => (allowedPatterns.length ? ws.years.length > 0 : true));
 
-  return { workspaces, boardsDataMap, labels, teamMembers, currentUserId, currentUserRole };
+  return { workspaces, boardsDataMap, labels, teamMembers, currentUserId, currentUserRole, canContentHub };
 }

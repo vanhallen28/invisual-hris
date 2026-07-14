@@ -6,6 +6,7 @@ import { loadFullState } from '@/lib/tracker/load';
 import MemberView from '@/components/tracker/MemberView';
 import DocEditor from '@/components/tracker/DocEditor';
 import NotificationCenter from '@/components/tracker/NotificationCenter';
+import LoadingLogo from '@/components/LoadingLogo';
 import { dbUpdateItemName, dbSetItemMeta, dbSetCellValue, newId, dbAddItem, dbAddSubItem, dbDeleteItem, dbAddColumn, dbDeleteColumn, dbAddLabel, dbDeleteLabel, dbUpdateLabelColor, dbAddGroup, dbUpdateGroup, dbDeleteGroup, dbAddTreeNode, dbRenameTreeNode, dbDeleteTreeNode, dbUpdateColumnLabel, dbReindexColumns, dbReindexGroups, dbReindexItems } from '@/lib/tracker/sync';
 
 const LABEL_COLORS = ['bg-[#e2445c]', 'bg-[#579bfc]', 'bg-[#fdab3d]', 'bg-[#00c875]', 'bg-[#a25ddc]', 'bg-[#ff5ac4]', 'bg-[#9d99ff]', 'bg-emerald-500', 'bg-rose-400'];
@@ -68,6 +69,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   // "You" exists by default so updates/assignments have a valid author from the start.
   const [currentUserId, setCurrentUserId] = useState<string>('me');
   const [currentUserRole, setCurrentUserRole] = useState<string>('member');
+  const [canContentHub, setCanContentHub] = useState<boolean>(true);
   const [docEditorTarget, setDocEditorTarget] = useState<any>(null);
   const [teamMembers, setTeamMembers] = useState<any[]>([{ id: 'me', name: 'You', color: 'bg-[#579bfc]', initials: 'Y' }]);
   const [labels, setLabels] = useState<any>({});
@@ -170,6 +172,8 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
         if (s.teamMembers.length) setTeamMembers(s.teamMembers);
         if (s.currentUserId) setCurrentUserId(s.currentUserId);
         setCurrentUserRole(s.currentUserRole || 'member');
+      setCanContentHub(s.canContentHub !== false);
+        setCanContentHub(s.canContentHub !== false);
         // Pulihkan board terakhir yang dibuka (kalau masih ada); jika tidak, board pertama.
         let saved: string | null = null;
         try { saved = localStorage.getItem('dwt_active_board'); } catch {}
@@ -215,6 +219,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       if (s.teamMembers.length) setTeamMembers(s.teamMembers);
       if (s.currentUserId) setCurrentUserId(s.currentUserId);
       setCurrentUserRole(s.currentUserRole || 'member');
+      setCanContentHub(s.canContentHub !== false);
     } catch { /* abaikan */ }
   };
 
@@ -766,12 +771,12 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     triggerConfirm, handleUpdateItem, handleUpdateSubItem, handleDeleteItem, handleDeleteSubItem,
     handleAddItem, handleAddSubItem, toggleGroupSelection,
     handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, addYear, addMonth, addBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, pushToast, HEX_COLORS, LABEL_COLORS,
-    authUser, doLogout, isManager, currentUserRole, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase
+    authUser, doLogout, isManager, currentUserRole, canContentHub, refreshData, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase
   };
 
   const gate = (() => {
     if (!supabase) return (<div className="min-h-screen w-full bg-[#181b24] text-zinc-300 flex items-center justify-center p-6 text-center text-sm">Konfigurasi Supabase belum ada. Pastikan <code className="mx-1 text-zinc-100">.env.local</code> terisi lalu restart <code className="ml-1 text-zinc-100">npm run dev</code>.</div>);
-    if (!authChecked) return (<div className="min-h-screen w-full bg-[#181b24] text-zinc-500 flex items-center justify-center text-sm">Memeriksa sesi…</div>);
+    if (!authChecked) return (<div className="min-h-screen w-full bg-[#181b24] flex items-center justify-center"><LoadingLogo size={64} withRing text="Memeriksa sesi" /></div>);
     if (!authUser) return (
       <div className="min-h-screen w-full bg-[#181b24] text-zinc-100 flex items-center justify-center p-6 font-sans">
         <div className="w-full max-w-sm bg-[#20222b] border border-zinc-800 rounded-2xl p-6 shadow-2xl">
@@ -787,16 +792,16 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       </div>
     );
     if (loadError) return (<div className="min-h-screen w-full bg-[#181b24] text-red-300 flex items-center justify-center p-6 text-center text-sm">Gagal memuat data: {loadError}</div>);
-    if (!isLoaded) return (<div className="min-h-screen w-full bg-[#181b24] text-zinc-500 flex items-center justify-center text-sm">Memuat data dari cloud…</div>);
+    if (!isLoaded) return (<div className="min-h-screen w-full bg-[#181b24] flex items-center justify-center"><LoadingLogo size={64} withRing text="Memuat data" /></div>);
     return null;
   })();
 
   // Gerbang versi ringkas untuk mode embedded (di dalam HRIS): tanpa full-screen & tanpa form login
   const embeddedGate = (() => {
-    if (!authChecked) return <div className="py-16 text-center text-sm text-gray-500">Memeriksa sesi…</div>;
+    if (!authChecked) return <div className="min-h-[70vh] flex items-center justify-center"><LoadingLogo size={64} withRing text="Memeriksa sesi" /></div>;
     if (!authUser) return <div className="py-16 text-center text-sm text-gray-500">Sesi tidak ditemukan. Silakan masuk lewat portal HRIS.</div>;
     if (loadError) return <div className="py-16 text-center text-sm text-red-400">Gagal memuat data: {loadError}</div>;
-    if (!isLoaded) return <div className="py-16 text-center text-sm text-gray-500">Memuat tugas…</div>;
+    if (!isLoaded) return <div className="min-h-[70vh] flex items-center justify-center"><LoadingLogo size={64} withRing text="Memuat tugas" /></div>;
     return null;
   })();
   const active = embedded ? !embeddedGate : !gate;

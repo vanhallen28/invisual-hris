@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
+import MyContent from '@/components/tracker/MyContent';
 import { ListChecks, CalendarDays, ChevronRight, Inbox, CornerDownRight, AlarmClock, X } from 'lucide-react';
 
 export default function MyTasks() {
@@ -254,6 +255,7 @@ export default function MyTasks() {
           )}
         </div>
       )}
+      <MyContent />
     </div>
   );
 }

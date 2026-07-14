@@ -11,16 +11,18 @@ import TimelineView from '@/components/tracker/TimelineView';
 import ItemDetailPanel from '@/components/tracker/ItemDetailPanel';
 import MyTasks from '@/components/tracker/MyTasks';
 import ViewTabs from '@/components/tracker/ViewTabs';
+import ContentStudio from '@/components/tracker/ContentStudio';
 import CalendarView from '@/components/tracker/CalendarView';
 import WorkloadView from '@/components/tracker/WorkloadView';
-import { LayoutGrid, Download, X, Copy, Trash2, Menu, ChevronLeft } from 'lucide-react';
+import { LayoutGrid, Download, X, Copy, Trash2, Menu, ChevronLeft, Megaphone } from 'lucide-react';
 
 // Konten board (breadcrumb + tombol kembali + view aktif + panel detail + toolbar massal).
 function BoardContent({ onMenuClick }: any) {
   const {
     activeView, activeViewId, activeBoardName, activeBoardId, activeBoardPath,
-    handleExportCSV, selectedItems, setSelectedItems, triggerConfirm, handleBulkDelete, handleBulkDuplicate,
+    handleExportCSV, selectedItems, setSelectedItems, triggerConfirm, handleBulkDelete, handleBulkDuplicate, canContentHub,
   }: any = useDashboard();
+  const [contentMode, setContentMode] = useState(false);
   const pathname = usePathname();
   const backHref = pathname && pathname.startsWith('/admin') ? '/admin/dashboard' : '/user/dashboard';
 
@@ -61,16 +63,25 @@ function BoardContent({ onMenuClick }: any) {
                 <h1 className="text-xl sm:text-2xl font-bold tracking-wide uppercase text-zinc-100 truncate">{activeViewId === 'mytasks' ? 'My Tasks' : activeBoardName}</h1>
                 {activeViewId !== 'mytasks' && <button onClick={handleExportCSV} className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 border border-zinc-700/60 rounded text-xs font-semibold hover:bg-zinc-700 transition-colors shrink-0"><Download size={14}/> <span className="hidden sm:inline">Export CSV</span></button>}
               </div>
-              <ViewTabs />
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className={contentMode ? 'opacity-40' : ''}><ViewTabs /></div>
+                {canContentHub && <button
+                  onClick={() => setContentMode((v) => !v)}
+                  className={`flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-lg transition-all shrink-0 ${contentMode ? 'bg-[#2b5cd5] text-white shadow-[0_0_14px_rgba(43,92,213,0.4)]' : 'bg-zinc-800/70 text-zinc-400 hover:text-white hover:bg-zinc-700'}`}
+                >
+                  <Megaphone size={14} /> Content Hub
+                </button>}
+              </div>
             </div>
 
-            {activeViewId === 'mytasks' && <MyTasks />}
-            {activeViewId !== 'mytasks' && activeView?.type === 'table' && <MainTable />}
-            {activeViewId !== 'mytasks' && activeView?.type === 'kanban' && <KanbanBoard />}
-            {activeViewId !== 'mytasks' && activeView?.type === 'gantt' && <TimelineView />}
-            {activeViewId !== 'mytasks' && activeView?.type === 'chart' && <Overview />}
-            {activeViewId !== 'mytasks' && activeView?.type === 'calendar' && <CalendarView />}
-            {activeViewId !== 'mytasks' && activeView?.type === 'workload' && <WorkloadView />}
+            {contentMode && canContentHub && <ContentStudio />}
+            {!contentMode && activeViewId === 'mytasks' && <MyTasks />}
+            {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'table' && <MainTable />}
+            {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'kanban' && <KanbanBoard />}
+            {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'gantt' && <TimelineView />}
+            {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'chart' && <Overview />}
+            {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'calendar' && <CalendarView />}
+            {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'workload' && <WorkloadView />}
           </div>
         </div>
       )}
