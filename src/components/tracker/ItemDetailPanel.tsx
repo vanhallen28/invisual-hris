@@ -1,8 +1,80 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, AlignLeft, CheckSquare, CalendarDays, Tag, User, Link as LinkIcon, Hash, FileText, ExternalLink } from 'lucide-react';
+import { X, Send, AlignLeft, CheckSquare, CalendarDays, Tag, User, Link as LinkIcon, Hash, FileText, ExternalLink, Plus, Check, Search } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import TaskChat from './TaskChat';
+
+const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
+
+// Pemilih People ala dropdown: hanya yang terpilih tampil sebagai chip,
+// sisanya dipilih lewat dropdown bercari — agar tak menumpuk saat tim besar.
+function PeoplePicker({ value, teamMembers, onChange }: any) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const arr: string[] = Array.isArray(value) ? value : [];
+  const selected = teamMembers.filter((m: any) => arr.includes(m.id));
+  const filtered = teamMembers.filter((m: any) => String(m.name || '').toLowerCase().includes(q.trim().toLowerCase()));
+  const toggle = (id: string) => onChange(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
+
+  return (
+    <div className="relative">
+      <div className="flex flex-wrap gap-1.5 items-center">
+        {selected.map((m: any) => (
+          <span key={m.id} className="group/chip flex items-center gap-1.5 text-[11px] pl-1 pr-1.5 py-1 rounded-full border border-blue-500/50 bg-blue-500/10 text-zinc-100">
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 ${mColor(m)}`}>{m.initials}</span>
+            <span className="truncate max-w-[140px]">{m.name}</span>
+            <button onClick={() => toggle(m.id)} title="Lepas" className="p-0.5 text-zinc-500 hover:text-red-400 transition-colors"><X size={11} /></button>
+          </span>
+        ))}
+
+        <button
+          onClick={() => { setOpen(!open); setQ(''); }}
+          className="flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded-full border border-dashed border-zinc-700 text-zinc-400 hover:border-blue-500/60 hover:text-blue-300 hover:bg-blue-500/5 transition-all"
+        >
+          <Plus size={12} /> {selected.length ? 'Tambah' : 'Pilih orang'}
+        </button>
+      </div>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-[65]" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full mt-1.5 z-[70] w-72 max-w-[85vw] bg-[#2a2c38] border border-zinc-700 rounded-xl shadow-2xl p-2">
+            <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 mb-1.5">
+              <Search size={12} className="text-zinc-500 shrink-0" />
+              <input
+                autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama…"
+                className="bg-transparent text-[11px] text-white outline-none w-full placeholder:text-zinc-600"
+              />
+            </div>
+
+            <div className="max-h-56 overflow-y-auto overscroll-contain flex flex-col gap-0.5 custom-scrollbar">
+              {filtered.map((m: any) => {
+                const on = arr.includes(m.id);
+                return (
+                  <button
+                    key={m.id} onClick={() => toggle(m.id)}
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-colors ${on ? 'bg-blue-500/10' : 'hover:bg-zinc-700/60'}`}
+                  >
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 ${mColor(m)}`}>{m.initials}</span>
+                    <span className={`text-[11px] truncate flex-1 ${on ? 'text-white font-semibold' : 'text-zinc-300'}`}>{m.name}</span>
+                    {on && <Check size={13} className="text-blue-400 shrink-0" />}
+                  </button>
+                );
+              })}
+              {filtered.length === 0 && <span className="text-[11px] text-zinc-600 px-2 py-2">Tidak ada nama yang cocok.</span>}
+            </div>
+
+            {selected.length > 0 && (
+              <button onClick={() => onChange([])} className="w-full text-[10px] text-zinc-500 hover:text-red-400 pt-2 mt-1 border-t border-zinc-700/60 transition-colors">
+                Kosongkan semua ({selected.length})
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // Ikon kecil di samping label setiap field, dipilih berdasar tipe kolom
 function fieldIcon(type: string) {
@@ -20,7 +92,6 @@ function fieldIcon(type: string) {
 function renderField(col: any, item: any, labels: any, teamMembers: any[], setVal: (f: string, v: any) => void, isManager: boolean, currentUserId: string) {
   const v = item[col.id];
   const opts = labels[col.id] || [];
-  const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-')) ? m.color : 'bg-[#579bfc]';
 
   if (col.type === 'status') {
     return (
@@ -57,19 +128,8 @@ function renderField(col: any, item: any, labels: any, teamMembers: any[], setVa
         </div>
       );
     }
-    return (
-      <div className="flex flex-wrap gap-1.5">
-        {teamMembers.map((m: any) => {
-          const on = arr.includes(m.id);
-          return (
-            <button key={m.id} onClick={() => setVal(col.id, on ? arr.filter((id: string) => id !== m.id) : [...arr, m.id])} className={`flex items-center gap-1.5 text-[11px] pl-1 pr-2.5 py-1 rounded-full transition-all border ${on ? 'border-blue-500/50 bg-blue-500/10 text-zinc-100' : 'border-zinc-700 text-zinc-400 hover:bg-zinc-800'}`}>
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white ${mColor(m)}`}>{m.initials}</span>{m.name}
-            </button>
-          );
-        })}
-        {teamMembers.length === 0 && <span className="text-xs text-zinc-600">Belum ada anggota tim.</span>}
-      </div>
-    );
+    if (teamMembers.length === 0) return <span className="text-xs text-zinc-600">Belum ada anggota tim.</span>;
+    return <PeoplePicker value={arr} teamMembers={teamMembers} onChange={(next: string[]) => setVal(col.id, next)} />;
   }
   if (col.type === 'date') {
     return <input type="date" value={v || ''} onChange={(e) => setVal(col.id, e.target.value)} className="bg-zinc-900/50 border border-zinc-800 focus:border-blue-500 rounded-md px-2.5 py-1.5 text-xs text-zinc-200 outline-none [color-scheme:dark] w-full transition-colors" />;
