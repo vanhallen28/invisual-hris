@@ -153,7 +153,9 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   useEffect(() => {
     if (!supabase) { setAuthChecked(true); return; }
     let active = true;
-    supabase.auth.getUser().then(({ data }: any) => { if (active) { setAuthUser(data.user || null); setAuthChecked(true); } });
+    supabase.auth.getUser()
+      .then(({ data }: any) => { if (active) { setAuthUser(data.user || null); setAuthChecked(true); } })
+      .catch(() => { if (active) setAuthChecked(true); }); // jaringan gagal → jangan tertahan di loading
     const { data: sub } = supabase.auth.onAuthStateChange((_e: any, session: any) => { setAuthUser(session?.user || null); });
     return () => { active = false; sub?.subscription?.unsubscribe?.(); };
   }, [supabase]);

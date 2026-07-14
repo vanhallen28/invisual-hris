@@ -1,13 +1,16 @@
 // public/sw.js
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim());
+  event.waitUntil(self.clients.claim());
 });
 
-self.addEventListener('fetch', (event) => {
-  // Hanya melewatkan request agar memenuhi syarat PWA Install dari browser
-  event.respondWith(fetch(event.request));
-});
+// PENTING: handler ini sengaja DIBIARKAN KOSONG.
+// Sebelumnya kami memakai event.respondWith(fetch(event.request)) yang mencegat
+// SEMUA request (termasuk ke Supabase). Kalau satu request gagal / dibatalkan
+// saat pindah halaman, hasilnya "TypeError: Failed to fetch".
+// Handler kosong tetap memenuhi syarat installability PWA, tapi membiarkan
+// browser menangani jaringan seperti biasa.
+self.addEventListener('fetch', () => {});

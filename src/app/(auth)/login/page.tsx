@@ -71,7 +71,12 @@ export default function LoginPage() {
       window.location.href = isAdmin ? "/admin/dashboard" : "/user/dashboard";
 
     } catch (err: any) {
-      setErrorMsg(err.message);
+      const msg = String(err?.message || "");
+      setErrorMsg(
+        /failed to fetch|network/i.test(msg)
+          ? "Tidak dapat terhubung ke server. Periksa koneksi internet Anda."
+          : msg
+      );
     } finally {
       setIsLoading(false);
     }

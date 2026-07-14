@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import PwaSetup from "@/components/PwaSetup";
+import PwaSplash from "@/components/PwaSplash";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -10,6 +11,8 @@ export const metadata: Metadata = {
   title: "Invisual Portal - HR System",
   description: "Sistem Absensi dan Manajemen HR Invisual Studio",
   manifest: "/manifest.json",
+  icons: { icon: "/logo.png", apple: "/icon-192.png" },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Invisual HR" },
 };
 
 export const viewport: Viewport = {
@@ -24,7 +27,8 @@ export default function RootLayout({
   return (
     <html lang="id">
       <body className={`${inter.className} bg-[#0a0a0a] text-white antialiased`} suppressHydrationWarning>
-        <PwaSetup /> {/* <-- LETAKKAN DI SINI (Sebelum children) */}
+        <PwaSetup />
+        <PwaSplash />
         {children}
       </body>
     </html>

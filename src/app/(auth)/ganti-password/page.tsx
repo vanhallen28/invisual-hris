@@ -20,17 +20,26 @@ export default function GantiPasswordPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.auth.getUser();
+      let data: any = null;
+      try {
+        ({ data } = await supabase.auth.getUser());
+      } catch {
+        setErrorMsg("Tidak dapat terhubung ke server. Periksa koneksi internet Anda.");
+        setChecking(false);
+        return;
+      }
       const user = data?.user;
       if (!user) { router.replace("/login"); return; }
       setEmail(user.email || "");
       setWajib(user.user_metadata?.must_change_password === true);
-      const { data: emp } = await supabase
-        .from("employees")
-        .select("idKaryawan")
-        .eq("email", (user.email || "").toLowerCase())
-        .single();
-      setIdKaryawan(emp?.idKaryawan ? String(emp.idKaryawan) : "");
+      try {
+        const { data: emp } = await supabase
+          .from("employees")
+          .select("idKaryawan")
+          .eq("email", (user.email || "").toLowerCase())
+          .single();
+        setIdKaryawan(emp?.idKaryawan ? String(emp.idKaryawan) : "");
+      } catch { /* biarkan kosong */ }
       setChecking(false);
     })();
   }, [router]);
