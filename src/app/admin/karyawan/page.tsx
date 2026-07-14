@@ -34,7 +34,8 @@ export default function AdminKaryawanPage() {
     idKaryawan: "", nama: "", email: "", noPonsel: "", nikKtp: "",
     alamatDomisili: "", jabatan: "UI/UX Designer", status: "PKWT (Kontrak)",
     tanggalBergabung: "", sisaCuti: 12, gajiPokok: "", namaBank: "", 
-    noRekening: "", isAktif: true, role: "member"
+    noRekening: "", isAktif: true, role: "member",
+    institusiMagang: "", tanggalSelesaiMagang: ""
   });
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); // user_id -> role Tracker
 
@@ -119,7 +120,8 @@ export default function AdminKaryawanPage() {
       idKaryawan: "", nama: "", email: "", noPonsel: "", nikKtp: "",
       alamatDomisili: "", jabatan: "UI/UX Designer", status: "PKWT (Kontrak)",
       tanggalBergabung: new Date().toISOString().split('T')[0],
-      sisaCuti: 12, gajiPokok: "", namaBank: "", noRekening: "", isAktif: true, role: "member"
+      sisaCuti: 12, gajiPokok: "", namaBank: "", noRekening: "", isAktif: true, role: "member",
+      institusiMagang: "", tanggalSelesaiMagang: ""
     });
     setShowModal(true);
   };
@@ -141,7 +143,9 @@ export default function AdminKaryawanPage() {
       namaBank: emp.namaBank || "",
       noRekening: emp.noRekening || "",
       isAktif: emp.isAktif ?? true,
-      role: (emp.user_id && roleMap[emp.user_id]) || "member"
+      role: (emp.user_id && roleMap[emp.user_id]) || "member",
+      institusiMagang: emp.institusiMagang || "",
+      tanggalSelesaiMagang: emp.tanggalSelesaiMagang || ""
     });
     setShowModal(true);
   };
@@ -165,7 +169,10 @@ export default function AdminKaryawanPage() {
       gajipokok: formData.gajiPokok ? Number(formData.gajiPokok) : 0,
       namaBank: formData.namaBank || null,
       noRekening: formData.noRekening || null,
-      isAktif: formData.isAktif
+      isAktif: formData.isAktif,
+      // Khusus magang — dikosongkan otomatis kalau status bukan Internship
+      institusiMagang: formData.status === "Internship" ? (formData.institusiMagang || null) : null,
+      tanggalSelesaiMagang: formData.status === "Internship" ? (formData.tanggalSelesaiMagang || null) : null
     };
 
     try {
@@ -293,6 +300,7 @@ export default function AdminKaryawanPage() {
           <option value="PKWT (Kontrak)">PKWT (Kontrak)</option>
           <option value="Tetap">Tetap</option>
           <option value="Tetap Percobaan (Probation)">Tetap Percobaan</option>
+          <option value="Internship">Internship (Magang)</option>
         </select>
       </div>
 
@@ -337,6 +345,7 @@ export default function AdminKaryawanPage() {
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider block w-max mb-1.5
                         ${emp.status === 'Tetap' ? 'bg-green-500/10 text-green-400 border border-green-500/10' : 
                           emp.status === 'PKWT (Kontrak)' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/10' : 
+                          emp.status === 'Internship' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 
                           'bg-purple-500/10 text-purple-400 border border-purple-500/10'}`}>
                         {emp.status}
                       </span>
@@ -536,6 +545,7 @@ export default function AdminKaryawanPage() {
                       <option value="PKWT (Kontrak)">PKWT (Kontrak)</option>
                       <option value="Tetap">Tetap</option>
                       <option value="Tetap Percobaan (Probation)">Tetap Percobaan (Probation)</option>
+                      <option value="Internship">Internship (Magang)</option>
                     </select>
                   </div>
                   <div>
@@ -546,6 +556,22 @@ export default function AdminKaryawanPage() {
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Tanggal Resmi Bergabung</label>
                     <input type="date" value={formData.tanggalBergabung} onChange={(e) => setFormData({...formData, tanggalBergabung: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none [color-scheme:dark]" />
                   </div>
+                  {formData.status === "Internship" && (
+                    <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-5 bg-cyan-500/[0.04] border border-cyan-500/20 rounded-xl p-4">
+                      <div className="md:col-span-2 flex items-center gap-2">
+                        <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">Data Magang</span>
+                        <span className="text-[10px] text-gray-600">— hanya untuk status Internship</span>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Institusi / Kampus Asal</label>
+                        <input type="text" value={formData.institusiMagang} onChange={(e) => setFormData({...formData, institusiMagang: e.target.value})} placeholder="Universitas / SMK..." className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-cyan-500/50 outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Tanggal Selesai Magang</label>
+                        <input type="date" value={formData.tanggalSelesaiMagang} onChange={(e) => setFormData({...formData, tanggalSelesaiMagang: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-cyan-500/50 outline-none [color-scheme:dark]" />
+                      </div>
+                    </div>
+                  )}
                   <div className="md:col-span-3">
                     <label className="block text-[11px] font-bold text-[#8ba7ff] mb-1.5 uppercase">Role Akses · Daily Task Tracker</label>
                     <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full bg-[#1c1c1c] border border-[#2b5cd5]/30 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#2b5cd5] outline-none">
