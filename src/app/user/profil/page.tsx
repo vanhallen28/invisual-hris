@@ -261,6 +261,17 @@ export default function UserProfilePage() {
                     {isGenerating ? "Mencetak Dokumen..." : "Unduh Slip Gaji (PDF)"}
                   </span>
                 </button>
+
+                {/* 🔐 GANTI PASSWORD */}
+                <a
+                  href="/ganti-password"
+                  className="mt-3 w-full bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 px-4 py-3 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+                  <span className="text-xs md:text-sm font-bold text-gray-300 uppercase tracking-widest">
+                    Ganti Password
+                  </span>
+                </a>
               </div>
 
             </div>

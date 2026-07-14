@@ -45,6 +45,22 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
   const meRow = membersRows.find((m: any) => m.id === currentUserId);
   const currentUserRole = (meRow?.role) || 'member';
 
+  // Pembatasan board per-manajer (tabel board_access).
+  // Manajer TANPA baris di board_access → akses semua board (perilaku default).
+  // Manajer DENGAN baris → hanya board yang namanya cocok salah satu pola.
+  let allowedPatterns: string[] = [];
+  if (currentUserRole === 'manager' && currentUserId) {
+    try {
+      const { data: ba } = await supabase.from('board_access').select('board_pattern').eq('member_id', currentUserId);
+      allowedPatterns = (ba || []).map((r: any) => String(r.board_pattern || '').trim().toLowerCase()).filter(Boolean);
+    } catch { /* tabel belum ada → tanpa pembatasan */ }
+  }
+  const boardAllowed = (name: any) => {
+    if (!allowedPatterns.length) return true;
+    const n = String(name || '').toLowerCase();
+    return allowedPatterns.some((p) => n.includes(p));
+  };
+
   const labels: Record<string, any[]> = {};
   for (const o of [...options].sort(byPos)) {
     if (!labels[o.column_id]) labels[o.column_id] = [];
@@ -76,7 +92,7 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
   };
 
   const boardsDataMap: Record<string, any> = {};
-  const boardNodes = nodes.filter((n: any) => n.kind === 'board');
+  const boardNodes = nodes.filter((n: any) => n.kind === 'board' && boardAllowed(n.name));
   for (const bn of boardNodes) {
     const bcols = (colsByBoard[bn.id] || []).slice().sort(byPos);
     const mainCols = bcols.filter((c: any) => c.scope === 'main').map(toCol);
@@ -102,10 +118,14 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
       id: y.id, name: y.name, isOpen: y.is_open ?? false,
       months: kids(y.id, 'month').map((m: any) => ({
         id: m.id, name: m.name, isOpen: m.is_open ?? false,
-        boards: kids(m.id, 'board').map((b: any) => ({ id: b.id, name: b.name })),
-      })),
-    })),
-  }));
+        boards: kids(m.id, 'board').filter((b: any) => boardAllowed(b.name)).map((b: any) => ({ id: b.id, name: b.name })),
+      }))
+      // Manajer terbatas: sembunyikan bulan yang tak punya board yang boleh diakses
+      .filter((m: any) => (allowedPatterns.length ? m.boards.length > 0 : true)),
+    }))
+    .filter((y: any) => (allowedPatterns.length ? y.months.length > 0 : true)),
+  }))
+  .filter((ws: any) => (allowedPatterns.length ? ws.years.length > 0 : true));
 
   return { workspaces, boardsDataMap, labels, teamMembers, currentUserId, currentUserRole };
 }

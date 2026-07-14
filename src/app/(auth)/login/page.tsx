@@ -64,7 +64,17 @@ export default function LoginPage() {
         jabatan: jabatan
       }));
 
-      // 4. ARAHKAN (HARD REDIRECT)
+      // 4. CEK PASSWORD DEFAULT (= ID Karyawan) → WAJIB GANTI DULU
+      const pakaiPassDefault =
+        !!empData?.idKaryawan && password.trim() === String(empData.idKaryawan).trim();
+
+      if (pakaiPassDefault) {
+        await supabase.auth.updateUser({ data: { must_change_password: true } });
+        window.location.href = "/ganti-password";
+        return;
+      }
+
+      // 5. ARAHKAN (HARD REDIRECT)
       if (isAdmin) {
         window.location.href = "/admin/dashboard";
       } else {

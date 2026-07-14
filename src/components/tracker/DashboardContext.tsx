@@ -290,18 +290,14 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     persistItemField('sub', sId, field, val);
   };
   const handleDeleteItem = (gId: string, iId: string) => {
-    const snap = boardsDataMap;
     setBoardData(boardData.map((g:any) => g.id === gId ? { ...g, items: g.items.filter((i:any) => i.id !== iId) } : g));
-    let undone = false;
-    pushToast('Item dihapus', () => { undone = true; setBoardsDataMap(snap); });
-    if (cloudOn()) setTimeout(() => { if (!undone) dbDeleteItem(supabase, iId).catch((e:any) => pushToast('Gagal hapus di cloud: ' + (e?.message || e))); }, 5200);
+    pushToast('Item dihapus');
+    if (cloudOn()) dbDeleteItem(supabase, iId).catch((e:any) => pushToast('Gagal hapus di cloud: ' + (e?.message || e)));
   };
   const handleDeleteSubItem = (gId: string, iId: string, sId: string) => {
-    const snap = boardsDataMap;
     setBoardData(boardData.map((g:any) => g.id !== gId ? g : { ...g, items: g.items.map((i:any) => i.id === iId ? { ...i, subItems: i.subItems.filter((s:any) => s.id !== sId) } : i) }));
-    let undone = false;
-    pushToast('Sub-item dihapus', () => { undone = true; setBoardsDataMap(snap); });
-    if (cloudOn()) setTimeout(() => { if (!undone) dbDeleteItem(supabase, sId).catch((e:any) => pushToast('Gagal hapus di cloud: ' + (e?.message || e))); }, 5200);
+    pushToast('Sub-item dihapus');
+    if (cloudOn()) dbDeleteItem(supabase, sId).catch((e:any) => pushToast('Gagal hapus di cloud: ' + (e?.message || e)));
   };
   
   const handleAddItem = (gId: string) => {
@@ -329,8 +325,6 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     pushToast('Anggota tim dihapus', () => setTeamMembers(snap));
   };
   const handleDeleteLabel = (field: string, labelId: string) => {
-    const snap = boardsDataMap;
-    const snapLabels = labels;
     const deletedText = (labels[field] || []).find((l: any) => l.id === labelId)?.text;
     setLabels((prev: any) => ({ ...prev, [field]: (prev[field] || []).filter((l: any) => l.id !== labelId) }));
 
@@ -354,13 +348,11 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       setBoardsDataMap(next);
     }
 
-    let undone = false;
-    pushToast('Label dihapus', () => { undone = true; setBoardsDataMap(snap); setLabels(snapLabels); });
-    if (cloudOn()) setTimeout(() => {
-      if (undone) return;
+    pushToast('Label dihapus');
+    if (cloudOn()) {
       dbDeleteLabel(supabase, labelId).catch((e: any) => pushToast('Gagal hapus label di cloud: ' + (e?.message || e)));
       for (const c of changed) dbSetCellValue(supabase, c.itemId, field, 'status', c.val).catch(() => {});
-    }, 5200);
+    }
   };
   // Tambah opsi/label baru (dipakai context & TableCell) — id uuid + simpan ke cloud
   const addLabelOption = (columnId: string, text: string, color?: string) => {
@@ -375,18 +367,14 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     if (cloudOn()) dbUpdateLabelColor(supabase, labelId, color).catch((e:any) => pushToast('Gagal ubah warna label: ' + (e?.message || e)));
   };
   const handleDeleteColumn = (colId: string) => {
-    const snap = boardsDataMap;
     setColumns(columns.filter((c:any) => c.id !== colId));
-    let undone = false;
-    pushToast('Kolom dihapus', () => { undone = true; setBoardsDataMap(snap); });
-    if (cloudOn()) setTimeout(() => { if (!undone) dbDeleteColumn(supabase, colId).catch((e:any) => pushToast('Gagal hapus kolom di cloud: ' + (e?.message || e))); }, 5200);
+    pushToast('Kolom dihapus');
+    if (cloudOn()) dbDeleteColumn(supabase, colId).catch((e:any) => pushToast('Gagal hapus kolom di cloud: ' + (e?.message || e)));
   };
   const handleDeleteSubColumn = (colId: string) => {
-    const snap = boardsDataMap;
     setSubColumns(subColumns.filter((c:any) => c.id !== colId));
-    let undone = false;
-    pushToast('Kolom sub dihapus', () => { undone = true; setBoardsDataMap(snap); });
-    if (cloudOn()) setTimeout(() => { if (!undone) dbDeleteColumn(supabase, colId).catch((e:any) => pushToast('Gagal hapus kolom di cloud: ' + (e?.message || e))); }, 5200);
+    pushToast('Kolom sub dihapus');
+    if (cloudOn()) dbDeleteColumn(supabase, colId).catch((e:any) => pushToast('Gagal hapus kolom di cloud: ' + (e?.message || e)));
   };
   const handleAddGroup = () => {
     if (!activeBoardId) return;
@@ -401,11 +389,9 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     if (cloudOn()) dbUpdateGroup(supabase, gId, patch).catch((e:any) => pushToast('Gagal simpan grup di cloud: ' + (e?.message || e)));
   };
   const handleDeleteGroup = (gId: string) => {
-    const snap = boardsDataMap;
     setBoardData(boardData.filter((g:any) => g.id !== gId));
-    let undone = false;
-    pushToast('Grup dihapus', () => { undone = true; setBoardsDataMap(snap); });
-    if (cloudOn()) setTimeout(() => { if (!undone) dbDeleteGroup(supabase, gId).catch((e:any) => pushToast('Gagal hapus grup di cloud: ' + (e?.message || e))); }, 5200);
+    pushToast('Grup dihapus');
+    if (cloudOn()) dbDeleteGroup(supabase, gId).catch((e:any) => pushToast('Gagal hapus grup di cloud: ' + (e?.message || e)));
   };
 
   // === POHON (year/month/board) — cloud-aware ===
@@ -460,16 +446,14 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     if (cloudOn()) dbRenameTreeNode(supabase, nodeId, nm).catch((e:any) => pushToast('Gagal rename di cloud: ' + (e?.message || e)));
   };
   const deleteNode = (kind: 'year'|'month'|'board', nodeId: string) => {
-    const snapW = workspaces, snapB = boardsDataMap;
     setWorkspaces(workspaces.map((w:any) => {
       if (kind === 'year') return { ...w, years: (w.years || []).filter((y:any) => y.id !== nodeId) };
       if (kind === 'month') return { ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).filter((m:any) => m.id !== nodeId) })) };
       return { ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).map((m:any) => ({ ...m, boards: (m.boards || []).filter((b:any) => b.id !== nodeId) })) })) };
     }));
     if (kind === 'board') { const nm = { ...boardsDataMap }; delete nm[nodeId]; setBoardsDataMap(nm); if (activeBoardId === nodeId) setActiveBoardId(null); }
-    let undone = false;
-    pushToast((kind === 'year' ? 'Tahun' : kind === 'month' ? 'Bulan' : 'Board') + ' dihapus', () => { undone = true; setWorkspaces(snapW); setBoardsDataMap(snapB); });
-    if (cloudOn()) setTimeout(() => { if (!undone) dbDeleteTreeNode(supabase, nodeId).catch((e:any) => pushToast('Gagal hapus di cloud: ' + (e?.message || e))); }, 5200);
+    pushToast((kind === 'year' ? 'Tahun' : kind === 'month' ? 'Bulan' : 'Board') + ' dihapus');
+    if (cloudOn()) dbDeleteTreeNode(supabase, nodeId).catch((e:any) => pushToast('Gagal hapus di cloud: ' + (e?.message || e)));
   };
 
   // === REORDER + INSERT-BELOW + RENAME KOLOM (cloud-aware) ===
@@ -559,10 +543,14 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     }
   };
   const handleBulkDelete = (ids: string[]) => {
-    const snap = boardsDataMap;
     setBoardData(boardData.map((g:any) => ({ ...g, items: g.items.filter((i:any) => !ids.includes(i.id)).map((i:any) => ({ ...i, subItems: i.subItems?.filter((s:any) => !ids.includes(s.id)) || [] })) })));
     setSelectedItems([]);
-    pushToast(`${ids.length} item dihapus`, () => setBoardsDataMap(snap));
+    pushToast(`${ids.length} item dihapus`);
+    // Hapus di cloud SEKETIKA (sebelumnya terlewat → item kembali saat refresh)
+    if (cloudOn()) {
+      (async () => { for (const id of ids) await dbDeleteItem(supabase, id); })()
+        .catch((e:any) => pushToast('Gagal hapus di cloud: ' + (e?.message || e)));
+    }
   };
 
   const handleBulkDuplicate = (ids: string[]) => {

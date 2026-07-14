@@ -47,6 +47,19 @@ useEffect(() => {
 
 
 
+
+  // 🔐 Wajib ganti password default sebelum memakai portal
+  useEffect(() => {
+    let alive = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!alive) return;
+      if (data?.user?.user_metadata?.must_change_password === true) {
+        window.location.href = "/ganti-password";
+      }
+    });
+    return () => { alive = false; };
+  }, []);
+
 const openLogoutConfirmation = () => setShowLogoutModal(true);
 
 
