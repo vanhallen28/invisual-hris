@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Hash, Lock, Megaphone, Plus, ChevronLeft, ChevronDown, X, Settings2,
-  Users, Trash2, Check, Search,
+  Users, Trash2, Check, Search, Bell, BellOff,
 } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import ItemDetailPanel from '@/components/tracker/ItemDetailPanel';
 import ChatRoom from '@/components/chat/ChatRoom';
 import LoadingLogo from '@/components/LoadingLogo';
+import { enablePush, disablePush, pushStatus, clearBadge } from '@/lib/push';
 import {
   loadChannels, loadChannelMembers, createChannel, updateChannel, deleteChannel,
   setChannelMembers, unreadByChannel,
@@ -160,6 +161,16 @@ export default function ChatApp() {
   const [modal, setModal] = useState<any>(null);
   const [online, setOnline] = useState<string[]>([]);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [notif, setNotif] = useState<'granted' | 'denied' | 'default' | 'unsupported'>('default');
+
+  useEffect(() => { setNotif(pushStatus()); clearBadge(); }, []);
+
+  const toggleNotif = async () => {
+    try {
+      if (notif === 'granted') { await disablePush(supabase); setNotif('default'); pushToast('Notifikasi dimatikan'); }
+      else { await enablePush(supabase, currentUserId); setNotif('granted'); pushToast('🔔 Notifikasi aktif — pesan baru akan muncul di HP'); }
+    } catch (e: any) { pushToast(e?.message || 'Gagal mengaktifkan notifikasi'); }
+  };
 
   const me = teamMembers.find((m: any) => m.id === currentUserId);
 
@@ -292,10 +303,16 @@ export default function ChatApp() {
               <span className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${mColor(me)}`}>{me.initials}</span>
               <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#101216]" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-zinc-200 truncate">{me.name}</p>
               <p className="text-[10px] text-zinc-500">{isManager ? 'Manager' : 'Member'}</p>
             </div>
+            {notif !== 'unsupported' && (
+              <button onClick={toggleNotif} title={notif === 'granted' ? 'Matikan notifikasi' : 'Aktifkan notifikasi di HP'}
+                className={`p-2 rounded-lg transition-colors shrink-0 ${notif === 'granted' ? 'text-emerald-400 bg-emerald-500/10' : 'text-zinc-500 hover:text-white hover:bg-zinc-800'}`}>
+                {notif === 'granted' ? <Bell size={15} /> : <BellOff size={15} />}
+              </button>
+            )}
           </div>
         )}
       </aside>
@@ -303,7 +320,7 @@ export default function ChatApp() {
       {/* ══ RUANG CHAT ══ */}
       <div className={`${mobileRoom ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0`}>
         {active ? (
-          <ChatRoom channel={active} onBack={() => setMobileRoom(false)} />
+          <ChatRoom channel={active} onBack={() => setMobileRoom(false)} recipients={membersOfActive.filter((id: string) => id !== currentUserId)} />
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <p className="text-sm text-zinc-600">{channels.length === 0 ? 'Belum ada channel.' : 'Pilih channel di sebelah kiri.'}</p>

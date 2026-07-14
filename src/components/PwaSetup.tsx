@@ -7,23 +7,23 @@ export default function PwaSetup() {
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
-    // PRODUKSI: aktifkan PWA seperti biasa.
-    if (process.env.NODE_ENV === "production") {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((reg) => console.log("Sistem Aplikasi Native (PWA) Berhasil Diaktifkan!", reg.scope))
-        .catch((err) => console.error("PWA Gagal diaktifkan:", err));
-      return;
-    }
+    // Service worker kini PASIF (tak mencegat request), jadi aman didaftarkan
+    // di development maupun produksi — dan dibutuhkan agar Push Notification jalan.
+    navigator.serviceWorker
+      .register("/sw.js")
+      .catch((err) => console.error("PWA gagal diaktifkan:", err));
 
-    // DEVELOPMENT: service worker mencegat request chunk/HMR Turbopack dan
-    // memicu ChunkLoadError. Matikan + bersihkan sisa cache lamanya.
-    navigator.serviceWorker.getRegistrations()
-      .then((regs) => regs.forEach((r) => r.unregister()))
-      .catch(() => {});
-    if (typeof caches !== "undefined") {
-      caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
-    }
+    // Bersihkan badge di ikon PWA setiap aplikasi dibuka/difokuskan
+    const clear = () => {
+      try { (navigator as any).clearAppBadge?.(); } catch { /* abaikan */ }
+    };
+    clear();
+    window.addEventListener("focus", clear);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") clear();
+    });
+
+    return () => window.removeEventListener("focus", clear);
   }, []);
 
   return null;

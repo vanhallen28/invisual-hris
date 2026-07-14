@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Hash, Lock, Megaphone, Send, Paperclip, Smile, Reply, Pin, Trash2, Pencil,
-  X, Check, ListPlus, Link2, Search, CornerUpLeft, FileText, ChevronLeft,
+  X, Check, ListPlus, Link2, Search, CornerUpLeft, FileText, ChevronLeft, Sticker, Plus, Trash2 as TrashIcon,
 } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import LoadingLogo from '@/components/LoadingLogo';
@@ -11,6 +11,8 @@ import {
   loadReactions, toggleReaction, markRead, uploadChatFile, findTask, searchTasks, taskMeta,
 } from '@/lib/tracker/chat';
 import { dbAddItem, dbSetCellValue, newId } from '@/lib/tracker/sync';
+import { EMOJI_GROUPS, BUILTIN_STICKERS, isOnlyEmoji, loadStickers, addSticker, deleteSticker } from '@/lib/tracker/emoji';
+import { pushNotify } from '@/lib/push';
 
 const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
 const timeOf = (d: any) => new Date(d).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -174,7 +176,7 @@ function CreateTaskModal({ message, onDone, onClose }: any) {
 }
 
 /* ══════════════ RUANG CHAT ══════════════ */
-export default function ChatRoom({ channel, onBack }: any) {
+export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
   const { supabase, currentUserId, teamMembers, currentUserRole, pushToast, boardsDataMap }: any = useDashboard();
   const isManager = currentUserRole === 'manager';
   const canPost = !channel?.is_announcement || isManager;
@@ -194,6 +196,10 @@ export default function ChatRoom({ channel, onBack }: any) {
   const [typing, setTyping] = useState<string[]>([]);
   const [showPins, setShowPins] = useState(false);
   const [mentionQ, setMentionQ] = useState<string | null>(null);
+  const [pickerTab, setPickerTab] = useState<'emoji' | 'stiker' | null>(null);
+  const [emojiCat, setEmojiCat] = useState(EMOJI_GROUPS[0].id);
+  const [stickers, setStickers] = useState<any[]>([]);
+  const stickerFileRef = useRef<HTMLInputElement>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -219,6 +225,7 @@ export default function ChatRoom({ channel, onBack }: any) {
   }, [supabase, channel?.id, currentUserId, pushToast]);
 
   useEffect(() => { load(); setReplyTo(null); setEditing(null); setText(''); setAttachTask(null); }, [load]);
+  useEffect(() => { if (supabase) loadStickers(supabase).then(setStickers).catch(() => {}); }, [supabase]);
 
   /* realtime pesan + reaction */
   useEffect(() => {
@@ -270,7 +277,68 @@ export default function ChatRoom({ channel, onBack }: any) {
       });
       setMsgs((m) => (m.some((x) => x.id === row.id) ? m : [...m, row]));
       toBottom(true);
+
+      // 🔔 Notifikasi push ke anggota channel (kecuali pengirim)
+      pushNotify(supabase, {
+        memberIds: recipients,
+        title: `#${channel.name} • ${me?.name || 'Pesan baru'}`,
+        body: body || (tr ? 'Menempelkan sebuah tugas' : 'Mengirim lampiran'),
+        url: window.location.pathname,
+        tag: `chat-${channel.id}`,
+      });
     } catch (e: any) { pushToast('Gagal mengirim: ' + (e?.message || e)); }
+  };
+
+  /* kirim stiker */
+  const sendSticker = async (st: any) => {
+    setPickerTab(null);
+    try {
+      const row = await sendMessage(supabase, {
+        channel_id: channel.id, author_id: currentUserId, content: '',
+        attachments: [{ type: 'sticker', url: st.url, name: st.name || 'stiker' }],
+        reply_to: replyTo?.id || null,
+      });
+      setMsgs((m) => (m.some((x) => x.id === row.id) ? m : [...m, row]));
+      setReplyTo(null); toBottom(true);
+      pushNotify(supabase, {
+        memberIds: recipients,
+        title: `#${channel.name} • ${me?.name || 'Pesan baru'}`,
+        body: 'Mengirim stiker 🎨',
+        url: window.location.pathname, tag: `chat-${channel.id}`,
+      });
+    } catch (e: any) { pushToast('Gagal kirim stiker: ' + (e?.message || e)); }
+  };
+
+  /* kirim emoji besar (stiker bawaan) */
+  const sendBigEmoji = async (emo: string) => {
+    setPickerTab(null);
+    try {
+      const row = await sendMessage(supabase, {
+        channel_id: channel.id, author_id: currentUserId, content: emo,
+        reply_to: replyTo?.id || null, attachments: [],
+      });
+      setMsgs((m) => (m.some((x) => x.id === row.id) ? m : [...m, row]));
+      setReplyTo(null); toBottom(true);
+      pushNotify(supabase, {
+        memberIds: recipients,
+        title: `#${channel.name} • ${me?.name || 'Pesan baru'}`,
+        body: emo, url: window.location.pathname, tag: `chat-${channel.id}`,
+      });
+    } catch (e: any) { pushToast('Gagal: ' + (e?.message || e)); }
+  };
+
+  /* unggah stiker kustom (manajer) */
+  const uploadSticker = async (file: File) => {
+    try {
+      const row = await addSticker(supabase, file, currentUserId);
+      setStickers((s) => [row, ...s]);
+      pushToast('Stiker ditambahkan');
+    } catch (e: any) { pushToast('Gagal unggah stiker: ' + (e?.message || e)); }
+  };
+
+  const removeSticker = async (id: string) => {
+    setStickers((s) => s.filter((x) => x.id !== id));
+    try { await deleteSticker(supabase, id); } catch { /* abaikan */ }
   };
 
   const upload = async (file: File) => {
@@ -451,14 +519,20 @@ export default function ChatRoom({ channel, onBack }: any) {
                   ) : (
                     <>
                       {m.content && (
-                        <p className="text-[13px] text-zinc-200 leading-relaxed break-words whitespace-pre-wrap">
-                          {renderBody(m.content)}
-                          {m.edited_at && <span className="text-[9px] text-zinc-600 ml-1.5">(diedit)</span>}
-                        </p>
+                        isOnlyEmoji(m.content) ? (
+                          <p className="text-4xl leading-tight mt-1">{m.content}</p>
+                        ) : (
+                          <p className="text-[13px] text-zinc-200 leading-relaxed break-words whitespace-pre-wrap">
+                            {renderBody(m.content)}
+                            {m.edited_at && <span className="text-[9px] text-zinc-600 ml-1.5">(diedit)</span>}
+                          </p>
+                        )
                       )}
 
                       {(m.attachments || []).map((att: any, k: number) => (
-                        /^image\//.test(att.type || '') ? (
+                        att.type === 'sticker' ? (
+                          <img key={k} src={att.url} alt={att.name} className="mt-1.5 w-28 h-28 object-contain" />
+                        ) : /^image\//.test(att.type || '') ? (
                           <a key={k} href={att.url} target="_blank" rel="noreferrer" className="block mt-1.5">
                             <img src={att.url} alt={att.name} className="max-w-xs max-h-64 rounded-lg border border-zinc-800" />
                           </a>
@@ -556,8 +630,95 @@ export default function ChatRoom({ channel, onBack }: any) {
               </div>
             )}
 
+            {/* ══ PANEL EMOJI & STIKER ══ */}
+            {pickerTab && (
+              <>
+                <div className="fixed inset-0 z-[95]" onClick={() => setPickerTab(null)} />
+                <div className="absolute bottom-full left-0 mb-2 w-[min(340px,90vw)] bg-[#2a2c38] border border-zinc-700 rounded-2xl shadow-2xl z-[100] overflow-hidden">
+                  <div className="flex items-center gap-1 p-2 border-b border-zinc-700/70">
+                    <button onClick={() => setPickerTab('emoji')} className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-lg transition-colors ${pickerTab === 'emoji' ? 'bg-[#2b5cd5] text-white' : 'text-zinc-400 hover:text-white'}`}>
+                      <Smile size={13} /> Emoji
+                    </button>
+                    <button onClick={() => setPickerTab('stiker')} className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-lg transition-colors ${pickerTab === 'stiker' ? 'bg-[#2b5cd5] text-white' : 'text-zinc-400 hover:text-white'}`}>
+                      <Sticker size={13} /> Stiker
+                    </button>
+                    <button onClick={() => setPickerTab(null)} className="p-1.5 text-zinc-500 hover:text-white"><X size={14} /></button>
+                  </div>
+
+                  {pickerTab === 'emoji' ? (
+                    <>
+                      <div className="flex gap-1 px-2 pt-2 overflow-x-auto">
+                        {EMOJI_GROUPS.map((g) => (
+                          <button key={g.id} onClick={() => setEmojiCat(g.id)}
+                            className={`text-[10px] font-semibold px-2 py-1 rounded-lg whitespace-nowrap transition-colors ${emojiCat === g.id ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}>
+                            {g.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-8 gap-0.5 p-2 max-h-48 overflow-y-auto overscroll-contain">
+                        {(EMOJI_GROUPS.find((g) => g.id === emojiCat)?.list || []).map((e, i) => (
+                          <button key={`${e}-${i}`} onClick={() => { setText((t) => t + e); }}
+                            className="h-8 w-8 flex items-center justify-center text-lg rounded-lg hover:bg-zinc-700/70 transition-colors">
+                            {e}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="p-2.5 max-h-56 overflow-y-auto overscroll-contain">
+                      <p className="text-[9px] font-black text-zinc-500 uppercase tracking-wider mb-1.5">Stiker Cepat</p>
+                      <div className="grid grid-cols-6 gap-1 mb-3">
+                        {BUILTIN_STICKERS.map((e) => (
+                          <button key={e} onClick={() => sendBigEmoji(e)} title="Kirim sebagai stiker"
+                            className="h-11 flex items-center justify-center text-2xl rounded-xl bg-zinc-800/50 hover:bg-zinc-700 transition-colors">
+                            {e}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-[9px] font-black text-zinc-500 uppercase tracking-wider">Stiker Tim ({stickers.length})</p>
+                        {isManager && (
+                          <button onClick={() => stickerFileRef.current?.click()} className="flex items-center gap-1 text-[9px] font-bold text-blue-400 hover:text-blue-300">
+                            <Plus size={10} /> Tambah
+                          </button>
+                        )}
+                      </div>
+                      <input ref={stickerFileRef} type="file" accept="image/*" hidden
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadSticker(f); e.currentTarget.value = ''; }} />
+
+                      {stickers.length === 0 ? (
+                        <p className="text-[10px] text-zinc-600 text-center py-4">
+                          {isManager ? 'Belum ada. Klik "Tambah" untuk unggah stiker tim.' : 'Belum ada stiker tim.'}
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {stickers.map((st) => (
+                            <div key={st.id} className="relative group/st">
+                              <button onClick={() => sendSticker(st)} className="w-full aspect-square rounded-xl bg-zinc-800/50 hover:bg-zinc-700 p-1.5 transition-colors">
+                                <img src={st.url} alt={st.name} className="w-full h-full object-contain" />
+                              </button>
+                              {isManager && (
+                                <button onClick={() => removeSticker(st.id)} title="Hapus stiker"
+                                  className="absolute -top-1 -right-1 opacity-0 group-hover/st:opacity-100 p-1 bg-red-500 text-white rounded-full transition-opacity">
+                                  <TrashIcon size={9} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
             <div className="flex items-end gap-2 bg-[#20222b] border border-zinc-800 focus-within:border-zinc-700 rounded-xl px-3 py-2 transition-colors">
               <input ref={fileRef} type="file" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.currentTarget.value = ''; }} />
+              <button onClick={() => setPickerTab(pickerTab ? null : 'emoji')} title="Emoji & stiker" className={`p-1.5 rounded transition-colors shrink-0 ${pickerTab ? 'text-amber-300' : 'text-zinc-500 hover:text-amber-300'}`}>
+                <Smile size={16} />
+              </button>
               <button onClick={() => fileRef.current?.click()} disabled={uploading} title="Lampirkan file" className="p-1.5 text-zinc-500 hover:text-white rounded transition-colors shrink-0">
                 <Paperclip size={16} />
               </button>

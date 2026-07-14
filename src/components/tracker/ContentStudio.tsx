@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import LoadingLogo from '@/components/LoadingLogo';
+import { pushNotify } from '@/lib/push';
 import {
   PLATFORMS, CONTENT_TYPES, CONTENT_STATUS, statusColor, platformMeta,
   engagementRate, loadContent, addContent, updateContent, deleteContent,
@@ -88,7 +89,7 @@ const toLocalInput = (d: any) => {
 
 /* ══════════════ PANEL DETAIL KONTEN (brief + produksi + review + performa) ══════════════ */
 export function ContentDetail({ post, members, canManage, currentUserId, onClose, onSave, onDelete }: any) {
-  const { pushToast }: any = useDashboard();
+  const { pushToast, supabase }: any = useDashboard();
   const [f, setF] = useState<any>(post);
   const [saving, setSaving] = useState(false);
   useEffect(() => setF(post), [post?.id]);
@@ -115,6 +116,14 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
       await save({ status: 'Produksi' });
       const nama = members.find((m: any) => m.id === f.assignee_id)?.name || 'tim';
       pushToast(`Brief dikirim ke ${nama} — status: Produksi`);
+      // 🔔 Notifikasi ke PIC
+      pushNotify(supabase, {
+        memberIds: [f.assignee_id],
+        title: '📣 Brief Konten Baru',
+        body: f.title || 'Ada brief konten baru untukmu',
+        url: '/user/daily-task',
+        tag: `brief-${f.id}`,
+      });
     } else {
       await save();
       pushToast('Perubahan disimpan');
