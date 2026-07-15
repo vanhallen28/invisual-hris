@@ -4,11 +4,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Hash, Lock, Megaphone, Plus, ChevronLeft, ChevronDown, X, Settings2,
-  Users, Trash2, Check, Search, Bell, BellOff,
+  Users, Trash2, Check, Search, Bell, BellOff, Volume2, Video,
 } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import ItemDetailPanel from '@/components/tracker/ItemDetailPanel';
 import ChatRoom from '@/components/chat/ChatRoom';
+import VoiceRoom from '@/components/chat/VoiceRoom';
 import LoadingLogo from '@/components/LoadingLogo';
 import { enablePush, disablePush, pushStatus, clearBadge } from '@/lib/push';
 import {
@@ -27,6 +28,7 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
   const [desc, setDesc] = useState(channel?.description || '');
   const [priv, setPriv] = useState(!!channel?.is_private);
   const [ann, setAnn] = useState(!!channel?.is_announcement);
+  const [voice, setVoice] = useState(!!channel?.is_voice);
   const [sel, setSel] = useState<string[]>(members || []);
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
@@ -43,13 +45,13 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
       if (isNew) {
         const row = await createChannel(supabase, {
           name: nm, category: category.trim().toUpperCase() || 'UMUM', description: desc.trim() || null,
-          is_private: priv, is_announcement: ann, created_by: currentUserId,
+          is_private: priv, is_announcement: ann, is_voice: voice, created_by: currentUserId,
         });
         id = row.id;
       } else {
         await updateChannel(supabase, id, {
           name: nm, category: category.trim().toUpperCase() || 'UMUM',
-          description: desc.trim() || null, is_private: priv, is_announcement: ann,
+          description: desc.trim() || null, is_private: priv, is_announcement: ann, is_voice: voice,
         });
       }
       if (priv) await setChannelMembers(supabase, id, sel);
@@ -104,6 +106,11 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
               <input type="checkbox" checked={ann} onChange={(e) => setAnn(e.target.checked)} className="accent-amber-500" />
               <Megaphone size={12} className="text-amber-400" />
               <span className="text-xs text-zinc-300">Channel pengumuman — hanya manajer bisa kirim</span>
+            </label>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={voice} onChange={(e) => setVoice(e.target.checked)} className="accent-emerald-500" />
+              <Volume2 size={12} className="text-emerald-400" />
+              <span className="text-xs text-zinc-300">Channel suara — voice & video call</span>
             </label>
           </div>
 
@@ -162,6 +169,7 @@ export default function ChatApp() {
   const [online, setOnline] = useState<string[]>([]);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [notif, setNotif] = useState<'granted' | 'denied' | 'default' | 'unsupported'>('default');
+  const [voiceCh, setVoiceCh] = useState<any>(null); // channel voice yang sedang diikuti
 
   useEffect(() => { setNotif(pushStatus()); clearBadge(); }, []);
 
@@ -269,7 +277,8 @@ export default function ChatApp() {
                   <div key={c.id} className="group/ch relative">
                     <button onClick={() => openChannel(c)}
                       className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors ${on ? 'bg-zinc-700/60 text-white' : n > 0 ? 'text-white hover:bg-zinc-800/60' : 'text-zinc-500 hover:bg-zinc-800/40 hover:text-zinc-300'}`}>
-                      {c.is_announcement ? <Megaphone size={14} className="shrink-0 text-amber-400/80" />
+                      {c.is_voice ? <Volume2 size={14} className="shrink-0 text-emerald-400/80" />
+                        : c.is_announcement ? <Megaphone size={14} className="shrink-0 text-amber-400/80" />
                         : c.is_private ? <Lock size={12} className="shrink-0" />
                         : <Hash size={14} className="shrink-0" />}
                       <span className={`text-[13px] truncate flex-1 text-left ${n > 0 && !on ? 'font-bold' : 'font-medium'}`}>{c.name}</span>
@@ -307,6 +316,12 @@ export default function ChatApp() {
               <p className="text-xs font-semibold text-zinc-200 truncate">{me.name}</p>
               <p className="text-[10px] text-zinc-500">{isManager ? 'Manager' : 'Member'}</p>
             </div>
+            {voiceCh && (
+              <button onClick={() => { openChannel(voiceCh); }} title="Kembali ke ruang suara"
+                className="p-2 rounded-lg text-emerald-400 bg-emerald-500/10 shrink-0 animate-pulse">
+                <Volume2 size={15} />
+              </button>
+            )}
             {notif !== 'unsupported' && (
               <button onClick={toggleNotif} title={notif === 'granted' ? 'Matikan notifikasi' : 'Aktifkan notifikasi di HP'}
                 className={`p-2 rounded-lg transition-colors shrink-0 ${notif === 'granted' ? 'text-emerald-400 bg-emerald-500/10' : 'text-zinc-500 hover:text-white hover:bg-zinc-800'}`}>
@@ -319,7 +334,24 @@ export default function ChatApp() {
 
       {/* ══ RUANG CHAT ══ */}
       <div className={`${mobileRoom ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0`}>
-        {active ? (
+        {voiceCh && voiceCh.id === active?.id ? (
+          <VoiceRoom channel={voiceCh} onLeave={() => setVoiceCh(null)} />
+        ) : active?.is_voice ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+              <Volume2 size={28} className="text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-white">{active.name}</p>
+              <p className="text-xs text-zinc-500 mt-1">Channel suara · {active.description || 'Ngobrol langsung dengan tim'}</p>
+            </div>
+            <button onClick={() => setVoiceCh(active)}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold px-6 py-3 rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.35)] active:scale-95">
+              <Volume2 size={16} /> Gabung Suara
+            </button>
+            <p className="text-[10px] text-zinc-600 max-w-xs">Mikrofon akan aktif saat bergabung. Kamera & berbagi layar bisa dinyalakan lewat kontrol di bawah.</p>
+          </div>
+        ) : active ? (
           <ChatRoom channel={active} onBack={() => setMobileRoom(false)} recipients={membersOfActive.filter((id: string) => id !== currentUserId)} />
         ) : (
           <div className="flex-1 flex items-center justify-center">

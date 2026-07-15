@@ -15,6 +15,8 @@ export type FullState = {
 export async function loadFullState(supabase: SB): Promise<FullState> {
   const ures = await supabase.auth.getUser();
   const currentUserId = ures?.data?.user?.id || null;
+  const currentEmail = String(ures?.data?.user?.email || '').toLowerCase();
+  const isAdminEmail = currentEmail.endsWith('@invisual.studio');
 
   const [nodesR, groupsR, colsR, optsR, itemsR, valsR, asgR, membersR] = await Promise.all([
     supabase.from('tree_nodes').select('*'),
@@ -43,9 +45,10 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
 
   const teamMembers = membersRows.map((m: any) => ({ id: m.id, name: m.name, color: m.color || 'bg-[#579bfc]', initials: m.initials || '?' }));
   const meRow = membersRows.find((m: any) => m.id === currentUserId);
-  const currentUserRole = (meRow?.role) || 'member';
-  // Akses Content Hub (kolom members.content_hub) — default boleh
-  const canContentHub = meRow?.content_hub !== false;
+  // Admin @invisual.studio SELALU manager (punya akses penuh: board, Content Hub, buat channel suara).
+  const currentUserRole = isAdminEmail ? 'manager' : ((meRow?.role) || 'member');
+  // Akses Content Hub (kolom members.content_hub) — default boleh; admin selalu boleh
+  const canContentHub = isAdminEmail ? true : (meRow?.content_hub !== false);
 
   // Pembatasan board per-manajer (tabel board_access).
   // Manajer TANPA baris di board_access → akses semua board (perilaku default).

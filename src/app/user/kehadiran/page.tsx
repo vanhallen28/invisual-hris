@@ -30,6 +30,8 @@ export default function UserKehadiranPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [captureMode, setCaptureMode] = useState<"in" | "out" | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isFlashing, setIsFlashing] = useState(false);
 
@@ -94,8 +96,10 @@ export default function UserKehadiranPage() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       if (videoRef.current) videoRef.current.srcObject = stream;
       setHasCameraPermission(true);
+      setCameraOn(true);
     } catch (err) {
       setHasCameraPermission(false);
+      setCameraOn(false);
     }
   };
 
@@ -103,15 +107,28 @@ export default function UserKehadiranPage() {
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
     }
+    setCameraOn(false);
   };
 
+  // Mulai proses absen: nyalakan kamera untuk mode tertentu ('in' / 'out')
+  const startCapture = async (mode: "in" | "out") => {
+    setCapturedPhoto(null);
+    setCaptureMode(mode);
+    await startCamera();
+  };
+
+  // Batalkan: matikan kamera & kembali ke tombol Clock In/Out
+  const cancelCapture = () => {
+    stopCamera();
+    setCaptureMode(null);
+  };
+
+  // Kamera hanya dimatikan saat komponen ditutup (tidak auto-start lagi)
   useEffect(() => {
-    if (!isLoading && (!todayAttendance || !todayAttendance.waktuKeluar)) {
-      startCamera();
-    }
     return () => stopCamera();
-  }, [isLoading, todayAttendance]);
+  }, []);
 
   const takePhoto = () => {
     if (videoRef.current && canvasRef.current) {
@@ -184,7 +201,7 @@ export default function UserKehadiranPage() {
   const handleClockIn = async () => {
     if (hasCameraPermission === false) return showToast("error", "Izinkan akses kamera di browser Anda!");
     setIsActionLoading(true);
-    takePhoto();
+    takePhoto(); // ambil foto lalu kamera otomatis mati
 
     const now = new Date();
     const timeString = now.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' });
@@ -204,13 +221,14 @@ export default function UserKehadiranPage() {
       showToast("error", "Gagal merekam absensi: " + err.message);
     } finally {
       setIsActionLoading(false);
+      setCaptureMode(null); // kembali ke tampilan tombol, kamera tetap mati
     }
   };
 
   const handleClockOut = async () => {
     if (hasCameraPermission === false) return showToast("error", "Izinkan akses kamera di browser Anda!");
     setIsActionLoading(true);
-    takePhoto();
+    takePhoto(); // ambil foto lalu kamera otomatis mati
 
     const timeString = new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' });
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
@@ -224,6 +242,7 @@ export default function UserKehadiranPage() {
       showToast("error", "Gagal merekam jam pulang: " + err.message);
     } finally {
       setIsActionLoading(false);
+      setCaptureMode(null); // kembali ke tampilan tombol, kamera tetap mati
     }
   };
 
@@ -329,11 +348,20 @@ export default function UserKehadiranPage() {
                 <p className="text-[9px] md:text-xs text-gray-500">Izinkan kamera di pengaturan browser.</p>
               </div>
             ) : (
-              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+              <>
+                <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover scale-x-[-1] transition-opacity duration-300 ${cameraOn ? "opacity-100" : "opacity-0"}`} />
+                {!cameraOn && !capturedPhoto && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 bg-[#0a0a0a]">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 md:w-10 md:h-10 text-gray-600 mb-2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /><path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" /></svg>
+                    <p className="text-gray-500 text-[10px] md:text-xs font-bold">Kamera Nonaktif</p>
+                    <p className="text-gray-700 text-[8px] md:text-[10px] mt-0.5">{isAttendanceComplete ? "Absensi hari ini sudah selesai" : `Tekan tombol ${!todayAttendance ? "Clock In" : "Clock Out"} untuk mulai absen`}</p>
+                  </div>
+                )}
+              </>
             )}
             <canvas ref={canvasRef} className="hidden" />
 
-            {(!isAttendanceComplete && hasCameraPermission !== false && !capturedPhoto) && (
+            {(cameraOn && !capturedPhoto) && (
               <>
                 <div className="absolute bottom-2 md:bottom-4 left-2 md:left-4 bg-black/60 backdrop-blur-md px-2 md:px-3 py-1 md:py-1.5 rounded-md md:rounded-lg border border-white/10 flex items-center gap-1.5 md:gap-2 z-10">
                   <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full animate-pulse"></span>
@@ -349,33 +377,45 @@ export default function UserKehadiranPage() {
           </div>
 
           <div className="mt-auto">
-            {!todayAttendance ? (
-              <button onClick={handleClockIn} disabled={isActionLoading} className="w-full bg-[#2b5cd5] hover:bg-blue-600 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 disabled:opacity-50 text-xs md:text-sm">
-                {isActionLoading ? (
-                  <>
-                    <LoadingLogo size={20} />
-                    Menyimpan Wajah...
-                  </>
-                ) : (
-                  "📸 CLOCK IN"
-                )}
-              </button>
-            ) : !todayAttendance.waktuKeluar ? (
-              <button onClick={handleClockOut} disabled={isActionLoading} className="w-full bg-orange-500/10 hover:bg-orange-500 text-orange-500 hover:text-white border border-orange-500/30 font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 disabled:opacity-50 text-xs md:text-sm">
-                {isActionLoading ? (
-                  <>
-                    <LoadingLogo size={20} />
-                    Menyimpan Wajah...
-                  </>
-                ) : (
-                  "📸 CLOCK OUT"
-                )}
-              </button>
-            ) : (
+            {isAttendanceComplete ? (
               <div className="w-full bg-green-500/10 border border-green-500/20 text-green-400 font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl flex justify-center items-center gap-2 text-xs md:text-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 md:w-5 md:h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 Absensi Selesai
               </div>
+            ) : captureMode ? (
+              /* Kamera aktif → ambil foto & submit, atau batal */
+              <div className="flex gap-2.5">
+                <button
+                  onClick={captureMode === "in" ? handleClockIn : handleClockOut}
+                  disabled={isActionLoading || !cameraOn}
+                  className={`flex-1 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 disabled:opacity-50 text-xs md:text-sm ${captureMode === "in" ? "bg-[#2b5cd5] hover:bg-blue-600" : "bg-orange-500 hover:bg-orange-600"}`}
+                >
+                  {isActionLoading ? (
+                    <><LoadingLogo size={20} /> Menyimpan Wajah...</>
+                  ) : (
+                    <>📸 Absen Sekarang</>
+                  )}
+                </button>
+                <button
+                  onClick={cancelCapture}
+                  disabled={isActionLoading}
+                  className="px-4 md:px-5 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 font-bold transition-all disabled:opacity-50 text-xs md:text-sm"
+                >
+                  Batal
+                </button>
+              </div>
+            ) : !todayAttendance ? (
+              /* Belum clock-in → tombol memulai (kamera muncul saat diklik) */
+              <button onClick={() => startCapture("in")} className="w-full bg-[#2b5cd5] hover:bg-blue-600 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 md:w-5 md:h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.822 1.316zM16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" /></svg>
+                CLOCK IN
+              </button>
+            ) : (
+              /* Sudah clock-in, belum clock-out → tombol memulai clock-out */
+              <button onClick={() => startCapture("out")} className="w-full bg-orange-500/10 hover:bg-orange-500 text-orange-500 hover:text-white border border-orange-500/30 font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 md:w-5 md:h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.822 1.316zM16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" /></svg>
+                CLOCK OUT
+              </button>
             )}
           </div>
         </div>

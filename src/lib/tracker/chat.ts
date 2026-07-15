@@ -15,6 +15,7 @@ export async function loadChannelMembers(supabase: SB) {
   return data || [];
 }
 
+// (is_voice ditambahkan lewat payload dari modal)
 export async function createChannel(supabase: SB, p: any) {
   const { data, error } = await supabase.from('chat_channels').insert(p).select().single();
   if (error) throw new Error(error.message);
