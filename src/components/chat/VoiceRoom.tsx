@@ -67,6 +67,7 @@ export default function VoiceRoom({ channel, onLeave }: any) {
   const [room, setRoom] = useState<any>(null);
   const [participants, setParticipants] = useState<any[]>([]);
   const [connecting, setConnecting] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(false);
   const [screenOn, setScreenOn] = useState(false);
@@ -106,7 +107,7 @@ export default function VoiceRoom({ channel, onLeave }: any) {
         if (!mounted) { r.disconnect(); return; }
         setRoom(r); setMicOn(true); setConnecting(false); sync(r);
       } catch (e: any) {
-        if (mounted) { pushToast(e?.message || 'Gagal bergabung ke voice'); onLeave(); }
+        if (mounted) { setError(e?.message || 'Gagal bergabung ke voice'); setConnecting(false); }
       }
     })();
 
@@ -139,7 +140,25 @@ export default function VoiceRoom({ channel, onLeave }: any) {
 
       {/* grid peserta */}
       <div className="flex-1 overflow-y-auto p-4">
-        {connecting ? (
+        {error ? (
+          <div className="h-full min-h-[50vh] flex flex-col items-center justify-center gap-4 text-center px-6 max-w-md mx-auto">
+            <div className="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center">
+              <Volume2 size={26} className="text-red-400" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Voice belum bisa digunakan</p>
+              <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">{error}</p>
+            </div>
+            {/(dikonfigurasi|belum diset|LIVEKIT)/i.test(error) && (
+              <p className="text-[11px] text-zinc-600 leading-relaxed bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-3">
+                Admin perlu mengatur kunci <b>LiveKit</b> (URL, API Key, API Secret) di environment server, lalu men-deploy ulang. Fitur teks chat tetap berjalan normal.
+              </p>
+            )}
+            <button onClick={onLeave} className="mt-1 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all">
+              Kembali ke Chat
+            </button>
+          </div>
+        ) : connecting ? (
           <div className="h-full min-h-[50vh] flex flex-col items-center justify-center gap-3 text-zinc-500">
             <Loader2 size={28} className="animate-spin text-emerald-400" />
             <p className="text-sm">Menghubungkan ke ruang suara…</p>
