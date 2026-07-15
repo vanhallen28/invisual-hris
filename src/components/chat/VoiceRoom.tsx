@@ -132,7 +132,13 @@ export default function VoiceRoom({ channel, onLeave }: any) {
         r.on('trackPublished', resync);
         r.on('trackUnpublished', resync);
         r.on('localTrackPublished', resync);
-        r.on('localTrackUnpublished', resync);
+        r.on('localTrackUnpublished', (pub: any) => {
+          // Bila layar berhenti dibagikan (mis. lewat tombol "Stop sharing" bawaan browser)
+          if (pub?.source === 'screen_share' || pub?.track?.source === 'screen_share') {
+            if (mounted) setScreenOn(false);
+          }
+          resync();
+        });
         r.on('disconnected', () => { if (mounted) onLeave(); });
 
         await r.connect(j.url, j.token);
@@ -158,13 +164,20 @@ export default function VoiceRoom({ channel, onLeave }: any) {
   };
   const toggleScreen = async () => {
     if (!room) return;
+    const on = !screenOn;
     try {
-      const on = !screenOn;
       await room.localParticipant.setScreenShareEnabled(on);
       setScreenOn(on); sync(room);
-    } catch {
+    } catch (e: any) {
       setScreenOn(false);
-      pushToast('Berbagi layar dibatalkan');
+      const name = String(e?.name || '');
+      const msg = String(e?.message || '');
+      // Pengguna menutup dialog pemilih layar → itu bukan error, diamkan saja.
+      if (name === 'NotAllowedError' || name === 'AbortError' || name === 'NotFoundError' || /permission denied|cancell?ed|the request is not allowed/i.test(msg)) {
+        return;
+      }
+      // Error sungguhan → tampilkan pesan aslinya agar bisa didiagnosis.
+      pushToast('Gagal berbagi layar: ' + (msg || 'coba lagi'));
     }
   };
   const leave = () => { if (roomRef.current) roomRef.current.disconnect(); onLeave(); };
