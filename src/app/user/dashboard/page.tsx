@@ -22,6 +22,8 @@ export default function UserDashboardPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [captureMode, setCaptureMode] = useState<"in" | "out" | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isFlashing, setIsFlashing] = useState(false);
 
@@ -99,8 +101,10 @@ export default function UserDashboardPage() {
         videoRef.current.srcObject = stream;
       }
       setHasCameraPermission(true);
+      setCameraOn(true);
     } catch (err) {
       setHasCameraPermission(false);
+      setCameraOn(false);
     }
   };
 
@@ -108,15 +112,26 @@ export default function UserDashboardPage() {
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
     }
+    setCameraOn(false);
   };
 
+  // Mulai absen: nyalakan kamera untuk mode tertentu
+  const startCapture = async (mode: "in" | "out") => {
+    setCapturedPhoto(null);
+    setCaptureMode(mode);
+    await startCamera();
+  };
+  const cancelCapture = () => {
+    stopCamera();
+    setCaptureMode(null);
+  };
+
+  // Kamera hanya dimatikan saat halaman ditutup (tidak auto-start lagi)
   useEffect(() => {
-    if (!isLoading && (!todayAttendance || !todayAttendance.waktuKeluar)) {
-      startCamera();
-    }
     return () => stopCamera();
-  }, [isLoading, todayAttendance]);
+  }, []);
 
   const takePhoto = () => {
     if (videoRef.current && canvasRef.current) {
@@ -168,6 +183,7 @@ export default function UserDashboardPage() {
       alert("Gagal merekam absensi: " + err.message);
     } finally {
       setIsActionLoading(false);
+      setCaptureMode(null);
     }
   };
 
@@ -188,6 +204,7 @@ export default function UserDashboardPage() {
       alert("Gagal merekam jam pulang: " + err.message);
     } finally {
       setIsActionLoading(false);
+      setCaptureMode(null);
     }
   };
 
@@ -257,12 +274,21 @@ export default function UserDashboardPage() {
                 <p className="text-[9px] md:text-xs text-gray-500">Izinkan kamera di pengaturan browser.</p>
               </div>
             ) : (
-              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+              <>
+                <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover scale-x-[-1] transition-opacity duration-300 ${cameraOn ? "opacity-100" : "opacity-0"}`} />
+                {!cameraOn && !capturedPhoto && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 bg-[#0a0a0a]">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 md:w-10 md:h-10 text-gray-600 mb-2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /><path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" /></svg>
+                    <p className="text-gray-500 text-[10px] md:text-xs font-bold">Kamera Nonaktif</p>
+                    <p className="text-gray-700 text-[8px] md:text-[10px] mt-0.5">{isAttendanceComplete ? "Absensi hari ini sudah selesai" : `Tekan ${!todayAttendance ? "Clock In" : "Clock Out"} untuk mulai absen`}</p>
+                  </div>
+                )}
+              </>
             )}
 
             <canvas ref={canvasRef} className="hidden" />
 
-            {(!isAttendanceComplete && hasCameraPermission !== false && !capturedPhoto) && (
+            {(cameraOn && !capturedPhoto) && (
               <>
                 <div className="absolute bottom-2 md:bottom-4 left-2 md:left-4 bg-black/60 backdrop-blur-md px-2 md:px-3 py-1 md:py-1.5 rounded-md md:rounded-lg border border-white/10 flex items-center gap-1.5 md:gap-2 z-10">
                   <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full animate-pulse"></span>
@@ -278,33 +304,32 @@ export default function UserDashboardPage() {
           </div>
 
           <div className="mt-auto">
-            {!todayAttendance ? (
-              <button onClick={handleClockIn} disabled={isActionLoading} className="w-full bg-[#2b5cd5] hover:bg-blue-600 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 disabled:opacity-50 text-xs md:text-sm">
-                {isActionLoading ? (
-                  <>
-                    <LoadingLogo size={20} withRing={false} />
-                    Menyimpan Wajah...
-                  </>
-                ) : (
-                  "📸 CLOCK IN SEKARANG"
-                )}
-              </button>
-            ) : !todayAttendance.waktuKeluar ? (
-              <button onClick={handleClockOut} disabled={isActionLoading} className="w-full bg-orange-500/10 hover:bg-orange-500 text-orange-500 hover:text-white border border-orange-500/30 font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 disabled:opacity-50 text-xs md:text-sm">
-                {isActionLoading ? (
-                  <>
-                    <LoadingLogo size={20} withRing={false} />
-                    Menyimpan Wajah...
-                  </>
-                ) : (
-                  "📸 CLOCK OUT (PULANG)"
-                )}
-              </button>
-            ) : (
+            {isAttendanceComplete ? (
               <div className="w-full bg-green-500/10 border border-green-500/20 text-green-400 font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl flex justify-center items-center gap-2 text-xs md:text-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 md:w-5 md:h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 Absensi Hari Ini Selesai
               </div>
+            ) : captureMode ? (
+              <div className="flex gap-2.5">
+                <button
+                  onClick={captureMode === "in" ? handleClockIn : handleClockOut}
+                  disabled={isActionLoading || !cameraOn}
+                  className={`flex-1 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 disabled:opacity-50 text-xs md:text-sm ${captureMode === "in" ? "bg-[#2b5cd5] hover:bg-blue-600" : "bg-orange-500 hover:bg-orange-600"}`}
+                >
+                  {isActionLoading ? (<><LoadingLogo size={20} withRing={false} /> Menyimpan Wajah...</>) : (<>📸 Absen Sekarang</>)}
+                </button>
+                <button onClick={cancelCapture} disabled={isActionLoading} className="px-4 md:px-5 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 font-bold transition-all disabled:opacity-50 text-xs md:text-sm">
+                  Batal
+                </button>
+              </div>
+            ) : !todayAttendance ? (
+              <button onClick={() => startCapture("in")} className="w-full bg-[#2b5cd5] hover:bg-blue-600 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
+                📸 CLOCK IN SEKARANG
+              </button>
+            ) : (
+              <button onClick={() => startCapture("out")} className="w-full bg-orange-500/10 hover:bg-orange-500 text-orange-500 hover:text-white border border-orange-500/30 font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
+                📸 CLOCK OUT (PULANG)
+              </button>
             )}
           </div>
         </div>

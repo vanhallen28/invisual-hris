@@ -1,63 +1,91 @@
 'use client';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
-  Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Loader2, Volume2,
+  Mic, MicOff, Video, VideoOff, ScreenShare, ScreenShareOff, PhoneOff, Loader2, Volume2, MonitorUp,
 } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 
 const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
 
-/* Ubin peserta: menampilkan video (kamera/share) atau avatar bila kamera mati */
-function ParticipantTile({ participant, teamMembers, isLocal }: any) {
+/* Satu ubin untuk satu sumber video: 'camera' atau 'screen_share'.
+   Ubin kamera juga menempelkan audio mikrofon peserta (sekali per orang). */
+function MediaTile({ participant, source, isLocal, teamMembers }: any) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [hasVideo, setHasVideo] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [muted, setMuted] = useState(true);
+  const isScreen = source === 'screen_share';
   const member = teamMembers.find((m: any) => m.id === participant.identity);
 
   useEffect(() => {
-    const el = videoRef.current;
+    const vEl = videoRef.current;
+
     const attachVideo = () => {
-      const pub = participant.getTrackPublication?.('camera') || participant.getTrackPublication?.('screen_share');
-      const camPub = [...participant.videoTrackPublications.values()].find((p: any) => p.track && p.isSubscribed !== false);
-      if (camPub?.track && el) { camPub.track.attach(el); setHasVideo(true); }
-      else { setHasVideo(false); }
+      const pub = [...participant.videoTrackPublications.values()].find((p: any) => p.source === source);
+      if (pub?.track && vEl) {
+        try { pub.track.attach(vEl); setHasVideo(true); } catch { setHasVideo(false); }
+      } else {
+        setHasVideo(false);
+      }
     };
+
+    // Audio mikrofon: hanya di ubin kamera, bukan lokal (cegah echo)
+    const attachAudio = () => {
+      if (isLocal || isScreen || !audioRef.current) return;
+      const micPub = [...participant.audioTrackPublications.values()].find((p: any) => p.track && p.source === 'microphone');
+      if (micPub?.track) { try { micPub.track.attach(audioRef.current); } catch {} }
+    };
+
     const update = () => {
       attachVideo();
-      const micPub = [...participant.audioTrackPublications.values()][0];
+      attachAudio();
+      const micPub = [...participant.audioTrackPublications.values()].find((p: any) => p.source === 'microphone');
       setMuted(micPub ? micPub.isMuted : true);
     };
+
     update();
-    participant.on('trackSubscribed', update);
-    participant.on('trackUnsubscribed', update);
-    participant.on('trackMuted', update);
-    participant.on('trackUnmuted', update);
-    participant.on('trackPublished', update);
-    participant.on('isSpeakingChanged', (s: boolean) => setSpeaking(s));
+    const evs = ['trackSubscribed', 'trackUnsubscribed', 'trackMuted', 'trackUnmuted', 'trackPublished', 'trackUnpublished', 'localTrackPublished', 'localTrackUnpublished'];
+    evs.forEach((e) => participant.on(e, update));
+    const spk = (s: boolean) => setSpeaking(s);
+    participant.on('isSpeakingChanged', spk);
+
     return () => {
-      participant.off('trackSubscribed', update);
-      participant.off('trackUnsubscribed', update);
-      participant.off('trackMuted', update);
-      participant.off('trackUnmuted', update);
-      participant.off('trackPublished', update);
+      evs.forEach((e) => participant.off(e, update));
+      participant.off('isSpeakingChanged', spk);
     };
-  }, [participant]);
+  }, [participant, source, isLocal, isScreen]);
 
   return (
-    <div className={`relative aspect-video rounded-xl overflow-hidden bg-[#15171c] border-2 transition-colors ${speaking ? 'border-emerald-500' : 'border-zinc-800'}`}>
-      <video ref={videoRef} autoPlay playsInline muted={isLocal} className={`w-full h-full object-cover ${hasVideo ? '' : 'hidden'} ${isLocal ? 'scale-x-[-1]' : ''}`} />
-      {!hasVideo && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-white ${mColor(member)} ${speaking ? 'ring-4 ring-emerald-500/60' : ''}`}>
-            {member?.initials || '?'}
-          </span>
-        </div>
+    <div className={`relative rounded-xl overflow-hidden bg-[#15171c] border-2 transition-colors aspect-video ${isScreen ? 'border-[#2b5cd5] col-span-full lg:col-span-2 row-span-2' : speaking ? 'border-emerald-500' : 'border-zinc-800'}`}>
+      <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full ${isScreen ? 'object-contain bg-black' : 'object-cover'} ${hasVideo ? '' : 'hidden'} ${(!isScreen && isLocal) ? 'scale-x-[-1]' : ''}`} />
+      {!isScreen && !isLocal && <audio ref={audioRef} autoPlay />}
+
+      {isScreen ? (
+        <>
+          {!hasVideo && (
+            <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs">Memuat layar…</div>
+          )}
+          <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-[#2b5cd5]/90 backdrop-blur px-2 py-1 rounded-lg z-10">
+            <MonitorUp size={11} className="text-white" />
+            <span className="text-[10px] text-white font-semibold truncate max-w-[160px]">Layar · {member?.name?.split(' ')[0] || 'Anggota'}{isLocal ? ' (Anda)' : ''}</span>
+          </div>
+        </>
+      ) : (
+        <>
+          {!hasVideo && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className={`w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-white ${mColor(member)} ${speaking ? 'ring-4 ring-emerald-500/60' : ''}`}>
+                {member?.initials || '?'}
+              </span>
+            </div>
+          )}
+          <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-black/60 backdrop-blur px-2 py-1 rounded-lg z-10">
+            {muted ? <MicOff size={11} className="text-red-400" /> : <Mic size={11} className="text-emerald-400" />}
+            <span className="text-[10px] text-white font-medium truncate max-w-[120px]">{member?.name || 'Anggota'}{isLocal ? ' (Anda)' : ''}</span>
+          </div>
+        </>
       )}
-      <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-black/60 backdrop-blur px-2 py-1 rounded-lg">
-        {muted ? <MicOff size={11} className="text-red-400" /> : <Mic size={11} className="text-emerald-400" />}
-        <span className="text-[10px] text-white font-medium truncate max-w-[120px]">{member?.name || 'Anggota'}{isLocal ? ' (Anda)' : ''}</span>
-      </div>
     </div>
   );
 }
@@ -96,14 +124,20 @@ export default function VoiceRoom({ channel, onLeave }: any) {
         const r = new LK.Room({ adaptiveStream: true, dynacast: true });
         roomRef.current = r;
 
-        r.on('participantConnected', () => sync(r));
-        r.on('participantDisconnected', () => sync(r));
-        r.on('trackSubscribed', () => sync(r));
-        r.on('trackUnsubscribed', () => sync(r));
+        const resync = () => { if (mounted) sync(r); };
+        r.on('participantConnected', resync);
+        r.on('participantDisconnected', resync);
+        r.on('trackSubscribed', resync);
+        r.on('trackUnsubscribed', resync);
+        r.on('trackPublished', resync);
+        r.on('trackUnpublished', resync);
+        r.on('localTrackPublished', resync);
+        r.on('localTrackUnpublished', resync);
         r.on('disconnected', () => { if (mounted) onLeave(); });
 
         await r.connect(j.url, j.token);
         await r.localParticipant.setMicrophoneEnabled(true);
+        try { await r.startAudio(); } catch {}
         if (!mounted) { r.disconnect(); return; }
         setRoom(r); setMicOn(true); setConnecting(false); sync(r);
       } catch (e: any) {
@@ -124,10 +158,24 @@ export default function VoiceRoom({ channel, onLeave }: any) {
   };
   const toggleScreen = async () => {
     if (!room) return;
-    try { const on = !screenOn; await room.localParticipant.setScreenShareEnabled(on); setScreenOn(on); sync(room); }
-    catch { pushToast('Berbagi layar dibatalkan'); }
+    try {
+      const on = !screenOn;
+      await room.localParticipant.setScreenShareEnabled(on);
+      setScreenOn(on); sync(room);
+    } catch {
+      setScreenOn(false);
+      pushToast('Berbagi layar dibatalkan');
+    }
   };
   const leave = () => { if (roomRef.current) roomRef.current.disconnect(); onLeave(); };
+
+  // Susun ubin: layar (bila ada) + kamera/avatar untuk tiap peserta
+  const tiles: any[] = [];
+  participants.forEach((p) => {
+    const sharingScreen = [...p.videoTrackPublications.values()].some((pub: any) => pub.source === 'screen_share' && pub.track);
+    if (sharingScreen) tiles.push({ key: `${p.identity}-screen`, p, source: 'screen_share' });
+    tiles.push({ key: `${p.identity}-cam`, p, source: 'camera' });
+  });
 
   return (
     <div className="flex-1 flex flex-col min-w-0 bg-[#1a1c22]">
@@ -164,9 +212,9 @@ export default function VoiceRoom({ channel, onLeave }: any) {
             <p className="text-sm">Menghubungkan ke ruang suara…</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-w-5xl mx-auto">
-            {participants.map((p) => (
-              <ParticipantTile key={p.sid || p.identity} participant={p} teamMembers={teamMembers} isLocal={p.identity === currentUserId} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 auto-rows-min gap-3 max-w-5xl mx-auto">
+            {tiles.map((t) => (
+              <MediaTile key={t.key} participant={t.p} source={t.source} teamMembers={teamMembers} isLocal={t.p.identity === currentUserId} />
             ))}
           </div>
         )}
