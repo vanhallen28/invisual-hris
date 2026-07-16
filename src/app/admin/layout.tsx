@@ -83,7 +83,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* AREA KONTEN UTAMA */}
       <main className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0">
         <div className="p-4 md:p-8 flex-1 w-full max-w-7xl mx-auto">
-          {children}
+          <div key={pathname} className={isChatPage ? "" : "page-fade"}>
+            {children}
+          </div>
         </div>
       </main>
 

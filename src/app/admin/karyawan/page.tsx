@@ -35,9 +35,11 @@ export default function AdminKaryawanPage() {
     alamatDomisili: "", jabatan: "UI/UX Designer", status: "PKWT (Kontrak)",
     tanggalBergabung: "", sisaCuti: 12, gajiPokok: "", namaBank: "", 
     noRekening: "", isAktif: true, role: "member",
-    institusiMagang: "", tanggalSelesaiMagang: ""
+    institusiMagang: "", tanggalSelesaiMagang: "",
+    boardAccess: [] as string[], contentHub: true
   });
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); // user_id -> role Tracker
+  const [allBoards, setAllBoards] = useState<string[]>([]); // nama board Daily Task untuk pembatasan akses
 
   const fetchEmployees = async () => {
     setIsLoading(true);
@@ -47,6 +49,9 @@ export default function AdminKaryawanPage() {
       setEmployees(data || []);
       const { data: mem } = await supabase.from("members").select("id, role");
       if (mem) { const map: Record<string, string> = {}; mem.forEach((m: any) => { map[m.id] = m.role; }); setRoleMap(map); }
+      const { data: bnodes } = await supabase.from("tree_nodes").select("name").eq("kind", "board");
+      const names = Array.from(new Set((bnodes || []).map((b: any) => String(b.name || "").trim()).filter(Boolean)));
+      setAllBoards(names.sort((a, b) => a.localeCompare(b)));
     } catch (error: any) {
       showToast("Gagal mengambil data dari server.", "error");
     } finally {
@@ -121,13 +126,18 @@ export default function AdminKaryawanPage() {
       alamatDomisili: "", jabatan: "UI/UX Designer", status: "PKWT (Kontrak)",
       tanggalBergabung: new Date().toISOString().split('T')[0],
       sisaCuti: 12, gajiPokok: "", namaBank: "", noRekening: "", isAktif: true, role: "member",
-      institusiMagang: "", tanggalSelesaiMagang: ""
+      institusiMagang: "", tanggalSelesaiMagang: "",
+      boardAccess: [] as string[], contentHub: true
     });
     setShowModal(true);
   };
 
   const openEditModal = (emp: any) => {
     setIsEditMode(true);
+    fetch(`/api/employees?idKaryawan=${encodeURIComponent(emp.idKaryawan)}`)
+      .then((r) => r.json())
+      .then((d) => { if (d && !d.error) setFormData((prev) => ({ ...prev, boardAccess: Array.isArray(d.boardAccess) ? d.boardAccess : [], contentHub: d.contentHub !== false, role: d.role || prev.role })); })
+      .catch(() => {});
     setFormData({
       idKaryawan: emp.idKaryawan || "",
       nama: emp.nama || "",
@@ -145,7 +155,8 @@ export default function AdminKaryawanPage() {
       isAktif: emp.isAktif ?? true,
       role: (emp.user_id && roleMap[emp.user_id]) || "member",
       institusiMagang: emp.institusiMagang || "",
-      tanggalSelesaiMagang: emp.tanggalSelesaiMagang || ""
+      tanggalSelesaiMagang: emp.tanggalSelesaiMagang || "",
+      boardAccess: [], contentHub: true
     });
     setShowModal(true);
   };
@@ -181,8 +192,8 @@ export default function AdminKaryawanPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
           isEditMode
-            ? { ...payload, idKaryawan: formData.idKaryawan, role: formData.role }
-            : { ...payload, role: formData.role }
+            ? { ...payload, idKaryawan: formData.idKaryawan, role: formData.role, boardAccess: formData.boardAccess, contentHub: formData.contentHub }
+            : { ...payload, role: formData.role, boardAccess: formData.boardAccess, contentHub: formData.contentHub }
         ),
       });
       const json = await res.json().catch(() => ({}));
@@ -580,6 +591,45 @@ export default function AdminKaryawanPage() {
                     </select>
                     <p className="text-[10px] text-gray-600 mt-1.5">Menentukan tampilan menu Daily Task karyawan. Bisa diubah kapan saja lewat tombol Edit.</p>
                   </div>
+
+                  {formData.role === "manager" && (
+                    <div className="md:col-span-3 space-y-3">
+                      <div className="bg-[#124bce]/5 border border-[#124bce]/20 rounded-lg p-4">
+                        <label className="block text-[11px] font-bold text-[#8ba7ff] mb-1 uppercase">Board yang boleh diakses</label>
+                        <p className="text-[10px] text-gray-500 mb-3">Kosongkan = akses SEMUA board. Centang untuk membatasi ke board tertentu saja.</p>
+                        <div className="flex flex-wrap gap-2">
+                          {allBoards.length === 0 ? (
+                            <span className="text-[11px] text-gray-600">Belum ada board di Daily Task.</span>
+                          ) : (
+                            allBoards.map((b) => {
+                              const key = b.toLowerCase();
+                              const on = formData.boardAccess.includes(key);
+                              return (
+                                <button
+                                  type="button"
+                                  key={b}
+                                  onClick={() => setFormData({ ...formData, boardAccess: on ? formData.boardAccess.filter((x) => x !== key) : [...formData.boardAccess, key] })}
+                                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${on ? "bg-[#124bce] text-white border-[#124bce]" : "bg-white/5 text-gray-400 border-white/10 hover:border-white/25"}`}
+                                >
+                                  {on ? "✓ " : ""}{b}
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                        <p className={`text-[10px] mt-3 ${formData.boardAccess.length ? "text-[#e85a92]" : "text-gray-600"}`}>
+                          {formData.boardAccess.length ? `Dibatasi ke ${formData.boardAccess.length} board — board lain tersembunyi otomatis.` : "Saat ini: akses semua board."}
+                        </p>
+                      </div>
+                      <label className="flex items-center justify-between bg-[#1c1c1c] border border-white/10 rounded-lg px-4 py-3 cursor-pointer">
+                        <div className="pr-3">
+                          <span className="text-sm font-bold text-white">Akses Content Hub</span>
+                          <p className="text-[10px] text-gray-500 mt-0.5">Izinkan melihat &amp; mengelola Content Hub (marketing &amp; sosmed).</p>
+                        </div>
+                        <input type="checkbox" checked={formData.contentHub} onChange={(e) => setFormData({ ...formData, contentHub: e.target.checked })} className="accent-[#124bce] w-4 h-4 shrink-0" />
+                      </label>
+                    </div>
+                  )}
                 </div>
               </div>
 

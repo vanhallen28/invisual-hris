@@ -34,7 +34,7 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
   const [busy, setBusy] = useState(false);
 
   const filtered = teamMembers.filter((m: any) => String(m.name || '').toLowerCase().includes(q.toLowerCase()));
-  const cls = "w-full bg-[#1a1c23] border border-zinc-700 focus:border-blue-500/60 rounded-lg px-3 py-2 text-xs text-zinc-100 outline-none";
+  const cls = "w-full bg-[#1a1c23] border border-zinc-700 focus:border-[#124bce]/60 rounded-lg px-3 py-2 text-xs text-zinc-100 outline-none";
 
   const submit = async () => {
     const nm = name.trim().toLowerCase().replace(/\s+/g, '-');
@@ -98,7 +98,7 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
 
           <div className="flex flex-col gap-2 bg-[#1a1c23] border border-zinc-800 rounded-xl p-3">
             <label className="flex items-center gap-2.5 cursor-pointer">
-              <input type="checkbox" checked={priv} onChange={(e) => setPriv(e.target.checked)} className="accent-[#2b5cd5]" />
+              <input type="checkbox" checked={priv} onChange={(e) => setPriv(e.target.checked)} className="accent-[#124bce]" />
               <Lock size={12} className="text-zinc-500" />
               <span className="text-xs text-zinc-300">Channel privat — hanya anggota terpilih</span>
             </label>
@@ -126,7 +126,7 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
                   const on = sel.includes(m.id);
                   return (
                     <button key={m.id} onClick={() => setSel((s) => (on ? s.filter((x) => x !== m.id) : [...s, m.id]))}
-                      className={`flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left ${on ? 'bg-blue-500/10' : 'hover:bg-zinc-700/50'}`}>
+                      className={`flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left ${on ? 'bg-[#124bce]/10' : 'hover:bg-zinc-700/50'}`}>
                       <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white ${mColor(m)}`}>{m.initials}</span>
                       <span className={`text-[11px] flex-1 truncate ${on ? 'text-white font-semibold' : 'text-zinc-400'}`}>{m.name}</span>
                       {on && <Check size={12} className="text-blue-400" />}
@@ -137,7 +137,7 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
             </div>
           )}
 
-          <button onClick={submit} disabled={busy} className="mt-1 w-full bg-[#2b5cd5] hover:bg-blue-600 disabled:opacity-60 text-white text-xs font-bold py-2.5 rounded-lg transition-all">
+          <button onClick={submit} disabled={busy} className="mt-1 w-full bg-[#124bce] hover:bg-blue-600 disabled:opacity-60 text-white text-xs font-bold py-2.5 rounded-lg transition-all">
             {busy ? 'Menyimpan…' : isNew ? 'Buat Channel' : 'Simpan Perubahan'}
           </button>
 
@@ -254,7 +254,7 @@ export default function ChatApp() {
       {/* ══ SIDEBAR CHANNEL ══ */}
       <aside className={`${mobileRoom ? 'hidden' : 'flex'} md:flex w-full md:w-64 shrink-0 flex-col bg-[#15171c] border-r border-zinc-800/80`}>
         <div className="h-12 border-b border-zinc-800 flex items-center gap-2 px-3 shrink-0">
-          <Link href={backHref} title="Kembali ke Portal" className="flex items-center gap-1 text-xs font-bold text-white bg-[#2b5cd5] hover:bg-[#2450bd] px-2.5 py-1.5 rounded-lg transition-all shadow-[0_0_12px_rgba(43,92,213,0.4)]">
+          <Link href={backHref} title="Kembali ke Portal" className="flex items-center gap-1 text-xs font-bold text-white bg-[#124bce] hover:bg-[#0f3fae] px-2.5 py-1.5 rounded-lg transition-all shadow-[0_0_12px_rgba(18,75,206,0.4)]">
             <ChevronLeft size={14} /> Portal
           </Link>
           <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-1">Chat</span>

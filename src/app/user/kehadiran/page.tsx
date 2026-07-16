@@ -258,7 +258,7 @@ export default function UserKehadiranPage() {
   const isAttendanceComplete = todayAttendance?.waktuKeluar != null;
 
   return (
-    <div className="w-full flex flex-col gap-6 pb-6 font-sans animate-in fade-in duration-500">
+    <div className="w-full flex flex-col gap-6 pb-6 font-sans">
      
       {/* 🔥 CUSTOM TOAST NOTIFICATION (PENGGANTI ALERT) */}
       {toast.show && (
@@ -275,31 +275,31 @@ export default function UserKehadiranPage() {
       )}
 
       {/* HEADER UTAMA */}
-      <div className="flex justify-between items-center bg-[#141414] border border-white/5 p-4 rounded-2xl shadow-lg relative overflow-hidden">
+      <div className="flex justify-between items-center bg-[#15121A] border border-white/5 p-4 rounded-2xl shadow-lg relative overflow-hidden">
         <div className="relative z-10">
           <h1 className="text-xl md:text-2xl font-bold text-white">Kehadiran Saya</h1>
           <p className="text-[10px] md:text-xs text-gray-400 mt-1">Halo <span className="text-[#b3c5ff] font-bold">{currentUser?.nama}</span>, kelola absen Anda.</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="relative z-10 bg-[#2b5cd5] hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-colors whitespace-nowrap active:scale-95">
+        <button onClick={() => setShowForm(true)} className="relative z-10 bg-[#124bce] hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-colors whitespace-nowrap active:scale-95">
           Ajukan Izin / Cuti
         </button>
       </div>
 
       {/* KARTU RINGKASAN */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-[#141414] border border-white/5 rounded-2xl p-4 md:p-5 shadow-lg border-l-4 border-l-green-500">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mo-stagger">
+        <div className="bg-[#15121A] border border-white/5 rounded-2xl p-4 md:p-5 shadow-lg mo-lift border-l-4 border-l-green-500">
           <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest truncate">Hadir</p>
           <p className="text-xl md:text-2xl font-black text-white">22 <span className="text-xs font-normal text-gray-400">Hr</span></p>
         </div>
-        <div className="bg-[#141414] border border-white/5 rounded-2xl p-4 md:p-5 shadow-lg border-l-4 border-l-yellow-500">
+        <div className="bg-[#15121A] border border-white/5 rounded-2xl p-4 md:p-5 shadow-lg mo-lift border-l-4 border-l-yellow-500">
           <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest truncate">Terlambat</p>
           <p className="text-xl md:text-2xl font-black text-white">1 <span className="text-xs font-normal text-gray-400">Hr</span></p>
         </div>
-        <div className="bg-[#141414] border border-white/5 rounded-2xl p-4 md:p-5 shadow-lg border-l-4 border-l-red-500">
+        <div className="bg-[#15121A] border border-white/5 rounded-2xl p-4 md:p-5 shadow-lg mo-lift border-l-4 border-l-red-500">
           <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest truncate">Sakit/Izin</p>
           <p className="text-xl md:text-2xl font-black text-white">0 <span className="text-xs font-normal text-gray-400">Hr</span></p>
         </div>
-        <div className="bg-[#2b5cd5]/10 border border-[#2b5cd5]/30 rounded-2xl p-4 md:p-5 shadow-lg border-l-4 border-l-[#2b5cd5]">
+        <div className="bg-[#124bce]/10 border border-[#124bce]/30 rounded-2xl p-4 md:p-5 shadow-lg mo-lift border-l-4 border-l-[#124bce]">
           <p className="text-[10px] md:text-xs text-[#b3c5ff] font-bold mb-1 uppercase tracking-widest truncate">Sisa Cuti</p>
           <p className="text-xl md:text-2xl font-black text-white">{currentUser?.sisaCuti ?? 12} <span className="text-xs font-normal text-gray-400">Hr</span></p>
         </div>
@@ -307,7 +307,7 @@ export default function UserKehadiranPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-1">
         {/* KIRI: TERMINAL KAMERA ABSENSI */}
-        <div className="bg-[#141414] border border-white/5 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-xl relative overflow-hidden flex flex-col">
+        <div className="bg-[#15121A] border border-white/5 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-xl relative overflow-hidden flex flex-col">
           <h3 className="text-base md:text-lg font-bold text-white mb-3 md:mb-4 border-b border-white/5 pb-3 md:pb-4 flex justify-between items-center">
             Terminal Absensi
             {isAttendanceComplete ? (
@@ -315,8 +315,8 @@ export default function UserKehadiranPage() {
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span> Selesai
               </span>
             ) : todayAttendance?.waktuMasuk ? (
-              <span className="text-[8px] md:text-[10px] bg-blue-500/10 text-[#b3c5ff] px-2 md:px-3 py-1 rounded-full border border-[#2b5cd5]/30 uppercase tracking-widest flex items-center gap-1 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#2b5cd5] animate-pulse"></span> On Duty
+              <span className="text-[8px] md:text-[10px] bg-blue-500/10 text-[#b3c5ff] px-2 md:px-3 py-1 rounded-full border border-[#124bce]/30 uppercase tracking-widest flex items-center gap-1 shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#124bce] animate-pulse"></span> On Duty
               </span>
             ) : (
               <span className="text-[8px] md:text-[10px] bg-yellow-500/10 text-yellow-400 px-2 md:px-3 py-1 rounded-full border border-yellow-500/20 uppercase tracking-widest flex items-center gap-1 shrink-0">
@@ -351,7 +351,7 @@ export default function UserKehadiranPage() {
               <>
                 <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover scale-x-[-1] transition-opacity duration-300 ${cameraOn ? "opacity-100" : "opacity-0"}`} />
                 {!cameraOn && !capturedPhoto && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 bg-[#0a0a0a]">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 bg-[#050404]">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 md:w-10 md:h-10 text-gray-600 mb-2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /><path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" /></svg>
                     <p className="text-gray-500 text-[10px] md:text-xs font-bold">Kamera Nonaktif</p>
                     <p className="text-gray-700 text-[8px] md:text-[10px] mt-0.5">{isAttendanceComplete ? "Absensi hari ini sudah selesai" : `Tekan tombol ${!todayAttendance ? "Clock In" : "Clock Out"} untuk mulai absen`}</p>
@@ -388,7 +388,7 @@ export default function UserKehadiranPage() {
                 <button
                   onClick={captureMode === "in" ? handleClockIn : handleClockOut}
                   disabled={isActionLoading || !cameraOn}
-                  className={`flex-1 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 disabled:opacity-50 text-xs md:text-sm ${captureMode === "in" ? "bg-[#2b5cd5] hover:bg-blue-600" : "bg-orange-500 hover:bg-orange-600"}`}
+                  className={`flex-1 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 disabled:opacity-50 text-xs md:text-sm ${captureMode === "in" ? "bg-[#124bce] hover:bg-blue-600" : "bg-[#de236e] hover:bg-[#c51f60]"}`}
                 >
                   {isActionLoading ? (
                     <><LoadingLogo size={20} /> Menyimpan Wajah...</>
@@ -406,13 +406,13 @@ export default function UserKehadiranPage() {
               </div>
             ) : !todayAttendance ? (
               /* Belum clock-in → tombol memulai (kamera muncul saat diklik) */
-              <button onClick={() => startCapture("in")} className="w-full bg-[#2b5cd5] hover:bg-blue-600 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
+              <button onClick={() => startCapture("in")} className="w-full bg-[#124bce] hover:bg-blue-600 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 md:w-5 md:h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.822 1.316zM16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" /></svg>
                 CLOCK IN
               </button>
             ) : (
               /* Sudah clock-in, belum clock-out → tombol memulai clock-out */
-              <button onClick={() => startCapture("out")} className="w-full bg-orange-500/10 hover:bg-orange-500 text-orange-500 hover:text-white border border-orange-500/30 font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
+              <button onClick={() => startCapture("out")} className="w-full bg-[#de236e]/10 hover:bg-[#de236e] text-[#e85a92] hover:text-white border border-[#de236e]/30 font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 md:w-5 md:h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.822 1.316zM16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" /></svg>
                 CLOCK OUT
               </button>
@@ -421,16 +421,16 @@ export default function UserKehadiranPage() {
         </div>
 
         {/* KANAN: STATUS PENGAJUAN */}
-        <div className="bg-[#141414] border border-white/5 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-xl overflow-hidden flex flex-col">
+        <div className="bg-[#15121A] border border-white/5 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-xl overflow-hidden flex flex-col">
           <h3 className="text-base md:text-lg font-bold text-white mb-4 border-b border-white/5 pb-4">Status Pengajuan Saya</h3>
          
           <div className="flex-1 overflow-y-auto max-h-80 custom-scrollbar pr-1">
             {pengajuanList.length === 0 ? (
               <div className="text-center py-8 text-gray-500 text-xs md:text-sm">Belum ada riwayat pengajuan izin/cuti.</div>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 mo-stagger">
                 {pengajuanList.map((req) => (
-                  <div key={req.id} className="bg-[#1a1a1a] border border-white/5 p-3 md:p-4 rounded-xl flex items-center justify-between gap-2 transition-colors hover:bg-white/5">
+                  <div key={req.id} className="bg-[#1C1823] border border-white/5 p-3 md:p-4 rounded-xl flex items-center justify-between gap-2 hover:bg-white/5 mo-lift">
                     <div className="overflow-hidden">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-bold text-white text-[10px] md:text-xs truncate">{req.jenis}</span>
@@ -460,7 +460,7 @@ export default function UserKehadiranPage() {
           {/* Latar Blur */}
           <div className="absolute inset-0 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300"></div>
           
-          <div className="relative bg-[#0d0d14] border border-white/10 w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 md:zoom-in-95 duration-300">
+          <div className="relative bg-[#0B0A0F] border border-white/10 w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 md:zoom-in-95 duration-300">
 
             <div className="px-6 py-5 md:px-8 md:py-6 border-b border-white/5 flex justify-between items-center relative z-10">
               <div>
@@ -476,7 +476,7 @@ export default function UserKehadiranPage() {
              
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-widest">Jenis Pengajuan</label>
-                <select value={jenisIzin} onChange={(e) => setJenisIzin(e.target.value)} className="w-full bg-[#111118] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#2b5cd5] focus:ring-1 focus:ring-[#2b5cd5]/50 outline-none transition-all shadow-inner">
+                <select value={jenisIzin} onChange={(e) => setJenisIzin(e.target.value)} className="w-full bg-[#1C1823] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#124bce] focus:ring-1 focus:ring-[#124bce]/50 outline-none transition-all shadow-inner">
                   <option value="Cuti Tahunan">Cuti Tahunan</option>
                   <option value="Izin Terlambat">Izin Terlambat</option>
                   <option value="Izin Tidak Masuk">Izin Tidak Masuk (Pribadi)</option>
@@ -490,29 +490,29 @@ export default function UserKehadiranPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-widest">Tanggal</label>
-                    <input type="date" required value={tanggalMulai} onChange={(e) => setTanggalMulai(e.target.value)} className="w-full bg-[#111118] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#2b5cd5] outline-none transition-all shadow-inner [color-scheme:dark]" />
+                    <input type="date" required value={tanggalMulai} onChange={(e) => setTanggalMulai(e.target.value)} className="w-full bg-[#1C1823] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#124bce] outline-none transition-all shadow-inner [color-scheme:dark]" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-[#b3c5ff] mb-1.5 uppercase tracking-widest">Est. Sampai</label>
-                    <input type="time" required value={estimasiSampai} onChange={(e) => setEstimasiSampai(e.target.value)} className="w-full bg-[#2b5cd5]/10 border border-[#2b5cd5]/30 rounded-xl px-4 py-3 text-sm text-white focus:border-[#2b5cd5] outline-none transition-all shadow-inner [color-scheme:dark]" />
+                    <input type="time" required value={estimasiSampai} onChange={(e) => setEstimasiSampai(e.target.value)} className="w-full bg-[#124bce]/10 border border-[#124bce]/30 rounded-xl px-4 py-3 text-sm text-white focus:border-[#124bce] outline-none transition-all shadow-inner [color-scheme:dark]" />
                   </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-widest">Tgl Mulai</label>
-                    <input type="date" required value={tanggalMulai} onChange={(e) => setTanggalMulai(e.target.value)} className="w-full bg-[#111118] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#2b5cd5] outline-none transition-all shadow-inner [color-scheme:dark]" />
+                    <input type="date" required value={tanggalMulai} onChange={(e) => setTanggalMulai(e.target.value)} className="w-full bg-[#1C1823] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#124bce] outline-none transition-all shadow-inner [color-scheme:dark]" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-widest">Tgl Selesai</label>
-                    <input type="date" value={tanggalSelesai} onChange={(e) => setTanggalSelesai(e.target.value)} className="w-full bg-[#111118] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#2b5cd5] outline-none transition-all shadow-inner [color-scheme:dark]" />
+                    <input type="date" value={tanggalSelesai} onChange={(e) => setTanggalSelesai(e.target.value)} className="w-full bg-[#1C1823] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#124bce] outline-none transition-all shadow-inner [color-scheme:dark]" />
                   </div>
                 </div>
               )}
 
               <div>
                 <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase tracking-widest">Keterangan Singkat</label>
-                <textarea required rows={3} value={alasan} onChange={(e) => setAlasan(e.target.value)} placeholder="Tuliskan keterangan detail di sini..." className="w-full bg-[#111118] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#2b5cd5] focus:ring-1 focus:ring-[#2b5cd5]/50 outline-none transition-all shadow-inner resize-none custom-scrollbar" />
+                <textarea required rows={3} value={alasan} onChange={(e) => setAlasan(e.target.value)} placeholder="Tuliskan keterangan detail di sini..." className="w-full bg-[#1C1823] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-[#124bce] focus:ring-1 focus:ring-[#124bce]/50 outline-none transition-all shadow-inner resize-none custom-scrollbar" />
               </div>
 
               {jenisIzin === "Izin Sakit" && (
@@ -523,7 +523,7 @@ export default function UserKehadiranPage() {
               )}
 
               <div className="pt-2 flex gap-3">
-                <button type="submit" disabled={isSubmitting} className="w-full py-4 text-xs font-bold text-white uppercase tracking-widest bg-[#2b5cd5] hover:bg-blue-600 rounded-xl transition-colors disabled:opacity-50 active:scale-[0.98]">
+                <button type="submit" disabled={isSubmitting} className="w-full py-4 text-xs font-bold text-white uppercase tracking-widest bg-[#124bce] hover:bg-blue-600 rounded-xl transition-colors disabled:opacity-50 active:scale-[0.98]">
                   {isSubmitting ? (
                     <span className="flex items-center justify-center gap-2">
                       <LoadingLogo size={18} />

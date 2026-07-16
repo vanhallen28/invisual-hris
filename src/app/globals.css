@@ -56,3 +56,63 @@ body {
 .dwt-doc a { color: #60a5fa; text-decoration: underline; }
 .dwt-doc img { max-width: 100%; border-radius: 6px; margin: 6px 0; }
 .dwt-doc:empty:before { content: 'Mulai menulis…'; color: #71717a; pointer-events: none; }
+
+/* ═══════════════════════════════════════════════════════
+   SISTEM MOTION — INVISUAL
+   Aman & additive: tak mengubah logika/komponen apa pun.
+   Semua menghormati "prefers-reduced-motion".
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --mo-fast: 120ms;
+  --mo-base: 240ms;
+  --mo-slow: 340ms;
+  --mo-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --mo-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --mo-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes mo-fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes mo-fade-up { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: translateY(0) } }
+@keyframes mo-scale-in { from { opacity: 0; transform: scale(0.97) } to { opacity: 1; transform: scale(1) } }
+@keyframes mo-pulse { 0% { transform: scale(1) } 45% { transform: scale(1.05) } 100% { transform: scale(1) } }
+
+/* Umpan balik interaktif — hanya warna/opasitas/transform, tak mengubah layout.
+   Tailwind active:scale-* yang eksplisit tetap menang (specificity lebih tinggi). */
+button, a, [role="button"] {
+  transition: background-color var(--mo-base) var(--mo-ease),
+              border-color var(--mo-base) var(--mo-ease),
+              color var(--mo-base) var(--mo-ease),
+              opacity var(--mo-base) var(--mo-ease),
+              transform var(--mo-fast) var(--mo-ease);
+}
+button:active, [role="button"]:active { transform: scale(0.97); }
+
+/* Transisi antar-halaman: OPACITY-ONLY (tak ada transform) →
+   aman untuk elemen position:fixed (Chat, board layar-penuh, modal). */
+.page-fade { animation: mo-fade-in var(--mo-slow) var(--mo-ease); }
+
+/* ── Kelas opt-in (dipasang manual pada elemen yang aman) ── */
+.mo-lift { transition: transform var(--mo-base) var(--mo-spring), background-color var(--mo-base) var(--mo-ease), border-color var(--mo-base) var(--mo-ease); }
+.mo-lift:hover { transform: translateY(-4px); }
+.mo-fade { animation: mo-fade-in var(--mo-base) var(--mo-ease); }
+.mo-fade-up { animation: mo-fade-up var(--mo-base) var(--mo-out); }
+.mo-scale-in { animation: mo-scale-in var(--mo-base) var(--mo-out); }
+.mo-pulse { animation: mo-pulse 0.42s var(--mo-ease); }
+.mo-stagger > * { animation: mo-fade-up var(--mo-base) var(--mo-out) both; }
+.mo-stagger > *:nth-child(1) { animation-delay: 0.04s }
+.mo-stagger > *:nth-child(2) { animation-delay: 0.10s }
+.mo-stagger > *:nth-child(3) { animation-delay: 0.16s }
+.mo-stagger > *:nth-child(4) { animation-delay: 0.22s }
+.mo-stagger > *:nth-child(5) { animation-delay: 0.28s }
+.mo-stagger > *:nth-child(6) { animation-delay: 0.34s }
+.mo-stagger > *:nth-child(7) { animation-delay: 0.40s }
+.mo-stagger > *:nth-child(8) { animation-delay: 0.46s }
+
+/* Aksesibilitas: hormati pengguna yang meminimalkan animasi */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

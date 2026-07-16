@@ -39,7 +39,7 @@ function TaskCard({ taskId }: { taskId: string }) {
   return (
     <button
       onClick={() => { setActiveBoardId(boardId); setDetailItem({ groupId, itemId: found.item.id }); }}
-      className="mt-1.5 w-full max-w-md flex items-center gap-3 bg-[#20222b] hover:bg-[#262934] border-l-2 border-blue-500 border-y border-r border-zinc-800 rounded-lg px-3 py-2.5 text-left transition-colors"
+      className="mt-1.5 w-full max-w-md flex items-center gap-3 bg-[#20222b] hover:bg-[#262934] border-l-2 border-[#124bce] border-y border-r border-zinc-800 rounded-lg px-3 py-2.5 text-left transition-colors"
     >
       <ListPlus size={14} className="text-blue-400 shrink-0" />
       <div className="flex-1 min-w-0">
@@ -129,7 +129,7 @@ function CreateTaskModal({ message, onDone, onClose }: any) {
     setBusy(false);
   };
 
-  const cls = "w-full bg-[#1a1c23] border border-zinc-700 focus:border-blue-500/60 rounded-lg px-3 py-2 text-xs text-zinc-100 outline-none";
+  const cls = "w-full bg-[#1a1c23] border border-zinc-700 focus:border-[#124bce]/60 rounded-lg px-3 py-2 text-xs text-zinc-100 outline-none";
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-[120]" onClick={onClose} />
@@ -166,7 +166,7 @@ function CreateTaskModal({ message, onDone, onClose }: any) {
             </select>
           </div>
 
-          <button onClick={submit} disabled={busy} className="mt-1 w-full bg-[#2b5cd5] hover:bg-blue-600 disabled:opacity-60 text-white text-xs font-bold py-2.5 rounded-lg transition-all">
+          <button onClick={submit} disabled={busy} className="mt-1 w-full bg-[#124bce] hover:bg-blue-600 disabled:opacity-60 text-white text-xs font-bold py-2.5 rounded-lg transition-all">
             {busy ? 'Membuat…' : 'Buat Tugas & Tempel ke Pesan'}
           </button>
         </div>
@@ -406,7 +406,7 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
       return p.split(re).map((q, j) => {
         if (q.startsWith('@') && names.some((n: string) => `@${n}` === q)) {
           const isMe = me && q === `@${me.name}`;
-          return <span key={`${i}-${j}`} className={`px-1 rounded font-semibold ${isMe ? 'bg-amber-500/25 text-amber-200' : 'bg-blue-500/20 text-blue-300'}`}>{q}</span>;
+          return <span key={`${i}-${j}`} className={`px-1 rounded font-semibold ${isMe ? 'bg-[#de236e]/25 text-[#f480b0]' : 'bg-[#124bce]/20 text-blue-300'}`}>{q}</span>;
         }
         return <span key={`${i}-${j}`}>{q}</span>;
       });
@@ -512,7 +512,7 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
                     <div className="flex items-center gap-2 mt-1">
                       <input autoFocus value={editText} onChange={(e) => setEditText(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditing(null); }}
-                        className="flex-1 bg-[#1a1c23] border border-zinc-700 rounded-lg px-3 py-1.5 text-[13px] text-white outline-none focus:border-blue-500" />
+                        className="flex-1 bg-[#1a1c23] border border-zinc-700 rounded-lg px-3 py-1.5 text-[13px] text-white outline-none focus:border-[#124bce]" />
                       <button onClick={saveEdit} className="p-1.5 text-emerald-400 hover:bg-zinc-800 rounded"><Check size={14} /></button>
                       <button onClick={() => setEditing(null)} className="p-1.5 text-zinc-500 hover:bg-zinc-800 rounded"><X size={14} /></button>
                     </div>
@@ -552,7 +552,7 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
                             return (
                               <button key={emo} onClick={() => react(m.id, emo)}
                                 title={list.map((r: any) => member(r.member_id)?.name).filter(Boolean).join(', ')}
-                                className={`flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md border transition-colors ${mineR ? 'bg-blue-500/20 border-blue-500/50 text-blue-200' : 'bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:border-zinc-600'}`}>
+                                className={`flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md border transition-colors ${mineR ? 'bg-[#124bce]/20 border-[#124bce]/50 text-blue-200' : 'bg-zinc-800/60 border-zinc-700 text-zinc-400 hover:border-zinc-600'}`}>
                                 <span>{emo}</span><span className="font-semibold">{list.length}</span>
                               </button>
                             );
@@ -606,7 +606,7 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
         )}
 
         {attachTask && (
-          <div className="flex items-center gap-2 mb-2 bg-blue-500/10 border border-blue-500/30 rounded-lg px-3 py-1.5">
+          <div className="flex items-center gap-2 mb-2 bg-[#124bce]/10 border border-[#124bce]/30 rounded-lg px-3 py-1.5">
             <Link2 size={12} className="text-blue-400 shrink-0" />
             <span className="text-[11px] text-blue-200 truncate flex-1">Tugas ditempel: {findTask(boardsDataMap, attachTask)?.item?.name || 'tugas'}</span>
             <button onClick={() => setAttachTask(null)} className="p-0.5 text-zinc-500 hover:text-white"><X size={13} /></button>
@@ -636,10 +636,10 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
                 <div className="fixed inset-0 z-[95]" onClick={() => setPickerTab(null)} />
                 <div className="absolute bottom-full left-0 mb-2 w-[min(340px,90vw)] bg-[#2a2c38] border border-zinc-700 rounded-2xl shadow-2xl z-[100] overflow-hidden">
                   <div className="flex items-center gap-1 p-2 border-b border-zinc-700/70">
-                    <button onClick={() => setPickerTab('emoji')} className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-lg transition-colors ${pickerTab === 'emoji' ? 'bg-[#2b5cd5] text-white' : 'text-zinc-400 hover:text-white'}`}>
+                    <button onClick={() => setPickerTab('emoji')} className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-lg transition-colors ${pickerTab === 'emoji' ? 'bg-[#124bce] text-white' : 'text-zinc-400 hover:text-white'}`}>
                       <Smile size={13} /> Emoji
                     </button>
-                    <button onClick={() => setPickerTab('stiker')} className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-lg transition-colors ${pickerTab === 'stiker' ? 'bg-[#2b5cd5] text-white' : 'text-zinc-400 hover:text-white'}`}>
+                    <button onClick={() => setPickerTab('stiker')} className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1.5 rounded-lg transition-colors ${pickerTab === 'stiker' ? 'bg-[#124bce] text-white' : 'text-zinc-400 hover:text-white'}`}>
                       <Sticker size={13} /> Stiker
                     </button>
                     <button onClick={() => setPickerTab(null)} className="p-1.5 text-zinc-500 hover:text-white"><X size={14} /></button>

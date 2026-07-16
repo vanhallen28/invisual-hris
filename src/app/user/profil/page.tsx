@@ -111,7 +111,7 @@ export default function UserProfilePage() {
   if (names.length > 1) initials += names[1].charAt(0);
 
   return (
-    <div className="w-full flex flex-col gap-6 pb-10 font-sans animate-in fade-in duration-500">
+    <div className="w-full flex flex-col gap-6 pb-10 font-sans">
       
       {/* HEADER PROFIL */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 mb-2">
@@ -126,11 +126,11 @@ export default function UserProfilePage() {
       </div>
 
       {/* BANNER PROFIL KARYAWAN */}
-      <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 shadow-xl relative overflow-hidden mt-2">
-        <div className="absolute top-0 left-0 right-0 h-24 bg-[#1a1a22]"></div>
+      <div className="bg-[#15121A] border border-white/5 rounded-3xl p-6 shadow-xl relative overflow-hidden mt-2">
+        <div className="absolute top-0 left-0 right-0 h-24 bg-[#1C1823]"></div>
         <div className="relative z-10 flex flex-col md:flex-row gap-5 items-center md:items-start mt-8">
-          <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-[#2b5cd5] p-1 shrink-0">
-            <div className="w-full h-full bg-[#111111] rounded-full flex items-center justify-center font-black text-3xl md:text-4xl text-white">
+          <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-[#de236e] p-1 shrink-0">
+            <div className="w-full h-full bg-[#0B0A0F] rounded-full flex items-center justify-center font-black text-3xl md:text-4xl text-white">
               {initials.toUpperCase()}
             </div>
           </div>
@@ -151,12 +151,12 @@ export default function UserProfilePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 mo-stagger">
         
         {/* KARTU KIRI: PRIBADI */}
-        <div className="bg-[#141414] border border-white/5 rounded-3xl p-5 md:p-6 shadow-xl hover:border-white/10 transition-colors h-max">
+        <div className="bg-[#15121A] border border-white/5 rounded-3xl p-5 md:p-6 shadow-xl hover:border-white/10 mo-lift h-max">
           <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4">
-             <div className="p-2 bg-[#2b5cd5]/10 rounded-lg text-[#2b5cd5]">
+             <div className="p-2 bg-[#124bce]/10 rounded-lg text-[#124bce]">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" /></svg>
              </div>
              <h2 className="text-base md:text-lg font-bold text-white tracking-wide">Identitas Pribadi</h2>
@@ -164,26 +164,26 @@ export default function UserProfilePage() {
           <div className="space-y-4">
             <div>
               <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Email</p>
-              <p className="text-sm text-gray-200 bg-[#0a0a0a] border border-white/5 px-3 py-2.5 rounded-lg truncate">{profile.email || "-"}</p>
+              <p className="text-sm text-gray-200 bg-[#0B0A0F] border border-white/5 px-3 py-2.5 rounded-lg truncate">{profile.email || "-"}</p>
             </div>
             <div>
               <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">No. WhatsApp</p>
-              <p className="text-sm text-gray-200 bg-[#0a0a0a] border border-white/5 px-3 py-2.5 rounded-lg truncate">{profile.noPonsel || "-"}</p>
+              <p className="text-sm text-gray-200 bg-[#0B0A0F] border border-white/5 px-3 py-2.5 rounded-lg truncate">{profile.noPonsel || "-"}</p>
             </div>
             <div>
               <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">NIK KTP</p>
-              <p className="text-sm text-gray-200 font-mono bg-[#0a0a0a] border border-white/5 px-3 py-2.5 rounded-lg truncate">{profile.nikKtp || "-"}</p>
+              <p className="text-sm text-gray-200 font-mono bg-[#0B0A0F] border border-white/5 px-3 py-2.5 rounded-lg truncate">{profile.nikKtp || "-"}</p>
             </div>
             <div>
               <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Domisili</p>
-              <p className="text-xs md:text-sm text-gray-300 leading-relaxed bg-[#0a0a0a] border border-white/5 px-3 py-2.5 rounded-lg break-words">{profile.alamatDomisili || "-"}</p>
+              <p className="text-xs md:text-sm text-gray-300 leading-relaxed bg-[#0B0A0F] border border-white/5 px-3 py-2.5 rounded-lg break-words">{profile.alamatDomisili || "-"}</p>
             </div>
           </div>
         </div>
 
         {/* KANAN: KEPEGAWAIAN & FINANSIAL */}
         <div className="flex flex-col gap-5 md:gap-6">
-          <div className="bg-[#141414] border border-white/5 rounded-3xl p-5 md:p-6 shadow-xl hover:border-white/10 transition-colors">
+          <div className="bg-[#15121A] border border-white/5 rounded-3xl p-5 md:p-6 shadow-xl hover:border-white/10 mo-lift">
             <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4">
                <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.084-.768 2.028-1.838 2.171l-1.528.203c-1.18.156-2.394.23-3.634.23-1.24 0-2.453-.074-3.633-.23l-1.529-.203A2.25 2.25 0 016.25 18.4V14.15M6.25 14.15l-3.32-3.32m0 0l3.32-3.32m-3.32 3.32h14.5M20.25 14.15l3.32-3.32m0 0l-3.32-3.32" /></svg>
@@ -194,16 +194,16 @@ export default function UserProfilePage() {
               <div>
                 <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Mulai Gabung</p>
                 <p className="text-xs md:text-sm text-gray-200 truncate">{profile.tanggalBergabung || "-"}</p>
-                <p className="text-[9px] md:text-[10px] text-[#2b5cd5] font-bold mt-1 truncate">🕒 {calculateMasaKerja(profile.tanggalBergabung)}</p>
+                <p className="text-[9px] md:text-[10px] text-[#6E9BF5] font-bold mt-1 truncate">🕒 {calculateMasaKerja(profile.tanggalBergabung)}</p>
               </div>
-              <div className="bg-[#2b5cd5]/10 border border-[#2b5cd5]/20 p-2.5 rounded-xl text-center">
+              <div className="bg-[#124bce]/10 border border-[#124bce]/20 p-2.5 rounded-xl text-center">
                 <p className="text-[9px] md:text-[10px] font-bold text-[#b3c5ff] uppercase tracking-wider mb-1 truncate">Sisa Cuti</p>
                 <p className="text-xl md:text-2xl text-white font-black">{profile.sisaCuti !== undefined ? profile.sisaCuti : 12}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-[#141414] border border-white/5 rounded-3xl p-5 md:p-6 shadow-xl hover:border-white/10 transition-colors">
+          <div className="bg-[#15121A] border border-white/5 rounded-3xl p-5 md:p-6 shadow-xl hover:border-white/10 mo-lift">
              <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4">
                <div className="p-2 bg-green-500/10 rounded-lg text-green-400">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -250,7 +250,7 @@ export default function UserProfilePage() {
                 <button 
                   onClick={handleDownloadSlip} 
                   disabled={isGenerating}
-                  className="w-full bg-[#2b5cd5] hover:bg-blue-600 px-4 py-3 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="w-full bg-[#124bce] hover:bg-blue-600 px-4 py-3 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {isGenerating ? (
                     <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin"></div>

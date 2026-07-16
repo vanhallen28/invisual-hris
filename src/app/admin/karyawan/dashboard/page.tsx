@@ -18,6 +18,7 @@ export default function AdminDashboardPage() {
 
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [broadcastSubject, setBroadcastSubject] = useState("");
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
 
@@ -186,18 +187,33 @@ export default function AdminDashboardPage() {
   const closeBroadcastModal = () => {
     setShowBroadcastModal(false);
     setBroadcastMessage("");
+    setBroadcastSubject("");
     setAttachedFile(null); 
   };
 
   const executeBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!broadcastMessage.trim() && !attachedFile) return;
+    if (!broadcastMessage.trim()) return alert("Isi email tidak boleh kosong.");
     setIsBroadcasting(true);
-    setTimeout(() => {
-      alert(`✅ SIARAN EMAIL BERHASIL DISTRIBUSIKAN\nPesan terkirim ke ${employees.length} alamat email staf.`);
-      setIsBroadcasting(false);
+    try {
+      const recipients = employees.map((emp: any) => emp.email).filter(Boolean);
+      const { data: sess } = await supabase.auth.getSession();
+      const res = await fetch("/api/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sess?.session?.access_token || ""}` },
+        body: JSON.stringify({ recipients, subject: broadcastSubject, message: broadcastMessage }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result?.error || "Gagal mengirim email.");
+      alert(result.mode === "SIMULATION"
+        ? `🛠️ [SIMULASI] Email ke ${result.sent} staf tercetak di terminal server.\n(Resend belum dikonfigurasi — lihat panduan .env.)`
+        : `✅ Email berhasil dikirim ke ${result.sent} staf.`);
       closeBroadcastModal();
-    }, 2000); 
+    } catch (err: any) {
+      alert("❌ Gagal mengirim email: " + err.message);
+    } finally {
+      setIsBroadcasting(false);
+    }
   };
 
   const closeWABroadcastModal = () => {
@@ -211,10 +227,12 @@ export default function AdminDashboardPage() {
     if (!waMessage.trim()) return alert("Pesan tidak boleh kosong!");
     setIsSendingWA(true);
     try {
-      const targetNumbers = employees.filter(emp => emp.noWhatsApp).map(emp => emp.noWhatsApp).join(",");
+      const targetNumbers = employees.map((emp: any) => emp.noPonsel).filter(Boolean).join(",");
+      if (!targetNumbers) { setWaStatus({ type: "error", text: "Belum ada nomor WhatsApp karyawan yang terisi." }); return; }
+      const { data: sess } = await supabase.auth.getSession();
       const response = await fetch("/api/wa", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sess?.session?.access_token || ""}` },
         body: JSON.stringify({ target: targetNumbers, message: `*PENGUMUMAN*\n\n${waMessage}` }),
       });
       const result = await response.json();
@@ -609,6 +627,7 @@ export default function AdminDashboardPage() {
                 <span className="text-gray-500 font-bold uppercase tracking-widest">Dikirim Dari</span>
                 <span className="text-[#b3c5ff] font-mono">business@invisual.studio</span>
               </div>
+              <input type="text" placeholder="Subjek email..." value={broadcastSubject} onChange={(e) => setBroadcastSubject(e.target.value)} className="w-full bg-[#1c1c1c] border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-[#2b5cd5] outline-none placeholder-gray-600 transition-all" />
               <textarea required rows={4} placeholder="Ketik isi email di sini..." value={broadcastMessage} onChange={(e) => setBroadcastMessage(e.target.value)} className="w-full bg-[#1c1c1c] border border-white/5 rounded-xl p-4 text-sm text-white focus:border-[#2b5cd5] outline-none custom-scrollbar resize-none placeholder-gray-600 transition-all" />
               <div className="mt-1">
                 {!attachedFile ? (

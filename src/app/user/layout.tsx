@@ -160,7 +160,9 @@ return (
 
     <main className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0 bg-[#000000]">
       <div className="p-5 md:p-8 flex-1 w-full max-w-6xl mx-auto">
-        {children}
+        <div key={pathname} className={isChatPage ? "" : "page-fade"}>
+          {children}
+        </div>
       </div>
     </main>
 
