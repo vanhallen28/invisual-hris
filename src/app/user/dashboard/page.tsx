@@ -11,8 +11,6 @@ export default function UserDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
-  // STATE UNTUK POPUP SELAMAT DATANG NEO-3D
-  const [showWelcomePopup, setShowWelcomePopup] = useState(false);
 
   // STATE UNTUK RIWAYAT & PENGAJUAN
   const [recentAttendances, setRecentAttendances] = useState<any[]>([]);
@@ -25,6 +23,11 @@ export default function UserDashboardPage() {
   const [cameraOn, setCameraOn] = useState(false);
   const [captureMode, setCaptureMode] = useState<"in" | "out" | null>(null);
   const [jamMasuk, setJamMasuk] = useState("09:00");
+  const [toast, setToast] = useState<{ show: boolean; type: "success" | "error"; message: string }>({ show: false, type: "success", message: "" });
+  const showToast = (type: "success" | "error", message: string) => {
+    setToast({ show: true, type, message });
+    setTimeout(() => setToast({ show: false, type: "success", message: "" }), 4000);
+  };
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isFlashing, setIsFlashing] = useState(false);
 
@@ -47,13 +50,6 @@ export default function UserDashboardPage() {
 
             const safeId = userData.idKaryawan || userData.id_karyawan || userData.id || "INV-UNKNOWN";
 
-            // 🔥 LOGIKA POPUP: Memakai kunci baru agar pasti muncul untuk Anda lihat desainnya
-            const hasBeenWelcomed = sessionStorage.getItem("invisual_popup_v2_" + safeId);
-            if (!hasBeenWelcomed) {
-              setShowWelcomePopup(true);
-              sessionStorage.setItem("invisual_popup_v2_" + safeId, "true");
-            }
-
             await fetchDashboardData(safeId);
           } else {
              window.location.href = "/login";
@@ -71,14 +67,6 @@ export default function UserDashboardPage() {
 
     initializeDashboard();
   }, []);
-
-  // Timer popup berjalan otomatis tertutup setelah 5 detik
-  useEffect(() => {
-    if (showWelcomePopup && !isLoading) {
-      const timer = setTimeout(() => setShowWelcomePopup(false), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [showWelcomePopup, isLoading]);
 
   const fetchDashboardData = async (safeId: string) => {
     try {
@@ -159,7 +147,7 @@ export default function UserDashboardPage() {
   };
 
   const handleClockIn = async () => {
-    if (hasCameraPermission === false) return alert("Izinkan akses kamera di browser Anda!");
+    if (hasCameraPermission === false) return showToast("error", "Izinkan akses kamera di browser Anda!");
     setIsActionLoading(true);
     takePhoto();
 
@@ -182,10 +170,10 @@ export default function UserDashboardPage() {
         status: statusKehadiran
       }]);
       if (error) throw error;
-      alert(`✅ Clock-In berhasil: ${timeString} WIB.`);
+      showToast("success", `Clock-In berhasil dicatat pada ${timeString} WIB.`);
       await fetchDashboardData(safeId);
     } catch (err: any) {
-      alert("Gagal merekam absensi: " + err.message);
+      showToast("error", "Gagal merekam absensi: " + err.message);
     } finally {
       setIsActionLoading(false);
       setCaptureMode(null);
@@ -193,7 +181,7 @@ export default function UserDashboardPage() {
   };
 
   const handleClockOut = async () => {
-    if (hasCameraPermission === false) return alert("Izinkan akses kamera di browser Anda!");
+    if (hasCameraPermission === false) return showToast("error", "Izinkan akses kamera di browser Anda!");
     setIsActionLoading(true);
     takePhoto();
 
@@ -203,10 +191,10 @@ export default function UserDashboardPage() {
     try {
       const { error } = await supabase.from("attendance").update({ waktuKeluar: timeString }).eq("id", todayAttendance.id);
       if (error) throw error;
-      alert(`✅ Clock-Out berhasil: ${timeString} WIB.`);
+      showToast("success", `Clock-Out berhasil dicatat pada ${timeString} WIB.`);
       await fetchDashboardData(safeId);
     } catch (err: any) {
-      alert("Gagal merekam jam pulang: " + err.message);
+      showToast("error", "Gagal merekam jam pulang: " + err.message);
     } finally {
       setIsActionLoading(false);
       setCaptureMode(null);
@@ -226,7 +214,26 @@ export default function UserDashboardPage() {
 
   return (
     <div className="w-full flex flex-col gap-4 md:gap-6 pb-10 font-sans">
-      
+
+      {toast.show && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[10000] w-[92%] max-w-sm animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className="relative flex items-center gap-3.5 bg-[#15121A] border border-white/10 rounded-2xl shadow-2xl px-4 py-3.5 overflow-hidden">
+            <span className={`absolute left-0 top-0 bottom-0 w-1 ${toast.type === 'success' ? 'bg-green-400' : 'bg-red-400'}`} />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+              {toast.type === 'success' ? (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              )}
+            </div>
+            <div className="flex-1 min-w-0 pr-1">
+              <p className={`text-[10px] font-black uppercase tracking-widest mb-0.5 ${toast.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>{toast.type === 'success' ? 'Berhasil' : 'Gagal'}</p>
+              <p className="text-[13px] font-semibold text-white leading-snug">{toast.message}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HEADER TANGGAL */}
       <div className="flex justify-end mb-1 md:mb-2">
         <div className="bg-[#15121A] border border-white/5 px-4 py-2.5 rounded-xl flex items-center gap-3 shadow-lg">
@@ -420,44 +427,7 @@ export default function UserDashboardPage() {
         </div>
       </div>
 
-      {/* =========================================================================
-          POPUP SELAMAT DATANG — VERSI DARK / FLAT (TANPA GLOW)
-          ========================================================================= */}
-      {showWelcomePopup && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#050404]/90 backdrop-blur-md p-4 animate-in fade-in duration-500">
-          <div className="relative w-full max-w-sm">
-            
-            {/* Kotak Kontainer Utama */}
-            <div className="relative bg-[#0B0A0F] border border-white/10 rounded-[2rem] shadow-2xl p-8 flex flex-col items-center text-center animate-in zoom-in-95 duration-500 overflow-hidden">
-              
-              {/* Ikon Lingkaran Konsentris — versi flat */}
-              <div className="relative w-24 h-24 flex items-center justify-center mb-6 mt-2">
-                <div className="absolute inset-0 rounded-full border border-white/15"></div>
-                <div className="absolute inset-2 rounded-full border border-white/10"></div>
-                <div className="absolute inset-4 bg-[#1C1823] rounded-full flex items-center justify-center border border-white/5">
-                  <span className="text-3xl text-gray-200 font-serif italic">i</span>
-                </div>
-              </div>
-              
-              {/* Teks Sapaan */}
-              <h2 className="text-3xl font-black text-white mb-2 tracking-tight">Selamat Datang!</h2>
-              <p className="text-sm text-gray-400 mb-8 leading-relaxed">
-                Halo, <span className="font-bold text-[#b3c5ff]">{currentUser.nama.split(" ")[0]}</span>!<br/>
-                Sistem absensi HR Anda siap digunakan.
-              </p>
-              
-              {/* Tombol — versi flat */}
-              <button 
-                onClick={() => setShowWelcomePopup(false)} 
-                className="w-full bg-[#124bce] hover:bg-blue-600 px-6 py-3.5 rounded-full transition-colors duration-300 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-white"><path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" /></svg>
-                <span className="text-sm font-bold text-white tracking-widest uppercase">Clock-In</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
     </div>
   );

@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { generatePayslip } from "@/utils/generatePayslip"; 
 import LoadingLogo from "@/components/LoadingLogo"; // 🔥 INI KUNCI UNTUK MEMANGGIL KOMPONEN ANDA
 import PerformancePanel from "@/components/PerformancePanel";
+import Avatar from "@/components/Avatar";
 
 export default function UserProfilePage() {
   const [profile, setProfile] = useState<any>(null);
@@ -131,9 +132,7 @@ export default function UserProfilePage() {
         <div className="absolute top-0 left-0 right-0 h-24 bg-[#1C1823]"></div>
         <div className="relative z-10 flex flex-col md:flex-row gap-5 items-center md:items-start mt-8">
           <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-[#de236e] p-1 shrink-0">
-            <div className="w-full h-full bg-[#0B0A0F] rounded-full flex items-center justify-center font-black text-3xl md:text-4xl text-white">
-              {initials.toUpperCase()}
-            </div>
+            <Avatar url={profile.avatarUrl} name={profile.nama} className="w-full h-full bg-[#0B0A0F] rounded-full flex items-center justify-center font-black text-3xl md:text-4xl text-white" />
           </div>
           <div className="text-center md:text-left flex-1 mt-2">
             <h1 className="text-2xl md:text-3xl font-black text-white">{profile.nama}</h1>

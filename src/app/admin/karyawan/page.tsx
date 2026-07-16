@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import PerformancePanel from "@/components/PerformancePanel";
 import { logAudit } from "@/lib/audit";
+import Avatar from "@/components/Avatar";
 
 export default function AdminKaryawanPage() {
   const [employees, setEmployees] = useState<any[]>([]);
@@ -39,10 +40,11 @@ export default function AdminKaryawanPage() {
     noRekening: "", isAktif: true, role: "member",
     institusiMagang: "", tanggalSelesaiMagang: "",
     boardAccess: [] as string[], contentHub: true,
-    jamMasuk: "09:00", jamKeluar: "17:00"
+    jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: ""
   });
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); // user_id -> role Tracker
   const [allBoards, setAllBoards] = useState<string[]>([]); // nama board Daily Task untuk pembatasan akses
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const fetchEmployees = async () => {
     setIsLoading(true);
@@ -131,7 +133,7 @@ export default function AdminKaryawanPage() {
       sisaCuti: 12, gajiPokok: "", namaBank: "", noRekening: "", isAktif: true, role: "member",
       institusiMagang: "", tanggalSelesaiMagang: "",
       boardAccess: [] as string[], contentHub: true,
-      jamMasuk: "09:00", jamKeluar: "17:00"
+      jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: ""
     });
     setShowModal(true);
   };
@@ -161,9 +163,31 @@ export default function AdminKaryawanPage() {
       institusiMagang: emp.institusiMagang || "",
       tanggalSelesaiMagang: emp.tanggalSelesaiMagang || "",
       boardAccess: [], contentHub: true,
-      jamMasuk: emp.jamMasuk || "09:00", jamKeluar: emp.jamKeluar || "17:00"
+      jamMasuk: emp.jamMasuk || "09:00", jamKeluar: emp.jamKeluar || "17:00",
+      avatarUrl: emp.avatarUrl || ""
     });
     setShowModal(true);
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return showToast("File avatar harus berupa gambar.", "error");
+    if (file.size > 3 * 1024 * 1024) return showToast("Ukuran gambar maksimal 3MB.", "error");
+    setUploadingAvatar(true);
+    try {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const safe = String(formData.idKaryawan || "new-" + Date.now()).replace(/[^a-zA-Z0-9-_]/g, "");
+      const path = `avatars/${safe}-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("doc-assets").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from("doc-assets").getPublicUrl(path);
+      setFormData((f) => ({ ...f, avatarUrl: data.publicUrl }));
+    } catch (err: any) {
+      showToast("Gagal upload avatar: " + (err?.message || "coba lagi") + " (pastikan bucket doc-assets ada & publik)", "error");
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const handleSaveData = async (e: React.FormEvent) => {
@@ -190,7 +214,8 @@ export default function AdminKaryawanPage() {
       institusiMagang: formData.status === "Internship" ? (formData.institusiMagang || null) : null,
       tanggalSelesaiMagang: formData.status === "Internship" ? (formData.tanggalSelesaiMagang || null) : null,
       jamMasuk: formData.jamMasuk || "09:00",
-      jamKeluar: formData.jamKeluar || "17:00"
+      jamKeluar: formData.jamKeluar || "17:00",
+      avatarUrl: formData.avatarUrl || null
     };
 
     try {
@@ -347,9 +372,7 @@ export default function AdminKaryawanPage() {
                     
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-base shrink-0 group-hover:bg-white/10 transition-colors">
-                          {emp.nama ? emp.nama.charAt(0).toUpperCase() : "?"}
-                        </div>
+                        <Avatar url={emp.avatarUrl} name={emp.nama} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-base shrink-0 group-hover:bg-white/10 transition-colors" />
                         <div onClick={() => setSelectedProfile(emp)} className="cursor-pointer group/name">
                           <p className="font-bold text-white text-base leading-tight group-hover/name:text-blue-400 transition-colors flex items-center gap-2">{emp.nama} <span className="text-[10px] opacity-0 group-hover/name:opacity-100 transition-opacity">↗</span></p>
                           <p className="text-xs text-gray-500 font-mono font-medium mt-1">{emp.idKaryawan}</p>
@@ -405,9 +428,7 @@ export default function AdminKaryawanPage() {
             {filteredEmployees.map((emp, index) => (
               <div key={emp.idKaryawan || `m-${index}`} className="bg-[#111111] border border-white/10 rounded-2xl p-4 mo-fade-up">
                 <div className="flex items-start gap-3">
-                  <div className="w-11 h-11 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-base shrink-0">
-                    {emp.nama ? emp.nama.charAt(0).toUpperCase() : "?"}
-                  </div>
+                  <Avatar url={emp.avatarUrl} name={emp.nama} className="w-11 h-11 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-base shrink-0" />
                   <div className="flex-1 min-w-0" onClick={() => setSelectedProfile(emp)}>
                     <p className="font-bold text-white text-sm leading-tight truncate">{emp.nama} <span className="text-[10px] text-gray-500">↗</span></p>
                     <p className="text-[11px] text-gray-500 font-mono mt-0.5 truncate">{emp.idKaryawan}</p>
@@ -466,9 +487,7 @@ export default function AdminKaryawanPage() {
             
             <div className="p-6 border-b border-white/5 bg-[#141414] flex justify-between items-center">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center font-black text-2xl shadow-inner">
-                  {selectedProfile.nama.charAt(0).toUpperCase()}
-                </div>
+                <Avatar url={selectedProfile.avatarUrl} name={selectedProfile.nama} className="w-14 h-14 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center font-black text-2xl shadow-inner" />
                 <div>
                   <h2 className="text-xl font-black text-white tracking-tight">{selectedProfile.nama}</h2>
                   <p className="text-xs font-mono text-gray-400 font-medium mt-0.5">{selectedProfile.idKaryawan} • {selectedProfile.jabatan || selectedProfile.departemen || "Belum ada jabatan"}</p>
@@ -562,7 +581,24 @@ export default function AdminKaryawanPage() {
             </div>
             
             <form onSubmit={handleSaveData} className="p-6 overflow-y-auto max-h-[70vh] custom-scrollbar space-y-6 bg-[#0a0a0a]">
-              
+
+              <div className="bg-[#111111] p-5 rounded-xl border border-white/5 flex items-center gap-5">
+                <Avatar url={formData.avatarUrl} name={formData.nama} className="w-20 h-20 rounded-full bg-[#124bce]/10 border-2 border-[#124bce]/20 text-[#8ba7ff] flex items-center justify-center font-black text-3xl shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xs font-bold text-gray-400 uppercase mb-1 font-mono">Foto / Avatar</h3>
+                  <p className="text-[11px] text-gray-500 mb-3">Gambar persegi, maks 3MB. Kosongkan untuk pakai inisial nama.</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <label className={`inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-[#8ba7ff] bg-[#124bce]/10 hover:bg-[#124bce]/20 border border-[#124bce]/20 px-3 py-2 rounded-lg transition-all ${uploadingAvatar ? "opacity-50 pointer-events-none" : ""}`}>
+                      {uploadingAvatar ? "Mengunggah…" : (formData.avatarUrl ? "Ganti Foto" : "Unggah Foto")}
+                      <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+                    </label>
+                    {formData.avatarUrl && (
+                      <button type="button" onClick={() => setFormData({ ...formData, avatarUrl: "" })} className="text-xs font-bold text-red-400 hover:text-red-300 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg transition-all">Hapus</button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-[#111111] p-5 rounded-xl border border-white/5">
                 <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 font-mono">A. Identitas Primer Karyawan</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
