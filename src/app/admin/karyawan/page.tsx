@@ -3,6 +3,8 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import PerformancePanel from "@/components/PerformancePanel";
+import { logAudit } from "@/lib/audit";
 
 export default function AdminKaryawanPage() {
   const [employees, setEmployees] = useState<any[]>([]);
@@ -36,7 +38,8 @@ export default function AdminKaryawanPage() {
     tanggalBergabung: "", sisaCuti: 12, gajiPokok: "", namaBank: "", 
     noRekening: "", isAktif: true, role: "member",
     institusiMagang: "", tanggalSelesaiMagang: "",
-    boardAccess: [] as string[], contentHub: true
+    boardAccess: [] as string[], contentHub: true,
+    jamMasuk: "09:00", jamKeluar: "17:00"
   });
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); // user_id -> role Tracker
   const [allBoards, setAllBoards] = useState<string[]>([]); // nama board Daily Task untuk pembatasan akses
@@ -127,7 +130,8 @@ export default function AdminKaryawanPage() {
       tanggalBergabung: new Date().toISOString().split('T')[0],
       sisaCuti: 12, gajiPokok: "", namaBank: "", noRekening: "", isAktif: true, role: "member",
       institusiMagang: "", tanggalSelesaiMagang: "",
-      boardAccess: [] as string[], contentHub: true
+      boardAccess: [] as string[], contentHub: true,
+      jamMasuk: "09:00", jamKeluar: "17:00"
     });
     setShowModal(true);
   };
@@ -156,7 +160,8 @@ export default function AdminKaryawanPage() {
       role: (emp.user_id && roleMap[emp.user_id]) || "member",
       institusiMagang: emp.institusiMagang || "",
       tanggalSelesaiMagang: emp.tanggalSelesaiMagang || "",
-      boardAccess: [], contentHub: true
+      boardAccess: [], contentHub: true,
+      jamMasuk: emp.jamMasuk || "09:00", jamKeluar: emp.jamKeluar || "17:00"
     });
     setShowModal(true);
   };
@@ -183,7 +188,9 @@ export default function AdminKaryawanPage() {
       isAktif: formData.isAktif,
       // Khusus magang — dikosongkan otomatis kalau status bukan Internship
       institusiMagang: formData.status === "Internship" ? (formData.institusiMagang || null) : null,
-      tanggalSelesaiMagang: formData.status === "Internship" ? (formData.tanggalSelesaiMagang || null) : null
+      tanggalSelesaiMagang: formData.status === "Internship" ? (formData.tanggalSelesaiMagang || null) : null,
+      jamMasuk: formData.jamMasuk || "09:00",
+      jamKeluar: formData.jamKeluar || "17:00"
     };
 
     try {
@@ -205,6 +212,7 @@ export default function AdminKaryawanPage() {
           : "Karyawan baru dibuat — akun login & role Tracker aktif.",
         "success"
       );
+      logAudit(isEditMode ? "Ubah Data Karyawan" : "Tambah Karyawan", formData.nama);
       fetchEmployeesBackground();
     } catch (err: any) {
       showToast(`Gagal menyimpan: ${err.message}`, "error");
@@ -229,6 +237,7 @@ export default function AdminKaryawanPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'Gagal menghapus.');
+      logAudit("Hapus Karyawan", nama);
       showToast(`${nama} dihapus permanen (akun & role Tracker ikut terhapus).`, "success");
     } catch (err: any) {
       showToast(`Gagal menghapus data: ${err.message}`, "error");
@@ -268,7 +277,7 @@ export default function AdminKaryawanPage() {
   }
 
   return (
-    <div className="w-full flex flex-col gap-6 pb-10 font-sans text-gray-300 animate-in fade-in duration-500 relative">
+    <div className="w-full flex flex-col gap-6 pb-28 md:pb-10 font-sans text-gray-300 animate-in fade-in duration-500 relative">
       
       {/* SISTEM TOAST NOTIFIKASI ELEGAN */}
       {toast && (
@@ -320,7 +329,8 @@ export default function AdminKaryawanPage() {
         {filteredEmployees.length === 0 ? (
            <div className="text-center py-20 text-gray-500">Tidak ada data karyawan yang cocok dengan pencarian Anda.</div>
         ) : (
-          <div className="overflow-x-auto custom-scrollbar">
+          <>
+          <div className="overflow-x-auto custom-scrollbar hidden md:block">
             <table className="w-full text-left text-sm text-gray-300 min-w-[900px]">
               <thead className="border-b border-white/10 text-gray-500 text-[10px] md:text-xs uppercase tracking-wider">
                 <tr>
@@ -389,6 +399,44 @@ export default function AdminKaryawanPage() {
               </tbody>
             </table>
           </div>
+
+          {/* TAMPILAN KARTU — KHUSUS MOBILE */}
+          <div className="md:hidden space-y-3">
+            {filteredEmployees.map((emp, index) => (
+              <div key={emp.idKaryawan || `m-${index}`} className="bg-[#111111] border border-white/10 rounded-2xl p-4 mo-fade-up">
+                <div className="flex items-start gap-3">
+                  <div className="w-11 h-11 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-base shrink-0">
+                    {emp.nama ? emp.nama.charAt(0).toUpperCase() : "?"}
+                  </div>
+                  <div className="flex-1 min-w-0" onClick={() => setSelectedProfile(emp)}>
+                    <p className="font-bold text-white text-sm leading-tight truncate">{emp.nama} <span className="text-[10px] text-gray-500">↗</span></p>
+                    <p className="text-[11px] text-gray-500 font-mono mt-0.5 truncate">{emp.idKaryawan}</p>
+                    <p className="text-[11px] text-gray-400 mt-1 truncate">{emp.email}</p>
+                  </div>
+                  {emp.user_id && (
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase shrink-0 ${roleMap[emp.user_id] === 'manager' ? 'bg-[#124bce]/15 text-[#8ba7ff] border border-[#124bce]/25' : 'bg-white/5 text-gray-400 border border-white/10'}`}>
+                      {roleMap[emp.user_id] === 'manager' ? '★ Mgr' : 'Member'}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase ${emp.status === 'Tetap' ? 'bg-green-500/10 text-green-400' : emp.status === 'PKWT (Kontrak)' ? 'bg-yellow-500/10 text-yellow-500' : emp.status === 'Internship' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-purple-500/10 text-purple-400'}`}>{emp.status}</span>
+                  <span className="text-[11px] text-gray-400 truncate max-w-[45%]">{emp.jabatan || "—"}</span>
+                  <span className="text-[11px] text-gray-500 ml-auto whitespace-nowrap">Cuti: {emp.sisaCuti} hari</span>
+                </div>
+                <div className="flex gap-2 mt-3 pt-3 border-t border-white/5">
+                  <button onClick={() => openEditModal(emp)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-[#124bce]/10 hover:bg-[#124bce]/20 active:scale-95 text-[#8ba7ff] rounded-lg text-xs font-bold border border-[#124bce]/20 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.89.112l-2.848.316.316-2.848a4.5 4.5 0 011.112-1.89l12.48-12.48z" /></svg>
+                    Edit Data
+                  </button>
+                  <button onClick={() => setDeleteConfirm({ show: true, id: emp.idKaryawan, nama: emp.nama })} className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 active:scale-95 text-red-400 rounded-lg text-xs font-bold border border-red-500/20 transition-all">
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </div>
 
@@ -490,6 +538,8 @@ export default function AdminKaryawanPage() {
                   </div>
                 </div>
               </div>
+
+              <PerformancePanel idKaryawan={selectedProfile.idKaryawan} editable />
             </div>
 
             <div className="p-4 border-t border-white/5 bg-[#141414] flex gap-3">
@@ -567,6 +617,22 @@ export default function AdminKaryawanPage() {
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Tanggal Resmi Bergabung</label>
                     <input type="date" value={formData.tanggalBergabung} onChange={(e) => setFormData({...formData, tanggalBergabung: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none [color-scheme:dark]" />
                   </div>
+
+                  <div className="md:col-span-3 grid grid-cols-2 gap-4 bg-[#124bce]/[0.04] border border-[#124bce]/20 rounded-xl p-4">
+                    <div className="col-span-2 -mb-1">
+                      <p className="text-[11px] font-bold text-[#8ba7ff] uppercase">Jam Kerja Standar</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">Dipakai untuk menentukan status "Terlambat". Tim dengan jam berbeda bisa diatur di sini.</p>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase">Jam Masuk</label>
+                      <input type="time" value={formData.jamMasuk} onChange={(e) => setFormData({...formData, jamMasuk: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#124bce] outline-none [color-scheme:dark]" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase">Jam Keluar</label>
+                      <input type="time" value={formData.jamKeluar} onChange={(e) => setFormData({...formData, jamKeluar: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#124bce] outline-none [color-scheme:dark]" />
+                    </div>
+                  </div>
+
                   {formData.status === "Internship" && (
                     <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-5 bg-cyan-500/[0.04] border border-cyan-500/20 rounded-xl p-4">
                       <div className="md:col-span-2 flex items-center gap-2">

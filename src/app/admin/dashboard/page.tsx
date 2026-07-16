@@ -4,6 +4,19 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { logAudit } from "@/lib/audit";
+
+// Cek apakah HARI INI termasuk dalam periode izin/cuti.
+// Kolom `tanggal` berupa string: "2025-07-16", "2025-07-16 s/d 2025-07-20",
+// atau "2025-07-16 (Est. Sampai: 10:00 WIB)". Kita ambil tanggal YYYY-MM-DD-nya.
+function coversToday(tanggalStr: string, todayISO: string) {
+  if (!tanggalStr) return false;
+  const dates = String(tanggalStr).match(/\d{4}-\d{2}-\d{2}/g) || [];
+  if (dates.length === 0) return false;
+  const start = dates[0];
+  const end = dates.length > 1 ? dates[1] : dates[0];
+  return todayISO >= start && todayISO <= end;
+}
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -115,7 +128,7 @@ export default function AdminDashboardPage() {
       const activeEmployees = empData?.filter(e => e.isAktif ?? true) || [];
       setEmployees(activeEmployees);
       setPendingApprovals(pendingData || []);
-      setApprovedLeaves(approvedData || []);
+      setApprovedLeaves((approvedData || []).filter((a: any) => coversToday(a.tanggal, todayISO)));
       setTodayAttendances(uniqueAttendances);
 
       const detectedAnomalies: any[] = [];
@@ -156,6 +169,7 @@ export default function AdminDashboardPage() {
     try {
       const { error } = await supabase.from("approvals").update({ status: action }).eq("id", id);
       if (error) throw error;
+      logAudit(action === "Disetujui" ? "Setujui Cuti/Izin" : "Tolak Cuti/Izin", `Pengajuan #${id}`);
       fetchDashboardData();
     } catch (err) {
       alert("Gagal memperbarui status.");
@@ -230,6 +244,7 @@ export default function AdminDashboardPage() {
       alert(result.mode === "SIMULATION"
         ? `🛠️ [SIMULASI] Email ke ${result.sent} staf tercetak di terminal server.\n(Resend belum dikonfigurasi — lihat panduan .env.)`
         : `✅ Email berhasil dikirim ke ${result.sent} staf.`);
+      logAudit("Kirim Email Blast", `${recipients.length} penerima`, broadcastSubject || undefined);
       closeBroadcastModal();
     } catch (err: any) {
       alert("❌ Gagal mengirim email: " + err.message);
@@ -259,6 +274,7 @@ export default function AdminDashboardPage() {
       });
       const result = await response.json();
       setWaStatus({ type: "success", text: result.mode === "SIMULATION" ? "[SIMULASI] Sukses tercetak di terminal." : "Siaran WhatsApp sukses terkirim!" });
+      logAudit("Kirim WhatsApp Blast", `${targetNumbers.split(",").filter(Boolean).length} nomor`);
       setWaMessage(""); 
     } catch (error: any) {
       setWaStatus({ type: "error", text: "Gagal menghubungkan gateway." });

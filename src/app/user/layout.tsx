@@ -92,7 +92,7 @@ const navItems = [
 
 
 return (
-  <div className="min-h-screen bg-[#000000] text-gray-200 flex flex-col md:flex-row font-sans selection:bg-[#2b5cd5] selection:text-white">
+  <div className="min-h-screen bg-[#000000] text-gray-200 flex flex-col md:flex-row font-sans selection:bg-[#124bce] selection:text-white">
   
     {/* 📱 HEADER MOBILE (MINIMALIST) */}
     <header className={`${isChatPage ? "hidden" : ""} md:hidden w-full bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/5 px-5 py-4 sticky top-0 z-[99] flex items-center justify-between shadow-sm`}>
@@ -103,7 +103,7 @@ return (
         </p>
       </div>
       <div className="flex items-center gap-2.5 shrink-0">
-        <div className="w-8 h-8 rounded-full bg-[#2b5cd5]/10 text-[#b3c5ff] flex items-center justify-center font-black text-[11px] border border-[#2b5cd5]/20 shadow-inner">
+        <div className="w-8 h-8 rounded-full bg-[#124bce]/10 text-[#b3c5ff] flex items-center justify-center font-black text-[11px] border border-[#124bce]/20 shadow-inner">
           {userName.charAt(0).toUpperCase()}
         </div>
         <button onClick={openLogoutConfirmation} aria-label="Keluar" className="w-8 h-8 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center active:scale-90 transition-transform cursor-pointer">
@@ -131,7 +131,7 @@ return (
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
-            <Link key={item.name} href={item.href} className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all font-medium text-sm ${isActive ? "bg-[#2b5cd5] text-white shadow-[0_0_15px_rgba(43,92,213,0.4)] border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
+            <Link key={item.name} href={item.href} className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all font-medium text-sm ${isActive ? "bg-[#124bce] text-white shadow-[0_0_15px_rgba(18,75,206,0.4)] border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">{item.icon}</svg>
               {item.name}
             </Link>
@@ -175,9 +175,11 @@ return (
         {navItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
-            <Link key={item.name} href={item.href} className={`flex flex-col items-center flex-1 transition-all p-2 rounded-xl ${isActive ? "text-[#2b5cd5]" : "text-gray-500 hover:text-gray-300"}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={isActive ? 2.5 : 2} stroke="currentColor" className="w-[20px] h-[20px] mb-1">{item.icon}</svg>
-              <span className="text-[9px] font-bold tracking-wide">{(item as any).short || item.name}</span>
+            <Link key={item.name} href={item.href} className={`relative flex flex-col items-center flex-1 gap-1 py-1 transition-colors duration-300 ${isActive ? "text-[#124bce]" : "text-gray-500 hover:text-gray-300"}`}>
+              <span className={`flex items-center justify-center w-10 h-9 rounded-2xl transition-all duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] ${isActive ? "bg-[#124bce]/15 -translate-y-1 scale-105" : "translate-y-0 scale-100"}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={isActive ? 2.5 : 2} stroke="currentColor" className="w-[20px] h-[20px]">{item.icon}</svg>
+              </span>
+              <span className={`text-[9px] font-bold tracking-wide transition-transform duration-300 ${isActive ? "-translate-y-0.5" : "translate-y-0"}`}>{(item as any).short || item.name}</span>
             </Link>
           );
         })}

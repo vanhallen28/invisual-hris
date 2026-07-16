@@ -24,6 +24,7 @@ export default function UserDashboardPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [cameraOn, setCameraOn] = useState(false);
   const [captureMode, setCaptureMode] = useState<"in" | "out" | null>(null);
+  const [jamMasuk, setJamMasuk] = useState("09:00");
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isFlashing, setIsFlashing] = useState(false);
 
@@ -89,6 +90,9 @@ export default function UserDashboardPage() {
 
       const { data: cutiData } = await supabase.from("approvals").select("*").eq("idKaryawan", safeId).order("id", { ascending: false }).limit(3);
       if (cutiData) setRecentLeaves(cutiData);
+
+      const { data: schedData } = await supabase.from("employees").select("jamMasuk").eq("idKaryawan", safeId).single();
+      if (schedData?.jamMasuk) setJamMasuk(schedData.jamMasuk);
     } catch (e) {
       console.error("Error fetching data dari Supabase:", e);
     }
@@ -161,7 +165,8 @@ export default function UserDashboardPage() {
 
     const now = new Date();
     const timeString = now.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' });
-    const isLate = now.getHours() >= 9 && now.getMinutes() > 0;
+    const [schedH, schedM] = String(jamMasuk || "09:00").split(":").map(Number);
+    const isLate = (now.getHours() * 60 + now.getMinutes()) > ((schedH || 9) * 60 + (schedM || 0));
     const statusKehadiran = isLate ? "Terlambat" : "Tepat Waktu";
 
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";

@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { generatePayslip } from "@/utils/generatePayslip"; 
 import LoadingLogo from "@/components/LoadingLogo"; // 🔥 INI KUNCI UNTUK MEMANGGIL KOMPONEN ANDA
+import PerformancePanel from "@/components/PerformancePanel";
 
 export default function UserProfilePage() {
   const [profile, setProfile] = useState<any>(null);
@@ -149,6 +150,10 @@ export default function UserProfilePage() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="mo-fade-up">
+        <PerformancePanel idKaryawan={profile.idKaryawan} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 mo-stagger">

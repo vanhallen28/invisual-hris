@@ -7,6 +7,8 @@ import LoadingLogo from "@/components/LoadingLogo";
 
 export default function UserKehadiranPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [jamMasuk, setJamMasuk] = useState("09:00");
+  const [jamKeluar, setJamKeluar] = useState("17:00");
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [pengajuanList, setPengajuanList] = useState<any[]>([]);
   const [recentAttendances, setRecentAttendances] = useState<any[]>([]);
@@ -86,6 +88,10 @@ export default function UserKehadiranPage() {
 
       const { data: reqData } = await supabase.from("approvals").select("*").eq("idKaryawan", safeId).order("id", { ascending: false });
       if (reqData) setPengajuanList(reqData);
+
+      const { data: schedData } = await supabase.from("employees").select("jamMasuk, jamKeluar").eq("idKaryawan", safeId).single();
+      if (schedData?.jamMasuk) setJamMasuk(schedData.jamMasuk);
+      if (schedData?.jamKeluar) setJamKeluar(schedData.jamKeluar);
     } catch (e) {
       console.error("Error fetching data:", e);
     }
@@ -205,7 +211,8 @@ export default function UserKehadiranPage() {
 
     const now = new Date();
     const timeString = now.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' });
-    const isLate = now.getHours() >= 9 && now.getMinutes() > 0;
+    const [schedH, schedM] = String(jamMasuk || "09:00").split(":").map(Number);
+    const isLate = (now.getHours() * 60 + now.getMinutes()) > ((schedH || 9) * 60 + (schedM || 0));
     const statusKehadiran = isLate ? "Terlambat" : "Tepat Waktu";
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
 
@@ -278,7 +285,7 @@ export default function UserKehadiranPage() {
       <div className="flex justify-between items-center bg-[#15121A] border border-white/5 p-4 rounded-2xl shadow-lg relative overflow-hidden">
         <div className="relative z-10">
           <h1 className="text-xl md:text-2xl font-bold text-white">Kehadiran Saya</h1>
-          <p className="text-[10px] md:text-xs text-gray-400 mt-1">Halo <span className="text-[#b3c5ff] font-bold">{currentUser?.nama}</span>, kelola absen Anda.</p>
+          <p className="text-[10px] md:text-xs text-gray-400 mt-1">Halo <span className="text-[#b3c5ff] font-bold">{currentUser?.nama}</span>, kelola absen Anda. <span className="inline-flex items-center gap-1 ml-1 text-[#8ba7ff]"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Jam kerja {jamMasuk}–{jamKeluar}</span></p>
         </div>
         <button onClick={() => setShowForm(true)} className="relative z-10 bg-[#124bce] hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-colors whitespace-nowrap active:scale-95">
           Ajukan Izin / Cuti
