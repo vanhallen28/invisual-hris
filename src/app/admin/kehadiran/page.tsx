@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import LeaveCalendar from "@/components/LeaveCalendar";
 
 type StatusKehadiran = "Hadir" | "Telat" | "Alpa" | "Cuti/Sakit" | "WFH" | "Libur";
 
@@ -86,6 +87,8 @@ export default function AdminKehadiranPage() {
           <option value="Mei 2026">Mei 2026</option>
         </select>
       </div>
+
+      <LeaveCalendar />
 
       {/* FITUR 1: SMART ANOMALY CENTER */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
