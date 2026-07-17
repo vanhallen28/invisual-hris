@@ -5,6 +5,9 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { logAudit } from "@/lib/audit";
+import { CorporateSummaryCard } from "@/components/admin/CorporateSummaryCard";
+import { ResetAbsensiCard } from "@/components/admin/ResetAbsensiCard";
+import { ChatNotifCard } from "@/components/admin/ChatNotifCard";
 
 // Cek apakah HARI INI termasuk dalam periode izin/cuti.
 // Kolom `tanggal` berupa string: "2025-07-16", "2025-07-16 s/d 2025-07-20",
@@ -544,6 +547,15 @@ export default function AdminDashboardPage() {
           <button onClick={() => setShowWABroadcastModal(true)} className="bg-[#141414] border border-green-500/30 p-4 rounded-xl text-center hover:bg-green-500/20 transition-all text-xs font-bold text-green-400 shadow-xl cursor-pointer pointer-events-auto">WhatsApp Blast</button>
           <button onClick={() => setPayslipState({ isOpen: true, status: 'idle' })} className="bg-[#141414] border border-purple-500/30 p-4 rounded-xl text-center hover:bg-purple-500/20 transition-all text-xs font-bold text-purple-400 shadow-xl cursor-pointer pointer-events-auto">Kirim Slip Gaji</button>
           <button onClick={handleBackupDatabase} className="bg-[#141414] border border-white/10 p-4 rounded-xl text-center hover:bg-white/10 transition-all text-xs font-bold text-gray-300 shadow-xl cursor-pointer pointer-events-auto">Backup DB</button>
+        </div>
+      </div>
+
+      {/* ===== Notifikasi Chat + Ringkasan Corporate Vault + Reset Absensi (tambahan, kedua tema) ===== */}
+      <div className="relative z-40 mt-4 px-2 pb-6">
+        <ChatNotifCard />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+          <CorporateSummaryCard />
+          <ResetAbsensiCard />
         </div>
       </div>
 

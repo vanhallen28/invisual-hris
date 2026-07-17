@@ -13,6 +13,7 @@ export default function AdminKaryawanPage() {
   
   // State untuk Modal Form (Tambah/Edit)
   const [showModal, setShowModal] = useState(false);
+  const [showArchived, setShowArchived] = useState(false); // filter daftar: false=aktif, true=arsip
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -39,7 +40,7 @@ export default function AdminKaryawanPage() {
     tanggalBergabung: "", sisaCuti: 12, gajiPokok: "", namaBank: "", 
     noRekening: "", isAktif: true, role: "member",
     institusiMagang: "", tanggalSelesaiMagang: "",
-    boardAccess: [] as string[], contentHub: true,
+    boardAccess: [] as string[], contentHub: true, corporateAccess: false,
     jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: ""
   });
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); // user_id -> role Tracker
@@ -132,7 +133,7 @@ export default function AdminKaryawanPage() {
       tanggalBergabung: new Date().toISOString().split('T')[0],
       sisaCuti: 12, gajiPokok: "", namaBank: "", noRekening: "", isAktif: true, role: "member",
       institusiMagang: "", tanggalSelesaiMagang: "",
-      boardAccess: [] as string[], contentHub: true,
+      boardAccess: [] as string[], contentHub: true, corporateAccess: false,
       jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: ""
     });
     setShowModal(true);
@@ -142,7 +143,7 @@ export default function AdminKaryawanPage() {
     setIsEditMode(true);
     fetch(`/api/employees?idKaryawan=${encodeURIComponent(emp.idKaryawan)}`)
       .then((r) => r.json())
-      .then((d) => { if (d && !d.error) setFormData((prev) => ({ ...prev, boardAccess: Array.isArray(d.boardAccess) ? d.boardAccess : [], contentHub: d.contentHub !== false, role: d.role || prev.role })); })
+      .then((d) => { if (d && !d.error) setFormData((prev) => ({ ...prev, boardAccess: Array.isArray(d.boardAccess) ? d.boardAccess : [], contentHub: d.contentHub !== false, corporateAccess: d.corporateAccess === true, role: d.role || prev.role })); })
       .catch(() => {});
     setFormData({
       idKaryawan: emp.idKaryawan || "",
@@ -162,7 +163,7 @@ export default function AdminKaryawanPage() {
       role: (emp.user_id && roleMap[emp.user_id]) || "member",
       institusiMagang: emp.institusiMagang || "",
       tanggalSelesaiMagang: emp.tanggalSelesaiMagang || "",
-      boardAccess: [], contentHub: true,
+      boardAccess: [], contentHub: true, corporateAccess: false,
       jamMasuk: emp.jamMasuk || "09:00", jamKeluar: emp.jamKeluar || "17:00",
       avatarUrl: emp.avatarUrl || ""
     });
@@ -224,8 +225,8 @@ export default function AdminKaryawanPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
           isEditMode
-            ? { ...payload, idKaryawan: formData.idKaryawan, role: formData.role, boardAccess: formData.boardAccess, contentHub: formData.contentHub }
-            : { ...payload, role: formData.role, boardAccess: formData.boardAccess, contentHub: formData.contentHub }
+            ? { ...payload, idKaryawan: formData.idKaryawan, role: formData.role, boardAccess: formData.boardAccess, contentHub: formData.contentHub, corporateAccess: formData.corporateAccess }
+            : { ...payload, role: formData.role, boardAccess: formData.boardAccess, contentHub: formData.contentHub, corporateAccess: formData.corporateAccess }
         ),
       });
       const json = await res.json().catch(() => ({}));
@@ -271,6 +272,8 @@ export default function AdminKaryawanPage() {
   };
 
   const filteredEmployees = employees.filter((emp) => {
+    const isActive = emp.isAktif !== false;
+    if (showArchived ? isActive : !isActive) return false;
     const matchQuery = 
       emp.nama?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.idKaryawan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -327,6 +330,10 @@ export default function AdminKaryawanPage() {
         </div>
         
         <div className="flex flex-wrap gap-3 relative z-10 w-full lg:w-auto">
+          <button onClick={() => setShowArchived((v) => !v)} className={`w-full lg:w-auto px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 border ${showArchived ? "bg-amber-500/15 text-amber-300 border-amber-500/30" : "bg-white/5 text-gray-300 border-white/10 hover:bg-white/10"}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+            {showArchived ? "Lihat Aktif" : "Arsip"}
+          </button>
           <button onClick={openAddModal} className="w-full lg:w-auto bg-white text-black hover:bg-gray-200 px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-lg">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
             Tambah Karyawan Baru
@@ -599,6 +606,25 @@ export default function AdminKaryawanPage() {
                 </div>
               </div>
 
+              {isEditMode && (
+                <div className={`p-5 rounded-xl border flex items-center justify-between gap-4 ${formData.isAktif ? "bg-[#111111] border-white/5" : "bg-amber-500/[0.04] border-amber-500/25"}`}>
+                  <div className="pr-3">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase mb-1 font-mono">Status Karyawan</h3>
+                    <p className="text-[11px] text-gray-500">
+                      {formData.isAktif
+                        ? "Karyawan aktif. Matikan untuk mengarsipkan (data tetap disimpan, disembunyikan dari daftar utama)."
+                        : "Karyawan diarsipkan (non-aktif). Nyalakan untuk mengaktifkan kembali."}
+                    </p>
+                  </div>
+                  <label className="inline-flex items-center gap-2 cursor-pointer shrink-0">
+                    <span className={`text-xs font-bold ${formData.isAktif ? "text-green-400" : "text-amber-400"}`}>
+                      {formData.isAktif ? "Aktif" : "Arsip"}
+                    </span>
+                    <input type="checkbox" checked={formData.isAktif} onChange={(e) => setFormData({ ...formData, isAktif: e.target.checked })} className="accent-[#124bce] w-4 h-4" />
+                  </label>
+                </div>
+              )}
+
               <div className="bg-[#111111] p-5 rounded-xl border border-white/5">
                 <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 font-mono">A. Identitas Primer Karyawan</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -729,6 +755,13 @@ export default function AdminKaryawanPage() {
                           <p className="text-[10px] text-gray-500 mt-0.5">Izinkan melihat &amp; mengelola Content Hub (marketing &amp; sosmed).</p>
                         </div>
                         <input type="checkbox" checked={formData.contentHub} onChange={(e) => setFormData({ ...formData, contentHub: e.target.checked })} className="accent-[#124bce] w-4 h-4 shrink-0" />
+                      </label>
+                      <label className="flex items-center justify-between bg-[#1c1c1c] border border-white/10 rounded-lg px-4 py-3 cursor-pointer">
+                        <div className="pr-3">
+                          <span className="text-sm font-bold text-white">Akses Corporate Vault</span>
+                          <p className="text-[10px] text-gray-500 mt-0.5">Izinkan membuka Corporate Vault (dokumen, email, langganan).</p>
+                        </div>
+                        <input type="checkbox" checked={formData.corporateAccess} onChange={(e) => setFormData({ ...formData, corporateAccess: e.target.checked })} className="accent-[#124bce] w-4 h-4 shrink-0" />
                       </label>
                     </div>
                   )}

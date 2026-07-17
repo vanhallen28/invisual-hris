@@ -19,9 +19,12 @@ const noKey = () => NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE belum dise
 
 // Terapkan hak akses lanjutan: Content Hub + pembatasan board (board_access).
 // boardAccess = daftar pola board (kosong/undefined = akses semua). Selalu di-lowercase.
-async function applyAccess(sb: any, userId: string, contentHub: any, boardAccess: any) {
+async function applyAccess(sb: any, userId: string, contentHub: any, boardAccess: any, corporateAccess: any) {
   if (typeof contentHub === 'boolean') {
     await sb.from('members').update({ content_hub: contentHub }).eq('id', userId);
+  }
+  if (typeof corporateAccess === 'boolean') {
+    await sb.from('members').update({ corporate_access: corporateAccess }).eq('id', userId);
   }
   if (Array.isArray(boardAccess)) {
     await sb.from('board_access').delete().eq('member_id', userId);
@@ -42,12 +45,13 @@ export async function GET(req: Request) {
     if (!idKaryawan) return NextResponse.json({ error: 'idKaryawan wajib.' }, { status: 400 });
     const sb = admin();
     const { data: emp } = await sb.from('employees').select('user_id').eq('idKaryawan', idKaryawan).single();
-    if (!emp?.user_id) return NextResponse.json({ role: 'member', contentHub: true, boardAccess: [] });
-    const { data: mem } = await sb.from('members').select('role, content_hub').eq('id', emp.user_id).single();
+    if (!emp?.user_id) return NextResponse.json({ role: 'member', contentHub: true, corporateAccess: false, boardAccess: [] });
+    const { data: mem } = await sb.from('members').select('role, content_hub, corporate_access').eq('id', emp.user_id).single();
     const { data: ba } = await sb.from('board_access').select('board_pattern').eq('member_id', emp.user_id);
     return NextResponse.json({
       role: mem?.role || 'member',
       contentHub: mem?.content_hub !== false,
+      corporateAccess: mem?.corporate_access === true,
       boardAccess: (ba || []).map((r: any) => String(r.board_pattern || '').toLowerCase()).filter(Boolean),
     });
   } catch (e: any) {
@@ -60,7 +64,7 @@ export async function POST(req: Request) {
   if (!serviceRole) return noKey();
   try {
     const body = await req.json();
-    const { role = 'member', boardAccess, contentHub, ...emp } = body || {};
+    const { role = 'member', boardAccess, contentHub, corporateAccess, ...emp } = body || {};
     const email = String(emp.email || '').trim().toLowerCase();
     const pass = String(emp.idKaryawan || '').trim();
     if (!email || pass.length < 6) return NextResponse.json({ error: 'Email wajib & ID Karyawan minimal 6 karakter (dipakai sebagai password awal).' }, { status: 400 });
@@ -80,7 +84,7 @@ export async function POST(req: Request) {
     }, { onConflict: 'id' });
     if (me) return NextResponse.json({ error: 'Karyawan tersimpan, tapi gagal menetapkan role Tracker: ' + me.message }, { status: 400 });
 
-    await applyAccess(sb, userId, contentHub, boardAccess);
+    await applyAccess(sb, userId, contentHub, boardAccess, corporateAccess);
 
     return NextResponse.json({ ok: true, user_id: userId });
   } catch (e: any) {
@@ -93,7 +97,7 @@ export async function PATCH(req: Request) {
   if (!serviceRole) return noKey();
   try {
     const body = await req.json();
-    const { idKaryawan, role, boardAccess, contentHub, ...updates } = body || {};
+    const { idKaryawan, role, boardAccess, contentHub, corporateAccess, ...updates } = body || {};
     if (!idKaryawan) return NextResponse.json({ error: 'idKaryawan wajib.' }, { status: 400 });
     const sb = admin();
 
@@ -101,14 +105,14 @@ export async function PATCH(req: Request) {
       const { error: ee } = await sb.from('employees').update(updates).eq('idKaryawan', idKaryawan);
       if (ee) return NextResponse.json({ error: ee.message }, { status: 400 });
     }
-    if (role || boardAccess !== undefined || contentHub !== undefined) {
+    if (role || boardAccess !== undefined || contentHub !== undefined || corporateAccess !== undefined) {
       const { data: emp } = await sb.from('employees').select('user_id').eq('idKaryawan', idKaryawan).single();
       if (emp?.user_id) {
         if (role) {
           const { error: me } = await sb.from('members').update({ role: normRole(role) }).eq('id', emp.user_id);
           if (me) return NextResponse.json({ error: me.message }, { status: 400 });
         }
-        await applyAccess(sb, emp.user_id, contentHub, boardAccess);
+        await applyAccess(sb, emp.user_id, contentHub, boardAccess, corporateAccess);
       }
     }
     return NextResponse.json({ ok: true });

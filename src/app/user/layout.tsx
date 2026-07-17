@@ -18,6 +18,7 @@ const pathname = usePathname();
 const [userName, setUserName] = useState("Memuat...");
 const [userRole, setUserRole] = useState("Staff");
 const [showLogoutModal, setShowLogoutModal] = useState(false);
+const [isManager, setIsManager] = useState(false);
 
 
 
@@ -58,6 +59,18 @@ useEffect(() => {
         window.location.href = "/ganti-password";
       }
     }).catch(() => { /* offline / request dibatalkan saat pindah halaman — abaikan */ });
+    return () => { alive = false; };
+  }, []);
+
+  // Role tracker (member/manager) → sembunyikan Daily Task di mobile bagi manager.
+  useEffect(() => {
+    let alive = true;
+    supabase.auth.getUser().then(async ({ data }) => {
+      const uid = data?.user?.id;
+      if (!uid) return;
+      const { data: mem } = await supabase.from("members").select("role").eq("id", uid).single();
+      if (alive && mem?.role === "manager") setIsManager(true);
+    }).catch(() => {});
     return () => { alive = false; };
   }, []);
 
@@ -172,7 +185,7 @@ return (
     {/* 📱 BOTTOM NAV MOBILE */}
     <div className={`${isChatPage ? "hidden" : ""} md:hidden fixed bottom-0 left-0 right-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-t border-white/5 z-[100] px-3 py-2.5 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.8)]`}>
       <div className="flex justify-between items-center gap-1">
-        {navItems.map((item) => {
+        {navItems.filter((item) => !(isManager && item.href === "/user/daily-task")).map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
             <Link key={item.name} href={item.href} className={`relative flex flex-col items-center flex-1 gap-1 py-1 transition-colors duration-300 ${isActive ? "text-[#124bce]" : "text-gray-500 hover:text-gray-300"}`}>
