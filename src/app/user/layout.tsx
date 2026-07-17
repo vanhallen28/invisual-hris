@@ -73,6 +73,9 @@ useEffect(() => {
       if (!uid) return;
       const { data: mem } = await supabase.from("members").select("role").eq("id", uid).single();
       if (alive && mem?.role === "manager") setIsManager(true);
+      // Avatar terbaru langsung dari DB — tak bergantung sesi localStorage lama.
+      const { data: emp } = await supabase.from("employees").select("avatarUrl").eq("user_id", uid).maybeSingle();
+      if (alive && emp?.avatarUrl) setUserAvatar(emp.avatarUrl);
     }).catch(() => {});
     return () => { alive = false; };
   }, []);
