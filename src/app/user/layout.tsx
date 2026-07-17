@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import Avatar from "@/components/Avatar";
 
 
 
@@ -16,6 +17,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
 const pathname = usePathname();
   const isChatPage = !!pathname && pathname.includes('/chat'); // Chat = full-screen (sembunyikan header & bottom-nav)
 const [userName, setUserName] = useState("Memuat...");
+const [userAvatar, setUserAvatar] = useState("");
 const [userRole, setUserRole] = useState("Staff");
 const [showLogoutModal, setShowLogoutModal] = useState(false);
 const [isManager, setIsManager] = useState(false);
@@ -39,6 +41,7 @@ useEffect(() => {
       if (userData && userData.nama) {
         setUserName(userData.nama);
         setUserRole(userData.jabatan || userData.departemen || "Staff");
+        setUserAvatar(userData.avatarUrl || "");
       }
     } catch (e) {
       console.error("Gagal membaca tiket sesi", e);
@@ -116,9 +119,7 @@ return (
         </p>
       </div>
       <div className="flex items-center gap-2.5 shrink-0">
-        <div className="w-8 h-8 rounded-full bg-[#124bce]/10 text-[#b3c5ff] flex items-center justify-center font-black text-[11px] border border-[#124bce]/20 shadow-inner">
-          {userName.charAt(0).toUpperCase()}
-        </div>
+        <Avatar url={userAvatar} name={userName} className="w-8 h-8 rounded-full bg-[#124bce]/10 text-[#b3c5ff] flex items-center justify-center font-black text-[11px] border border-[#124bce]/20 shadow-inner" />
         <button onClick={openLogoutConfirmation} aria-label="Keluar" className="w-8 h-8 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center active:scale-90 transition-transform cursor-pointer">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
         </button>
