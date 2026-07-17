@@ -15,6 +15,19 @@ export const PLATFORMS = [
 
 export const CONTENT_TYPES = ['Feed', 'Carousel', 'Reels / Video', 'Story', 'Artikel / Blog', 'Ads / Iklan'];
 
+export const CONTENT_PILLARS = [
+  'Awareness',
+  'Edukasi',
+  'Engagement',
+  'Promosi / Hard Selling',
+  'Soft Selling',
+  'Entertainment / Hiburan',
+  'Inspirasi',
+  'Testimoni / Social Proof',
+  'Behind The Scenes',
+  'Tips & Trik',
+];
+
 export const CONTENT_STATUS = [
   { id: 'Brief', color: 'bg-zinc-600', ring: 'border-zinc-600' },
   { id: 'Produksi', color: 'bg-[#579bfc]', ring: 'border-[#579bfc]' },

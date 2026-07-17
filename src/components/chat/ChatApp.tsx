@@ -7,6 +7,7 @@ import {
   Users, Trash2, Check, Search, Bell, BellOff, Volume2, Video,
 } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
+import Avatar from '@/components/Avatar';
 import ItemDetailPanel from '@/components/tracker/ItemDetailPanel';
 import ChatRoom from '@/components/chat/ChatRoom';
 import VoiceRoom from '@/components/chat/VoiceRoom';
@@ -127,7 +128,7 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
                   return (
                     <button key={m.id} onClick={() => setSel((s) => (on ? s.filter((x) => x !== m.id) : [...s, m.id]))}
                       className={`flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left ${on ? 'bg-[#124bce]/10' : 'hover:bg-zinc-700/50'}`}>
-                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white ${mColor(m)}`}>{m.initials}</span>
+                      <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white ${mColor(m)}`} />
                       <span className={`text-[11px] flex-1 truncate ${on ? 'text-white font-semibold' : 'text-zinc-400'}`}>{m.name}</span>
                       {on && <Check size={12} className="text-blue-400" />}
                     </button>
@@ -309,7 +310,7 @@ export default function ChatApp() {
         {me && (
           <div className="h-14 border-t border-zinc-800 flex items-center gap-2.5 px-3 shrink-0 bg-[#101216]">
             <div className="relative shrink-0">
-              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${mColor(me)}`}>{me.initials}</span>
+              <Avatar url={me.avatarUrl} name={me.name} initials={me.initials} className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${mColor(me)}`} />
               <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#101216]" />
             </div>
             <div className="min-w-0 flex-1">
@@ -382,7 +383,7 @@ export default function ChatApp() {
                 {list.map((m: any) => (
                   <div key={m.id} className={`flex items-center gap-2.5 px-2 py-1.5 rounded-lg ${grp === 'offline' ? 'opacity-40' : ''}`}>
                     <div className="relative shrink-0">
-                      <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${mColor(m)}`}>{m.initials}</span>
+                      <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${mColor(m)}`} />
                       {grp === 'online' && <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#15171c]" />}
                     </div>
                     <span className="text-xs text-zinc-300 truncate">{m.name}</span>

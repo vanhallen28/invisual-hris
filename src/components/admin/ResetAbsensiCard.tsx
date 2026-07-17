@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Trash2, X, KeyRound } from "lucide-react";
 
 type ResetRange = "7d" | "30d" | "all";
@@ -22,6 +22,19 @@ export function ResetAbsensiCard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [note, setNote] = useState<string | null>(null);
+  const [allowed, setAllowed] = useState(false); // Owner tak boleh reset → kartu disembunyikan
+
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem("invisual_session");
+      const parsed = s ? JSON.parse(s) : null;
+      setAllowed(!(parsed?.isOwner === true));
+    } catch {
+      setAllowed(true);
+    }
+  }, []);
+
+  if (!allowed) return null;
 
   const chosen = RANGES.find((r) => r.key === range) || null;
 

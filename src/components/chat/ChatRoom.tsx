@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import LoadingLogo from '@/components/LoadingLogo';
+import Avatar from '@/components/Avatar';
 import {
   EMOJIS, loadMessages, sendMessage, editMessage, deleteMessage, setPinned, setTaskRef,
   loadReactions, toggleReaction, markRead, uploadChatFile, findTask, searchTasks, taskMeta,
@@ -417,7 +418,7 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
   const pins = msgs.filter((m) => m.pinned);
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#1e2029]">
+    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#1e2029]">
       {/* header channel */}
       <div className="h-12 border-b border-zinc-800 flex items-center gap-2 px-4 shrink-0">
         {onBack && (
@@ -454,7 +455,7 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
       )}
 
       {/* daftar pesan */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4">
         {loading ? <div className="h-full min-h-[60vh] flex items-center justify-center"><LoadingLogo size={48} text="Memuat pesan" /></div> : msgs.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-14 h-14 rounded-2xl bg-zinc-800/60 flex items-center justify-center mx-auto mb-4"><Hash size={24} className="text-zinc-600" /></div>
@@ -489,7 +490,7 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
                 {grouped ? (
                   <span className="w-9 shrink-0 text-[9px] text-zinc-700 opacity-0 group-hover/msg:opacity-100 text-right pt-1">{timeOf(m.created_at)}</span>
                 ) : (
-                  <span className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${mColor(a)}`}>{a?.initials || '?'}</span>
+                  <Avatar url={a?.avatarUrl} name={a?.name} initials={a?.initials || '?'} className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${mColor(a)}`} />
                 )}
 
                 <div className="flex-1 min-w-0">

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, Check, Trash2, Tag, User, CalendarDays, Plus, FileText } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
+import Avatar from '@/components/Avatar';
 import InlineEdit from './InlineEdit';
 
 export default function TableCell({ type, item, group, col }: any) {
@@ -92,7 +93,7 @@ export default function TableCell({ type, item, group, col }: any) {
                   const has = item[col.id]?.includes(m.id); 
                   return (
                     <div key={m.id} className="flex items-center justify-between text-xs px-2 py-1.5 hover:bg-zinc-700 rounded-lg text-zinc-300 w-full cursor-pointer transition-colors" onClick={(e) => { e.stopPropagation(); triggerUpdate(col.id, has ? item[col.id].filter((id:any)=>id!==m.id) : [...(item[col.id]||[]), m.id]); }}>
-                      <div className="flex items-center gap-2.5 min-w-0"><div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[8px] font-bold text-white shadow-sm ${memberColor(m)}`}>{m.initials}</div><span className="truncate">{m.name}</span></div>
+                      <div className="flex items-center gap-2.5 min-w-0"><Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[8px] font-bold text-white shadow-sm ${memberColor(m)}`} /><span className="truncate">{m.name}</span></div>
                       {has && <Check size={12} className="text-blue-400 shrink-0"/>}
                     </div>
                   )

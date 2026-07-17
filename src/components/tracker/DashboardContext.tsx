@@ -31,6 +31,26 @@ const ensureViews = (map: any, seedHidden: string[] = []) => {
   return out;
 };
 
+// Opsi A: gabungkan avatar dari tabel employees ke daftar members (tracker).
+// Cocokkan members.id = employees.user_id (keduanya = auth uid), fallback via email.
+async function mergeAvatars(supabase: any, members: any[]) {
+  try {
+    const { data } = await supabase.from('employees').select('user_id, email, avatarUrl');
+    const byUser: any = {}, byEmail: any = {};
+    (data || []).forEach((e: any) => {
+      if (!e.avatarUrl) return;
+      if (e.user_id) byUser[e.user_id] = e.avatarUrl;
+      if (e.email) byEmail[String(e.email).toLowerCase()] = e.avatarUrl;
+    });
+    return members.map((m: any) => ({
+      ...m,
+      avatarUrl: m.avatarUrl || byUser[m.id] || byEmail[String(m.email || '').toLowerCase()] || null,
+    }));
+  } catch {
+    return members;
+  }
+}
+
 export const DashboardContext = createContext<any>(null);
 
 export const DashboardProvider = ({ children, embedded = false }: { children: React.ReactNode; embedded?: boolean }) => {
@@ -171,7 +191,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
         setWorkspaces(s.workspaces);
         setBoardsDataMap(ensureViews(s.boardsDataMap));
         setLabels(s.labels);
-        if (s.teamMembers.length) setTeamMembers(s.teamMembers);
+        if (s.teamMembers.length) setTeamMembers(await mergeAvatars(supabase, s.teamMembers));
         if (s.currentUserId) setCurrentUserId(s.currentUserId);
         setCurrentUserRole(s.currentUserRole || 'member');
       setCanContentHub(s.canContentHub !== false);
@@ -218,7 +238,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       setWorkspaces(s.workspaces);
       setBoardsDataMap(ensureViews(s.boardsDataMap));
       setLabels(s.labels);
-      if (s.teamMembers.length) setTeamMembers(s.teamMembers);
+      if (s.teamMembers.length) setTeamMembers(await mergeAvatars(supabase, s.teamMembers));
       if (s.currentUserId) setCurrentUserId(s.currentUserId);
       setCurrentUserRole(s.currentUserRole || 'member');
       setCanContentHub(s.canContentHub !== false);

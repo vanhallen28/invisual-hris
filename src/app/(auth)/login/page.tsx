@@ -4,6 +4,10 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+// Akun Owner: setara admin (role tetap "admin" agar lolos penjaga dashboard),
+// TAPI tanpa akses Reset Absensi (kartu Reset disembunyikan lewat penanda isOwner).
+const OWNER_EMAILS = ["dea@invisual.studio", "riza@invisual.studio", "tryan@invisual.studio"];
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,6 +56,7 @@ export default function LoginPage() {
       localStorage.setItem("invisual_session", JSON.stringify({
         email: inputEmail,
         role: isAdmin ? "admin" : "karyawan",
+        isOwner: OWNER_EMAILS.includes(inputEmail),
         nama: namaUser,
         idKaryawan: idKaryawan,
         jabatan: jabatan,

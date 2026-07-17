@@ -4,6 +4,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import PwaSetup from "@/components/PwaSetup";
 import PwaSplash from "@/components/PwaSplash";
+import ChatToaster from "@/components/ChatToaster";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,6 +31,7 @@ export default function RootLayout({
         <PwaSetup />
         <PwaSplash />
         {children}
+        <ChatToaster />
       </body>
     </html>
   );

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, AlignLeft, CheckSquare, CalendarDays, Tag, User, Link as LinkIcon, Hash, FileText, ExternalLink, Plus, Check, Search } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import TaskChat from './TaskChat';
+import Avatar from '@/components/Avatar';
 
 const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
 
@@ -21,7 +22,7 @@ function PeoplePicker({ value, teamMembers, onChange }: any) {
       <div className="flex flex-wrap gap-1.5 items-center">
         {selected.map((m: any) => (
           <span key={m.id} className="group/chip flex items-center gap-1.5 text-[11px] pl-1 pr-1.5 py-1 rounded-full border border-blue-500/50 bg-blue-500/10 text-zinc-100">
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 ${mColor(m)}`}>{m.initials}</span>
+            <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 ${mColor(m)}`} />
             <span className="truncate max-w-[140px]">{m.name}</span>
             <button onClick={() => toggle(m.id)} title="Lepas" className="p-0.5 text-zinc-500 hover:text-red-400 transition-colors"><X size={11} /></button>
           </span>
@@ -55,7 +56,7 @@ function PeoplePicker({ value, teamMembers, onChange }: any) {
                     key={m.id} onClick={() => toggle(m.id)}
                     className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-colors ${on ? 'bg-blue-500/10' : 'hover:bg-zinc-700/60'}`}
                   >
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 ${mColor(m)}`}>{m.initials}</span>
+                    <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 ${mColor(m)}`} />
                     <span className={`text-[11px] truncate flex-1 ${on ? 'text-white font-semibold' : 'text-zinc-300'}`}>{m.name}</span>
                     {on && <Check size={13} className="text-blue-400 shrink-0" />}
                   </button>
@@ -123,7 +124,7 @@ function renderField(col: any, item: any, labels: any, teamMembers: any[], setVa
       return (
         <div className="flex flex-wrap gap-1.5">
           <span className="flex items-center gap-1.5 text-[11px] pl-1 pr-2.5 py-1 rounded-full border border-blue-500/50 bg-blue-500/10 text-zinc-100">
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white ${mColor(me)}`}>{me.initials}</span>{me.name}
+            <Avatar url={me.avatarUrl} name={me.name} initials={me.initials} className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white ${mColor(me)}`} />{me.name}
           </span>
         </div>
       );

@@ -2,6 +2,7 @@
 import React from 'react';
 import { CalendarDays, LayoutGrid } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
+import Avatar from '@/components/Avatar';
 
 export default function KanbanBoard() {
   const { boardData, columns, labels, handleUpdateItem, draggedItem, setDraggedItem, dragOverColumn, setDragOverColumn, teamMembers, setDetailItem } = useDashboard();
@@ -66,7 +67,7 @@ export default function KanbanBoard() {
                     )}
                     <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60 text-[11px] text-zinc-400">
                       {due ? <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${due.cls}`}><CalendarDays size={11}/> {due.label}</span> : <span className="text-zinc-600">—</span>}
-                      <div className="flex -space-x-1">{assignees.map((tid: string) => <div key={tid} className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white ${teamMembers.find((t: any) => t.id === tid)?.color || 'bg-zinc-700'} border border-[#2a2c38]`}>{teamMembers.find((t: any) => t.id === tid)?.initials}</div>)}</div>
+                      <div className="flex -space-x-1">{assignees.map((tid: string) => { const tm = teamMembers.find((t: any) => t.id === tid); return <Avatar key={tid} url={tm?.avatarUrl} name={tm?.name} initials={tm?.initials} className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white ${tm?.color || 'bg-zinc-700'} border border-[#2a2c38]`} />; })}</div>
                     </div>
                  </div>
                  );

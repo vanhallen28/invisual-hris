@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { generatePayslip } from "@/utils/generatePayslip"; 
+import PayslipDocument from "@/components/PayslipDocument";
 import LoadingLogo from "@/components/LoadingLogo"; // 🔥 INI KUNCI UNTUK MEMANGGIL KOMPONEN ANDA
 import PerformancePanel from "@/components/PerformancePanel";
 import Avatar from "@/components/Avatar";
@@ -14,6 +15,10 @@ export default function UserProfilePage() {
   const [isGenerating, setIsGenerating] = useState(false); // State Loading PDF
   const [userEmail, setUserEmail] = useState<string>("");
   const [showGaji, setShowGaji] = useState(false);
+  const [showSlip, setShowSlip] = useState(false);
+  const [attendances, setAttendances] = useState<any[]>([]);
+  const currentMonthName = new Date().toLocaleDateString("id-ID", { month: 'long', year: 'numeric' });
+  const currentMonthPrefix = new Date().toISOString().slice(0, 7);
 
   useEffect(() => {
     const initializeProfile = async () => {
@@ -50,6 +55,8 @@ export default function UserProfilePage() {
       if (data) {
         setProfile(data);
         localStorage.setItem("invisualUserSession", JSON.stringify(data));
+        const { data: att } = await supabase.from("attendance").select("*").eq("idKaryawan", data.idKaryawan).like("tanggal", `${currentMonthPrefix}%`);
+        setAttendances(att || []);
       }
     } catch (error) {
       console.error("Gagal menarik data database:", error);
@@ -85,6 +92,21 @@ export default function UserProfilePage() {
   const formatRupiah = (angka: number) => {
     if (!angka) return "Rp 0";
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(angka);
+  };
+
+  const buildSlip = () => {
+    const hariHadir = attendances.filter((a) => a.status === "Tepat Waktu").length;
+    const hariTerlambat = attendances.filter((a) => a.status === "Terlambat").length;
+    const totalHadir = hariHadir + hariTerlambat;
+    const gajiPokokRaw = profile.gajipokok !== undefined ? profile.gajipokok : (profile.gajipoko !== undefined ? profile.gajipoko : profile.gajiPokok);
+    const gajiPokok = gajiPokokRaw ? Number(gajiPokokRaw) : 0;
+    const bonusManual = profile.bonus ? Number(profile.bonus) : 0;
+    const potonganManual = profile.potongan ? Number(profile.potongan) : 0;
+    const tunjanganKehadiran = totalHadir * 50000;
+    const totalPendapatan = gajiPokok + tunjanganKehadiran + bonusManual;
+    const totalPotongan = potonganManual;
+    const gajiBersih = totalPendapatan - totalPotongan;
+    return { ...profile, totalHadir, gajiPokok, bonusManual, potonganManual, tunjanganKehadiran, totalPendapatan, totalPotongan, gajiBersih };
   };
 
   const calculateMasaKerja = (joinDateString: string) => {
@@ -252,7 +274,7 @@ export default function UserProfilePage() {
               {/* 🔥 TOMBOL GENERATE PDF SLIP GAJI */}
               <div className="pt-5 mt-5 border-t border-white/5">
                 <button 
-                  onClick={handleDownloadSlip} 
+                  onClick={() => setShowSlip(true)} 
                   disabled={isGenerating}
                   className="w-full bg-[#124bce] hover:bg-blue-600 px-4 py-3 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
@@ -282,6 +304,36 @@ export default function UserProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* SLIP GAJI — template sama dengan Payroll */}
+      {showSlip && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 print:bg-white print:p-0">
+          <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden print:max-w-full print:rounded-none print:max-h-full print:overflow-visible relative print:shadow-none">
+            <PayslipDocument slip={buildSlip()} monthName={currentMonthName} />
+            <div className="p-4 bg-gray-50 flex justify-end gap-3 print:hidden border-t border-gray-200 bg-gray-100 shrink-0">
+              <button onClick={() => setShowSlip(false)} className="px-5 py-2 text-sm font-bold text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">Tutup</button>
+              <button onClick={() => window.print()} className="px-5 py-2 text-sm font-bold text-white bg-[#2b5cd5] hover:bg-blue-600 rounded-lg flex items-center gap-2 shadow-md transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.724.092m6.524-4.659A15.455 15.455 0 0112.532 2.25H8.25m4.282 7.02v.002m0 0H21m-2.81 8.51c-.145.52-.36 1.018-.632 1.487M12 21.75c-2.676 0-5.216-.584-7.499-1.632M15.75 21.75c2.676 0 5.216-.584 7.499-1.632M4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75z" /></svg>
+                Print / Simpan PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          body * { visibility: hidden !important; }
+          #printable-slip, #printable-slip * { visibility: visible !important; }
+          #printable-slip { 
+            position: absolute !important; 
+            left: 0 !important; 
+            top: 0 !important; 
+            width: 100% !important; 
+            margin: 0 !important;
+            padding: 20px !important;
+          }
+        }
+      `}} />
     </div>
   );
 }
