@@ -164,7 +164,7 @@ export default function AdminKaryawanPage() {
       institusiMagang: emp.institusiMagang || "",
       tanggalSelesaiMagang: emp.tanggalSelesaiMagang || "",
       boardAccess: [], contentHub: true, corporateAccess: false,
-      jamMasuk: emp.jamMasuk || "09:00", jamKeluar: emp.jamKeluar || "17:00",
+      jamMasuk: emp.jamMasuk || "09:00", jamKeluar: emp.jamKeluar || "17:00", fleksibel: emp.fleksibel === true,
       avatarUrl: emp.avatarUrl || ""
     });
     setShowModal(true);
@@ -216,6 +216,7 @@ export default function AdminKaryawanPage() {
       tanggalSelesaiMagang: formData.status === "Internship" ? (formData.tanggalSelesaiMagang || null) : null,
       jamMasuk: formData.jamMasuk || "09:00",
       jamKeluar: formData.jamKeluar || "17:00",
+      fleksibel: formData.fleksibel === true,
       avatarUrl: formData.avatarUrl || null
     };
 
@@ -682,16 +683,27 @@ export default function AdminKaryawanPage() {
 
                   <div className="md:col-span-3 grid grid-cols-2 gap-4 bg-[#124bce]/[0.04] border border-[#124bce]/20 rounded-xl p-4">
                     <div className="col-span-2 -mb-1">
-                      <p className="text-[11px] font-bold text-[#8ba7ff] uppercase">Jam Kerja Standar</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5">Dipakai untuk menentukan status "Terlambat". Tim dengan jam berbeda bisa diatur di sini.</p>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] font-bold text-[#8ba7ff] uppercase">Jam Kerja Standar</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">Dipakai untuk menentukan status "Terlambat". Tim dengan jam berbeda bisa diatur di sini.</p>
+                        </div>
+                        <label className="inline-flex items-center gap-2 cursor-pointer shrink-0 pt-0.5">
+                          <span className={`text-[11px] font-bold ${formData.fleksibel ? "text-[#b3c5ff]" : "text-gray-500"}`}>Fleksibel</span>
+                          <input type="checkbox" checked={!!formData.fleksibel} onChange={(e) => setFormData({ ...formData, fleksibel: e.target.checked })} className="accent-[#124bce] w-4 h-4" />
+                        </label>
+                      </div>
+                      {formData.fleksibel && (
+                        <p className="text-[10px] text-[#8ba7ff] mt-2 bg-[#124bce]/10 border border-[#124bce]/20 rounded-lg px-2.5 py-1.5">Jam kerja fleksibel aktif — karyawan ini <span className="font-bold">tidak pernah dihitung terlambat</span> saat absen.</p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase">Jam Masuk</label>
-                      <input type="time" value={formData.jamMasuk} onChange={(e) => setFormData({...formData, jamMasuk: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#124bce] outline-none [color-scheme:dark]" />
+                      <input type="time" disabled={formData.fleksibel} value={formData.jamMasuk} onChange={(e) => setFormData({...formData, jamMasuk: e.target.value})} className={`w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#124bce] outline-none [color-scheme:dark] ${formData.fleksibel ? "opacity-40 cursor-not-allowed" : ""}`} />
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase">Jam Keluar</label>
-                      <input type="time" value={formData.jamKeluar} onChange={(e) => setFormData({...formData, jamKeluar: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#124bce] outline-none [color-scheme:dark]" />
+                      <input type="time" disabled={formData.fleksibel} value={formData.jamKeluar} onChange={(e) => setFormData({...formData, jamKeluar: e.target.value})} className={`w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#124bce] outline-none [color-scheme:dark] ${formData.fleksibel ? "opacity-40 cursor-not-allowed" : ""}`} />
                     </div>
                   </div>
 

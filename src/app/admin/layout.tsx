@@ -65,7 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="py-8 px-6 border-b border-white/10 flex flex-col items-start justify-center">
           <img src="/invisual-light.svg" alt="Invisual Studio" className="h-8 brightness-0 invert opacity-90 transition-transform hover:scale-105" style={{ width: "auto" }} />
           <p className="text-[10px] font-medium text-gray-400 mt-2 tracking-wide">
-            Human Resource Information System
+            Human Resource & Internal Information System
           </p>
         </div>
 

@@ -8,6 +8,7 @@ import LoadingLogo from "@/components/LoadingLogo";
 export default function UserKehadiranPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [jamMasuk, setJamMasuk] = useState("09:00");
+  const [isFleksibel, setIsFleksibel] = useState(false);
   const [jamKeluar, setJamKeluar] = useState("17:00");
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [pengajuanList, setPengajuanList] = useState<any[]>([]);
@@ -89,9 +90,10 @@ export default function UserKehadiranPage() {
       const { data: reqData } = await supabase.from("approvals").select("*").eq("idKaryawan", safeId).order("id", { ascending: false });
       if (reqData) setPengajuanList(reqData);
 
-      const { data: schedData } = await supabase.from("employees").select("jamMasuk, jamKeluar").eq("idKaryawan", safeId).single();
+      const { data: schedData } = await supabase.from("employees").select("jamMasuk, jamKeluar, fleksibel").eq("idKaryawan", safeId).single();
       if (schedData?.jamMasuk) setJamMasuk(schedData.jamMasuk);
       if (schedData?.jamKeluar) setJamKeluar(schedData.jamKeluar);
+      setIsFleksibel(schedData?.fleksibel === true);
     } catch (e) {
       console.error("Error fetching data:", e);
     }
@@ -213,7 +215,7 @@ export default function UserKehadiranPage() {
     const timeString = now.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' });
     const [schedH, schedM] = String(jamMasuk || "09:00").split(":").map(Number);
     const isLate = (now.getHours() * 60 + now.getMinutes()) > ((schedH || 9) * 60 + (schedM || 0));
-    const statusKehadiran = isLate ? "Terlambat" : "Tepat Waktu";
+    const statusKehadiran = (!isFleksibel && isLate) ? "Terlambat" : "Tepat Waktu";
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
 
     try {
