@@ -1,98 +1,235 @@
 // src/app/admin/kehadiran/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import LeaveCalendar from "@/components/LeaveCalendar";
+import { supabase } from "@/lib/supabase";
+import { excludeOwners } from "@/lib/owners";
 
-type StatusKehadiran = "Hadir" | "Telat" | "Alpa" | "Cuti/Sakit" | "WFH" | "Libur";
+type StatusKehadiran = "Hadir" | "Telat" | "Alpa" | "Cuti/Sakit" | "WFH" | "Libur" | "-";
+
+const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const isoOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+// Ambil rentang tanggal dari string approvals ("2026-07-16" atau "2026-07-16 s/d 2026-07-20").
+function parseRange(t: string) {
+  const dates = String(t || "").match(/\d{4}-\d{2}-\d{2}/g) || [];
+  if (!dates.length) return null;
+  return { start: dates[0], end: dates.length > 1 ? dates[1] : dates[0] };
+}
+
+// Jenis izin → warna heatmap
+function kindOf(jenis: string): "WFH" | "Cuti/Sakit" {
+  const j = String(jenis || "").toLowerCase();
+  if (j.includes("wfh") || j.includes("wfc") || j.includes("work from")) return "WFH";
+  return "Cuti/Sakit";
+}
 
 export default function AdminKehadiranPage() {
-  const [selectedMonth, setSelectedMonth] = useState("Juni 2026");
-  const [heatmapData, setHeatmapData] = useState<any[]>([]);
-  const [anomalies, setAnomalies] = useState<any>({ lupaClockOut: [], seringTelat: [], palingDisiplin: [] });
+  const today = new Date();
+  const todayISO = isoOf(today);
+  const currentYM = `${today.getFullYear()}-${pad(today.getMonth() + 1)}`;
 
-  // Fungsi pembantu pembuatan pola heatmap acak
-  const generateBulan = (pola: StatusKehadiran[]): StatusKehadiran[] => {
-    let hari: StatusKehadiran[] = [];
-    for (let i = 1; i <= 30; i++) {
-      if (i % 7 === 0 || i % 7 === 6) hari.push("Libur"); 
-      else hari.push(pola[i % pola.length]);
+  const [selectedYM, setSelectedYM] = useState(currentYM);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [attendance, setAttendance] = useState<any[]>([]);
+  const [leaves, setLeaves] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [closingId, setClosingId] = useState<string | null>(null);
+
+  // Pilihan bulan: 12 bulan terakhir
+  const monthOptions = useMemo(() => {
+    const out: { value: string; label: string }[] = [];
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      out.push({ value: `${d.getFullYear()}-${pad(d.getMonth() + 1)}`, label: `${BULAN[d.getMonth()]} ${d.getFullYear()}` });
     }
-    return hari;
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const [empRes, attRes, apprRes] = await Promise.all([
+        supabase.from("employees").select("*").order("nama", { ascending: true }),
+        supabase.from("attendance").select("*").like("tanggal", `${selectedYM}%`),
+        supabase.from("approvals").select("*").eq("status", "Disetujui"),
+      ]);
+      // Owner dikecualikan dari statistik operasional
+      setEmployees(excludeOwners((empRes.data || []).filter((e: any) => e.isAktif !== false)));
+      setAttendance(attRes.data || []);
+      setLeaves(
+        (apprRes.data || [])
+          .map((l: any) => ({ ...l, range: parseRange(l.tanggal) }))
+          .filter((l: any) => l.range),
+      );
+    } catch {
+      /* diamkan — tampilkan keadaan kosong */
+    }
+    setIsLoading(false);
   };
 
   useEffect(() => {
-    // MEMANGGIL MASTER DATABASE KARYAWAN
-    const savedDatabase = localStorage.getItem("invisualEmployeeDB");
-    if (savedDatabase) {
-      const parsedData = JSON.parse(savedDatabase);
-      const activeEmps = parsedData.filter((emp: any) => emp.isAktif !== false);
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedYM]);
 
-      // Generate Baris Heatmap berdasarkan karyawan asli
-      const dynamicHeatmap = activeEmps.map((emp: any) => {
-        // Beri variasi absensi secara acak agar visualnya terlihat hidup
-        const polaAcak: StatusKehadiran[] = Math.random() > 0.7 
-          ? ["Hadir", "Hadir", "Telat", "Hadir", "Hadir"] 
-          : Math.random() > 0.8 
-          ? ["WFH", "WFH", "Hadir", "Cuti/Sakit", "Hadir"]
-          : ["Hadir", "Hadir", "Hadir", "Hadir", "Hadir"];
-          
-        return {
-          id: emp.idKaryawan,
-          nama: emp.nama,
-          divisi: emp.organisasi || emp.jabatan || "-",
-          dataHarian: generateBulan(polaAcak)
-        };
-      });
-      setHeatmapData(dynamicHeatmap);
+  const [yearStr, monthStr] = selectedYM.split("-");
+  const year = Number(yearStr);
+  const monthIdx = Number(monthStr) - 1;
+  const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
 
-      // Mengisi widget anomali dengan nama asli dari database
-      if (activeEmps.length > 2) {
-        setAnomalies({
-          lupaClockOut: [{ nama: activeEmps[0].nama, tanggal: "Kemarin", jamMasuk: "08:50" }],
-          seringTelat: [{ nama: activeEmps[1].nama, totalTelat: 4, tren: "Meningkat" }],
-          palingDisiplin: [{ nama: activeEmps[2].nama, rekor: "100% Tepat Waktu" }]
-        });
+  // ── HEATMAP dari data nyata ──
+  const heatmapData = useMemo(() => {
+    // index absensi: "idKaryawan|tanggal" → baris
+    const attIndex: Record<string, any> = {};
+    attendance.forEach((a) => { attIndex[`${a.idKaryawan}|${a.tanggal}`] = a; });
+
+    return employees.map((emp) => {
+      const joined = emp.tanggalBergabung ? String(emp.tanggalBergabung).slice(0, 10) : null;
+      const empLeaves = leaves.filter((l) => l.idKaryawan === emp.idKaryawan && l.jenis !== "Izin Terlambat");
+
+      const dataHarian: StatusKehadiran[] = [];
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateObj = new Date(year, monthIdx, d);
+        const iso = isoOf(dateObj);
+        const dow = dateObj.getDay();
+
+        if (joined && iso < joined) { dataHarian.push("-"); continue; }           // belum bergabung
+        const att = attIndex[`${emp.idKaryawan}|${iso}`];
+        if (att) { dataHarian.push(att.status === "Terlambat" ? "Telat" : "Hadir"); continue; }
+        const leave = empLeaves.find((l) => iso >= l.range.start && iso <= l.range.end);
+        if (leave) { dataHarian.push(kindOf(leave.jenis)); continue; }
+        if (dow === 0 || dow === 6) { dataHarian.push("Libur"); continue; }       // akhir pekan
+        dataHarian.push(iso < todayISO ? "Alpa" : "-");                           // hari depan dibiarkan kosong
       }
+
+      return { id: emp.idKaryawan, nama: emp.nama, divisi: emp.jabatan || emp.organisasi || "-", dataHarian };
+    });
+  }, [employees, attendance, leaves, year, monthIdx, daysInMonth, todayISO]);
+
+  // ── RINGKASAN BULAN INI ──
+  const summary = useMemo(() => {
+    const s = { hadir: 0, telat: 0, izin: 0, alpa: 0 };
+    heatmapData.forEach((row) =>
+      row.dataHarian.forEach((st) => {
+        if (st === "Hadir") s.hadir++;
+        else if (st === "Telat") s.telat++;
+        else if (st === "Cuti/Sakit" || st === "WFH") s.izin++;
+        else if (st === "Alpa") s.alpa++;
+      }),
+    );
+    return s;
+  }, [heatmapData]);
+
+  // ── ANOMALI (terhitung dari data nyata) ──
+  const lupaClockOut = useMemo(
+    () =>
+      attendance
+        .filter((a) => !a.waktuKeluar && a.tanggal < todayISO)
+        .sort((a, b) => String(b.tanggal).localeCompare(String(a.tanggal)))
+        .slice(0, 5),
+    [attendance, todayISO],
+  );
+
+  const seringTelat = useMemo(() => {
+    const count: Record<string, number> = {};
+    attendance.forEach((a) => { if (a.status === "Terlambat") count[a.idKaryawan] = (count[a.idKaryawan] || 0) + 1; });
+    return employees
+      .map((e) => ({ nama: e.nama, totalTelat: count[e.idKaryawan] || 0 }))
+      .filter((x) => x.totalTelat > 0)
+      .sort((a, b) => b.totalTelat - a.totalTelat)
+      .slice(0, 5);
+  }, [employees, attendance]);
+
+  const palingDisiplin = useMemo(() => {
+    const hadir: Record<string, number> = {};
+    const telat: Record<string, number> = {};
+    attendance.forEach((a) => {
+      if (a.status === "Terlambat") telat[a.idKaryawan] = (telat[a.idKaryawan] || 0) + 1;
+      else hadir[a.idKaryawan] = (hadir[a.idKaryawan] || 0) + 1;
+    });
+    return employees
+      .map((e) => ({ nama: e.nama, hadir: hadir[e.idKaryawan] || 0, telat: telat[e.idKaryawan] || 0 }))
+      .filter((x) => x.telat === 0 && x.hadir > 0)
+      .sort((a, b) => b.hadir - a.hadir)
+      .slice(0, 5);
+  }, [employees, attendance]);
+
+  // Tutup sesi absensi yang lupa clock-out (pakai jam keluar standar karyawan)
+  const closeSession = async (row: any) => {
+    const key = row.id || `${row.idKaryawan}|${row.tanggal}`;
+    setClosingId(key);
+    try {
+      const emp = employees.find((e) => e.idKaryawan === row.idKaryawan);
+      const jamKeluar = emp?.jamKeluar || "17:00";
+      const q = supabase.from("attendance").update({ waktuKeluar: jamKeluar });
+      const { error } = row.id
+        ? await q.eq("id", row.id)
+        : await q.eq("idKaryawan", row.idKaryawan).eq("tanggal", row.tanggal);
+      if (!error) await fetchData();
+    } catch {
+      /* diamkan */
     }
-  }, []);
+    setClosingId(null);
+  };
 
   const getColorByStatus = (status: StatusKehadiran) => {
     switch (status) {
       case "Hadir": return "bg-green-500 hover:bg-green-400 border-green-600";
       case "Telat": return "bg-yellow-500 hover:bg-yellow-400 border-yellow-600";
-      case "Alpa": return "bg-red-500 hover:bg-red-400 border-red-600 animate-pulse";
+      case "Alpa": return "bg-red-500 hover:bg-red-400 border-red-600";
       case "Cuti/Sakit": return "bg-purple-500 hover:bg-purple-400 border-purple-600";
       case "WFH": return "bg-blue-500 hover:bg-blue-400 border-blue-600";
       case "Libur": return "bg-white/5 border-white/10";
-      default: return "bg-gray-800 border-gray-700";
+      default: return "bg-white/[0.02] border-white/5";
     }
   };
 
+  const monthLabel = `${BULAN[monthIdx]} ${year}`;
+
   return (
     <div className="max-w-[1400px] w-full flex flex-col gap-8 pb-10">
-      
+
       {/* HEADER HALAMAN */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">Manajemen Kehadiran</h1>
-          <p className="text-gray-400 text-sm">Pusat analitik dan pelacakan kedisiplinan karyawan Invisual Studio.</p>
+          <p className="text-gray-400 text-sm">Analitik kedisiplinan dari data absensi asli — periode {monthLabel}.</p>
         </div>
-        <select 
-          value={selectedMonth} 
-          onChange={(e) => setSelectedMonth(e.target.value)}
+        <select
+          value={selectedYM}
+          onChange={(e) => setSelectedYM(e.target.value)}
           className="bg-[#1c1c1c] border border-white/10 rounded-xl px-5 py-3 text-sm text-white focus:outline-none focus:border-[#2b5cd5] font-bold shadow-lg cursor-pointer"
         >
-          <option value="Juni 2026">Juni 2026</option>
-          <option value="Mei 2026">Mei 2026</option>
+          {monthOptions.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
+      </div>
+
+      {/* RINGKASAN BULAN */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: "Hadir Tepat Waktu", value: summary.hadir, color: "text-green-400", bar: "bg-green-500" },
+          { label: "Terlambat", value: summary.telat, color: "text-yellow-400", bar: "bg-yellow-500" },
+          { label: "Izin / Cuti / WFH", value: summary.izin, color: "text-purple-400", bar: "bg-purple-500" },
+          { label: "Alpa", value: summary.alpa, color: "text-red-400", bar: "bg-red-500" },
+        ].map((s) => (
+          <div key={s.label} className="bg-[#141414] border border-white/5 rounded-2xl p-5 relative overflow-hidden">
+            <div className={`absolute left-0 top-0 h-full w-1 ${s.bar}`} />
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">{s.label}</p>
+            <p className={`text-2xl font-black ${s.color}`}>{isLoading ? "–" : s.value}<span className="text-xs text-gray-600 font-bold ml-1">hari</span></p>
+          </div>
+        ))}
       </div>
 
       <LeaveCalendar />
 
-      {/* FITUR 1: SMART ANOMALY CENTER */}
+      {/* SMART ANOMALY CENTER — data nyata */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 shadow-xl relative overflow-hidden group hover:border-yellow-500/30 transition-all">
           <div className="absolute -right-10 -top-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl"></div>
           <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4 relative z-10">
@@ -102,10 +239,14 @@ export default function AdminKehadiranPage() {
             <div><h2 className="font-bold text-white text-sm">Sering Terlambat</h2><p className="text-[10px] text-gray-400 uppercase tracking-widest">Peringatan</p></div>
           </div>
           <div className="space-y-3 relative z-10">
-            {anomalies.seringTelat.map((emp:any, idx:number) => (
+            {isLoading ? (
+              <p className="text-xs text-gray-600">Memuat…</p>
+            ) : seringTelat.length === 0 ? (
+              <p className="text-xs text-gray-600">Tidak ada keterlambatan bulan ini. 🎉</p>
+            ) : seringTelat.map((emp: any, idx: number) => (
               <div key={idx} className="flex justify-between items-center bg-[#1a1a1a] p-3 rounded-xl border border-white/5">
-                <span className="text-sm font-semibold text-gray-200">{emp.nama}</span>
-                <span className="bg-yellow-500/20 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-500/20">{emp.totalTelat}x Telat</span>
+                <span className="text-sm font-semibold text-gray-200 truncate mr-2">{emp.nama}</span>
+                <span className="bg-yellow-500/20 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-500/20 shrink-0">{emp.totalTelat}x Telat</span>
               </div>
             ))}
           </div>
@@ -120,12 +261,28 @@ export default function AdminKehadiranPage() {
             <div><h2 className="font-bold text-white text-sm">Lupa Clock-Out</h2><p className="text-[10px] text-gray-400 uppercase tracking-widest">Tindakan</p></div>
           </div>
           <div className="space-y-3 relative z-10">
-            {anomalies.lupaClockOut.map((emp:any, idx:number) => (
-              <div key={idx} className="flex justify-between items-center bg-[#1a1a1a] p-3 rounded-xl border border-white/5">
-                <div><span className="text-sm font-semibold text-gray-200 block">{emp.nama}</span><span className="text-[10px] text-gray-500">Masuk: {emp.jamMasuk}</span></div>
-                <button className="text-[10px] font-bold text-[#2b5cd5] hover:text-white bg-[#2b5cd5]/10 hover:bg-[#2b5cd5] px-3 py-1.5 rounded transition-colors">Tutup Sesi</button>
-              </div>
-            ))}
+            {isLoading ? (
+              <p className="text-xs text-gray-600">Memuat…</p>
+            ) : lupaClockOut.length === 0 ? (
+              <p className="text-xs text-gray-600">Semua sesi absensi tertutup rapi.</p>
+            ) : lupaClockOut.map((row: any, idx: number) => {
+              const key = row.id || `${row.idKaryawan}|${row.tanggal}`;
+              return (
+                <div key={idx} className="flex justify-between items-center bg-[#1a1a1a] p-3 rounded-xl border border-white/5 gap-2">
+                  <div className="min-w-0">
+                    <span className="text-sm font-semibold text-gray-200 block truncate">{row.nama}</span>
+                    <span className="text-[10px] text-gray-500">{row.tanggal} · Masuk {row.waktuMasuk || "-"}</span>
+                  </div>
+                  <button
+                    onClick={() => closeSession(row)}
+                    disabled={closingId === key}
+                    className="text-[10px] font-bold text-[#2b5cd5] hover:text-white bg-[#2b5cd5]/10 hover:bg-[#2b5cd5] px-3 py-1.5 rounded transition-colors shrink-0 disabled:opacity-40"
+                  >
+                    {closingId === key ? "…" : "Tutup Sesi"}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -138,10 +295,14 @@ export default function AdminKehadiranPage() {
             <div><h2 className="font-bold text-white text-sm">Paling Disiplin</h2><p className="text-[10px] text-gray-400 uppercase tracking-widest">Apresiasi</p></div>
           </div>
           <div className="space-y-3 relative z-10">
-            {anomalies.palingDisiplin.map((emp:any, idx:number) => (
-              <div key={idx} className="flex justify-between items-center bg-[#1a1a1a] p-3 rounded-xl border border-white/5">
-                <span className="text-sm font-semibold text-gray-200">{emp.nama}</span>
-                <span className="bg-green-500/20 text-green-400 text-xs font-bold px-2 py-1 rounded border border-green-500/20">{emp.rekor}</span>
+            {isLoading ? (
+              <p className="text-xs text-gray-600">Memuat…</p>
+            ) : palingDisiplin.length === 0 ? (
+              <p className="text-xs text-gray-600">Belum ada data absensi bulan ini.</p>
+            ) : palingDisiplin.map((emp: any, idx: number) => (
+              <div key={idx} className="flex justify-between items-center bg-[#1a1a1a] p-3 rounded-xl border border-white/5 gap-2">
+                <span className="text-sm font-semibold text-gray-200 truncate">{emp.nama}</span>
+                <span className="bg-green-500/20 text-green-400 text-xs font-bold px-2 py-1 rounded border border-green-500/20 shrink-0">{emp.hadir} hari tepat waktu</span>
               </div>
             ))}
           </div>
@@ -149,10 +310,10 @@ export default function AdminKehadiranPage() {
 
       </div>
 
-      {/* FITUR 2: TIMESHEET HEATMAP */}
+      {/* TIMESHEET HEATMAP — data nyata */}
       <div className="bg-[#141414] border border-white/5 rounded-3xl shadow-2xl flex flex-col overflow-hidden relative">
         <div className="p-6 border-b border-white/5 bg-[#1a1a1a] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div><h2 className="font-bold text-white text-lg">Timesheet Heatmap</h2><p className="text-xs text-gray-400 mt-1">Matriks kehadiran visual per karyawan dari Master Database.</p></div>
+          <div><h2 className="font-bold text-white text-lg">Timesheet Heatmap</h2><p className="text-xs text-gray-400 mt-1">Matriks kehadiran harian — {monthLabel}.</p></div>
           <div className="flex flex-wrap gap-3 md:gap-4 bg-[#0a0a0a] p-3 rounded-xl border border-white/5">
             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-green-500"></div><span className="text-[10px] text-gray-400 font-bold uppercase">Hadir</span></div>
             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-yellow-500"></div><span className="text-[10px] text-gray-400 font-bold uppercase">Telat</span></div>
@@ -167,14 +328,16 @@ export default function AdminKehadiranPage() {
             <thead className="bg-[#0f0f0f] border-b border-white/5">
               <tr>
                 <th className="px-6 py-4 font-semibold text-xs text-gray-400 uppercase tracking-widest sticky left-0 bg-[#0f0f0f] z-20 shadow-[5px_0_10px_rgba(0,0,0,0.3)] w-64 border-r border-white/5">Karyawan</th>
-                {Array.from({ length: 30 }).map((_, i) => (
+                {Array.from({ length: daysInMonth }).map((_, i) => (
                   <th key={i} className="px-2 py-4 font-semibold text-[10px] text-gray-500 text-center border-l border-white/5">{i + 1}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {heatmapData.length === 0 ? (
-                 <tr><td colSpan={31} className="px-6 py-10 text-center text-gray-500">Belum ada data karyawan. Tambahkan di menu Data Karyawan.</td></tr>
+              {isLoading ? (
+                <tr><td colSpan={daysInMonth + 1} className="px-6 py-10 text-center text-gray-500">Memuat data absensi…</td></tr>
+              ) : heatmapData.length === 0 ? (
+                <tr><td colSpan={daysInMonth + 1} className="px-6 py-10 text-center text-gray-500">Belum ada data karyawan aktif.</td></tr>
               ) : (
                 heatmapData.map((emp) => (
                   <tr key={emp.id} className="hover:bg-white/[0.02] transition-colors">
@@ -184,7 +347,7 @@ export default function AdminKehadiranPage() {
                     </td>
                     {emp.dataHarian.map((status: StatusKehadiran, index: number) => (
                       <td key={index} className="px-1 py-4 text-center border-l border-white/5 border-dashed">
-                        <div title={`Tgl ${index + 1} - ${status}`} className={`w-6 h-6 md:w-7 md:h-7 mx-auto rounded border opacity-90 hover:opacity-100 hover:scale-110 transition-all cursor-crosshair ${getColorByStatus(status)}`}></div>
+                        <div title={`${index + 1} ${BULAN[monthIdx]} — ${status === "-" ? "Tidak ada data" : status}`} className={`w-6 h-6 md:w-7 md:h-7 mx-auto rounded border opacity-90 hover:opacity-100 hover:scale-110 transition-all cursor-crosshair ${getColorByStatus(status)}`}></div>
                       </td>
                     ))}
                   </tr>
