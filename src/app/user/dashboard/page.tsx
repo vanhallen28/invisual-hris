@@ -5,6 +5,24 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import LoadingLogo from "@/components/LoadingLogo";
 
+// Gaya sel bento + cahaya biru yang mengikuti kursor.
+// Murni tampilan: tanpa state, tanpa efek samping.
+const bentoCls =
+  "relative overflow-hidden bg-white/[0.03] border border-white/10 rounded-2xl md:rounded-3xl transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20";
+const bentoGlow = {
+  backgroundImage:
+    "radial-gradient(340px circle at var(--mx, -300px) var(--my, -300px), rgba(18,75,206,0.16), transparent 62%)",
+};
+const bentoMove = (e: { currentTarget: HTMLDivElement; clientX: number; clientY: number }) => {
+  const r = e.currentTarget.getBoundingClientRect();
+  e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+  e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+};
+const bentoLeave = (e: { currentTarget: HTMLDivElement }) => {
+  e.currentTarget.style.setProperty("--mx", "-300px");
+  e.currentTarget.style.setProperty("--my", "-300px");
+};
+
 export default function UserDashboardPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
@@ -15,6 +33,8 @@ export default function UserDashboardPage() {
   // STATE UNTUK RIWAYAT & PENGAJUAN
   const [recentAttendances, setRecentAttendances] = useState<any[]>([]);
   const [recentLeaves, setRecentLeaves] = useState<any[]>([]);
+  // Tugas / brief yang ditugaskan ke saya (Daily Task & Content Hub)
+  const [myTasks, setMyTasks] = useState<any[]>([]);
 
   // STATE & REF UNTUK KAMERA SELFIE
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -33,6 +53,27 @@ export default function UserDashboardPage() {
 
   const todayDate = new Date().toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const todayISO = new Date().toISOString().split('T')[0];
+
+  // Ambil tugas/brief yang ditugaskan ke saya. Terpisah & dibungkus try/catch
+  // supaya kegagalan di sini tidak mengganggu absensi.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const uid = auth?.user?.id;
+        if (!uid) return;
+        const { data } = await supabase
+          .from("content_posts")
+          .select("id, title, status, publish_at")
+          .eq("assignee_id", uid)
+          .order("publish_at", { ascending: true, nullsFirst: false })
+          .limit(6);
+        if (alive && data) setMyTasks(data);
+      } catch { /* tabel belum ada / offline — diamkan */ }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     const initializeDashboard = async () => {
@@ -242,10 +283,10 @@ export default function UserDashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 items-start">
         
-        {/* KIRI: TERMINAL KAMERA ABSENSI */}
-        <div className="bg-[#15121A] border border-white/5 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-xl relative overflow-hidden flex flex-col">
+        {/* KIRI: TERMINAL KAMERA ABSENSI — sel bento utama */}
+        <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} col-span-2 lg:col-start-1 lg:row-start-2 lg:row-span-2 p-4 md:p-6 flex flex-col`}>
           <h3 className="text-base md:text-lg font-bold text-white mb-3 md:mb-4 border-b border-white/5 pb-3 md:pb-4 flex justify-between items-center">
             Terminal Absensi
             {isAttendanceComplete ? (
@@ -346,13 +387,13 @@ export default function UserDashboardPage() {
           </div>
         </div>
 
-        {/* KANAN: RIWAYAT ABSENSI & STATUS PENGAJUAN */}
-        <div className="flex flex-col gap-4 md:gap-6 mo-stagger">
+        {/* KANAN: RIWAYAT ABSENSI & STATUS PENGAJUAN — masing-masing jadi sel bento */}
+        <div className="contents mo-stagger">
           
-          <div className="bg-[#15121A] border border-white/5 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-xl">
+          <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} col-span-2 lg:col-span-4 lg:row-start-1 p-4 md:p-5`}>
             <h3 className="text-[10px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-widest truncate">Catatan Hari Ini</h3>
             <div className="grid grid-cols-2 gap-3 md:gap-4">
-              <div className="bg-[#1C1823] p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5 relative overflow-hidden mo-lift">
+              <div className="bg-white/[0.04] p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5 relative overflow-hidden mo-lift">
                 <div className="absolute right-0 top-0 w-8 h-8 md:w-12 md:h-12 bg-[#124bce]/10 rounded-bl-full"></div>
                 <p className="text-[9px] md:text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-wider md:tracking-widest relative z-10 truncate">Masuk</p>
                 <p className="text-lg md:text-2xl font-mono font-bold text-white relative z-10 truncate">{todayAttendance?.waktuMasuk || "--:--"}</p>
@@ -362,7 +403,7 @@ export default function UserDashboardPage() {
                   </p>
                 )}
               </div>
-              <div className="bg-[#1C1823] p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5 relative overflow-hidden mo-lift">
+              <div className="bg-white/[0.04] p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5 relative overflow-hidden mo-lift">
                 <div className="absolute right-0 top-0 w-8 h-8 md:w-12 md:h-12 bg-[#de236e]/10 rounded-bl-full"></div>
                 <p className="text-[9px] md:text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-wider md:tracking-widest relative z-10 truncate">Pulang</p>
                 <p className="text-lg md:text-2xl font-mono font-bold text-white relative z-10 truncate">{todayAttendance?.waktuKeluar || "--:--"}</p>
@@ -370,7 +411,34 @@ export default function UserDashboardPage() {
             </div>
           </div>
 
-          <div className="bg-[#15121A] border border-white/5 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-xl flex-1 flex flex-col">
+          {/* TUGAS SAYA — dari Daily Task & Content Hub */}
+          <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} col-span-2 lg:col-start-3 lg:row-start-2 p-4 md:p-5 flex flex-col`}>
+            <h3 className="text-[10px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-widest flex justify-between items-center gap-2">
+              <span>Tugas Saya</span>
+              <a href="/user/daily-task" className="text-[9px] md:text-[10px] font-bold text-[#b3c5ff] hover:text-white bg-[#124bce]/15 hover:bg-[#124bce] border border-[#124bce]/30 px-2.5 py-1 rounded-lg transition-colors normal-case tracking-normal">Buka Daily Task</a>
+            </h3>
+            <div className="flex-1 space-y-2.5 md:space-y-3 overflow-y-auto max-h-40 custom-scrollbar pr-1">
+              {myTasks.length === 0 ? (
+                <p className="text-xs text-gray-500 text-center py-4">Belum ada tugas yang ditugaskan.</p>
+              ) : (
+                myTasks.map((t, idx) => (
+                  <div key={t.id || idx} className="flex justify-between items-center bg-white/[0.04] p-2.5 md:p-3 rounded-xl border border-white/5 mo-lift">
+                    <div className="overflow-hidden pr-2">
+                      <p className="text-[10px] md:text-xs font-bold text-white truncate">{t.title || "Tanpa judul"}</p>
+                      <p className="text-[8px] md:text-[10px] text-gray-500 font-mono truncate">
+                        {t.publish_at ? new Date(t.publish_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "Belum dijadwalkan"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[7px] md:text-[9px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase bg-[#124bce]/15 text-[#b3c5ff] border border-[#124bce]/25">
+                      {t.status || "Brief"}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} col-span-2 lg:col-start-3 lg:row-start-3 p-4 md:p-5 flex flex-col`}>
             <h3 className="text-[10px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-widest flex justify-between items-center">
               <span>Riwayat Absensi Terakhir</span>
             </h3>
@@ -379,7 +447,7 @@ export default function UserDashboardPage() {
                 <p className="text-xs text-gray-500 text-center py-4">Belum ada riwayat.</p>
               ) : (
                 recentAttendances.map((att, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-[#1C1823] p-2.5 md:p-3 rounded-xl border border-white/5 mo-lift">
+                  <div key={idx} className="flex justify-between items-center bg-white/[0.04] p-2.5 md:p-3 rounded-xl border border-white/5 mo-lift">
                     <div className="overflow-hidden pr-2">
                       <p className="text-[10px] md:text-xs font-bold text-white truncate">{att.tanggal}</p>
                       <p className="text-[8px] md:text-[10px] text-gray-500 font-mono truncate">{att.lokasi}</p>
@@ -396,7 +464,7 @@ export default function UserDashboardPage() {
             </div>
           </div>
 
-          <div className="bg-[#15121A] border border-white/5 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-xl flex-1 flex flex-col">
+          <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} col-span-2 lg:col-span-4 lg:row-start-4 p-4 md:p-5 flex flex-col`}>
             <h3 className="text-[10px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-widest flex justify-between items-center">
               <span>Status Pengajuan Terakhir</span>
             </h3>
@@ -405,7 +473,7 @@ export default function UserDashboardPage() {
                 <p className="text-xs text-gray-500 text-center py-4">Belum ada pengajuan.</p>
               ) : (
                 recentLeaves.map((leave, idx) => (
-                  <div key={idx} className="flex justify-between items-center bg-[#1C1823] p-2.5 md:p-3 rounded-xl border border-white/5 mo-lift">
+                  <div key={idx} className="flex justify-between items-center bg-white/[0.04] p-2.5 md:p-3 rounded-xl border border-white/5 mo-lift">
                     <div className="overflow-hidden pr-2">
                       <p className="text-[10px] md:text-xs font-bold text-white truncate">{leave.jenis}</p>
                       <p className="text-[8px] md:text-[10px] text-gray-500 font-mono truncate">{leave.tanggal}</p>

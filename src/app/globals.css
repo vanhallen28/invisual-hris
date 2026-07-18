@@ -1,6 +1,14 @@
 /* Wajib untuk Tailwind v4 */
 @import "tailwindcss";
 
+/* Font identitas INVISUAL — menghasilkan utilitas `font-display` & `font-accent`.
+   Teks biasa tetap memakai Inter (diatur di layout.tsx), karena angka Inter
+   sama lebar sehingga tabel jam & nominal tetap rapi. */
+@theme {
+  --font-display: var(--font-archa), ui-sans-serif, system-ui, sans-serif;
+  --font-accent: var(--font-pasteur), ui-sans-serif, system-ui, sans-serif;
+}
+
 /* Pengaturan Dasar Body (Dark Mode) */
 body {
   background-color: #0a0a0a;

@@ -5,6 +5,23 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import LoadingLogo from "@/components/LoadingLogo";
 
+// Gaya sel bento + cahaya biru yang mengikuti kursor (tampilan saja).
+const bentoCls =
+  "relative overflow-hidden bg-white/[0.04] border border-white/10 rounded-2xl transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20";
+const bentoGlow = {
+  backgroundImage:
+    "radial-gradient(340px circle at var(--mx, -300px) var(--my, -300px), rgba(18,75,206,0.16), transparent 62%)",
+};
+const bentoMove = (e: { currentTarget: HTMLDivElement; clientX: number; clientY: number }) => {
+  const r = e.currentTarget.getBoundingClientRect();
+  e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+  e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+};
+const bentoLeave = (e: { currentTarget: HTMLDivElement }) => {
+  e.currentTarget.style.setProperty("--mx", "-300px");
+  e.currentTarget.style.setProperty("--my", "-300px");
+};
+
 export default function UserKehadiranPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [jamMasuk, setJamMasuk] = useState("09:00");
@@ -290,9 +307,9 @@ export default function UserKehadiranPage() {
       )}
 
       {/* HEADER UTAMA */}
-      <div className="flex justify-between items-center bg-[#15121A] border border-white/5 p-4 rounded-2xl shadow-lg relative overflow-hidden">
+      <div className="flex justify-between items-center bg-white/[0.04] border border-white/10 p-4 rounded-2xl shadow-lg relative overflow-hidden">
         <div className="relative z-10">
-          <h1 className="text-xl md:text-2xl font-bold text-white">Kehadiran Saya</h1>
+          <h1 className="font-display text-xl md:text-2xl font-bold text-white tracking-tight">Kehadiran Saya</h1>
           <p className="text-[10px] md:text-xs text-gray-400 mt-1">Halo <span className="text-[#b3c5ff] font-bold">{currentUser?.nama}</span>, kelola absen Anda. <span className="inline-flex items-center gap-1 ml-1 text-[#8ba7ff]"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Jam kerja {jamMasuk}–{jamKeluar}</span></p>
         </div>
         <button onClick={() => setShowForm(true)} className="relative z-10 bg-[#124bce] hover:bg-blue-600 text-white px-4 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-colors whitespace-nowrap active:scale-95">
@@ -302,15 +319,15 @@ export default function UserKehadiranPage() {
 
       {/* KARTU RINGKASAN */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mo-stagger">
-        <div className="bg-[#15121A] border border-white/5 rounded-2xl p-4 md:p-5 shadow-lg mo-lift border-l-4 border-l-green-500">
+        <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-4 md:p-5 shadow-lg mo-lift border-l-4 border-l-green-500">
           <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest truncate">Hadir</p>
           <p className="text-xl md:text-2xl font-black text-white">22 <span className="text-xs font-normal text-gray-400">Hr</span></p>
         </div>
-        <div className="bg-[#15121A] border border-white/5 rounded-2xl p-4 md:p-5 shadow-lg mo-lift border-l-4 border-l-yellow-500">
+        <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-4 md:p-5 shadow-lg mo-lift border-l-4 border-l-yellow-500">
           <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest truncate">Terlambat</p>
           <p className="text-xl md:text-2xl font-black text-white">1 <span className="text-xs font-normal text-gray-400">Hr</span></p>
         </div>
-        <div className="bg-[#15121A] border border-white/5 rounded-2xl p-4 md:p-5 shadow-lg mo-lift border-l-4 border-l-red-500">
+        <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-4 md:p-5 shadow-lg mo-lift border-l-4 border-l-red-500">
           <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest truncate">Sakit/Izin</p>
           <p className="text-xl md:text-2xl font-black text-white">0 <span className="text-xs font-normal text-gray-400">Hr</span></p>
         </div>
@@ -322,7 +339,7 @@ export default function UserKehadiranPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mt-1">
         {/* KIRI: TERMINAL KAMERA ABSENSI */}
-        <div className="bg-[#15121A] border border-white/5 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-xl relative overflow-hidden flex flex-col">
+        <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} md:rounded-3xl p-4 md:p-6 flex flex-col`}>
           <h3 className="text-base md:text-lg font-bold text-white mb-3 md:mb-4 border-b border-white/5 pb-3 md:pb-4 flex justify-between items-center">
             Terminal Absensi
             {isAttendanceComplete ? (
@@ -436,7 +453,7 @@ export default function UserKehadiranPage() {
         </div>
 
         {/* KANAN: STATUS PENGAJUAN */}
-        <div className="bg-[#15121A] border border-white/5 rounded-2xl md:rounded-3xl p-4 md:p-6 shadow-xl overflow-hidden flex flex-col">
+        <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} md:rounded-3xl p-4 md:p-6 flex flex-col`}>
           <h3 className="text-base md:text-lg font-bold text-white mb-4 border-b border-white/5 pb-4">Status Pengajuan Saya</h3>
          
           <div className="flex-1 overflow-y-auto max-h-80 custom-scrollbar pr-1">

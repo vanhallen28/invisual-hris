@@ -4,19 +4,21 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Hash, Lock, Megaphone, Plus, ChevronLeft, ChevronDown, X, Settings2,
-  Users, Trash2, Check, Search, Bell, BellOff, Volume2, Video,
+  Users, Trash2, Check, Search, Bell, BellOff, Volume2, Video, Camera,
 } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import Avatar from '@/components/Avatar';
 import ItemDetailPanel from '@/components/tracker/ItemDetailPanel';
 import ChatRoom from '@/components/chat/ChatRoom';
 import VoiceRoom from '@/components/chat/VoiceRoom';
+import SetoranRoom from '@/components/chat/SetoranRoom';
 import LoadingLogo from '@/components/LoadingLogo';
 import { enablePush, disablePush, pushStatus, clearBadge } from '@/lib/push';
 import {
   loadChannels, loadChannelMembers, createChannel, updateChannel, deleteChannel,
   setChannelMembers, unreadByChannel,
 } from '@/lib/tracker/chat';
+import { countSetoranBaru } from '@/lib/tracker/setoran';
 
 const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
 
@@ -171,6 +173,8 @@ export default function ChatApp() {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [notif, setNotif] = useState<'granted' | 'denied' | 'default' | 'unsupported'>('default');
   const [voiceCh, setVoiceCh] = useState<any>(null); // channel voice yang sedang diikuti
+  const [setoranOpen, setSetoranOpen] = useState(false); // ruang Setoran Daily
+  const [setoranUnread, setSetoranUnread] = useState(0); // lencana setoran baru
 
   useEffect(() => { setNotif(pushStatus()); clearBadge(); }, []);
 
@@ -232,7 +236,42 @@ export default function ChatApp() {
     return () => { supabase.removeChannel(ch); };
   }, [supabase, currentUserId]);
 
+  /* lencana Setoran Daily — hitung setoran orang lain sejak terakhir dibuka */
+  const setoranSeenKey = 'invisual_setoran_seen';
+
+  useEffect(() => {
+    if (!supabase || !currentUserId) return;
+    (async () => {
+      try {
+        const sejak = localStorage.getItem(setoranSeenKey)
+          || new Date(Date.now() - 30 * 86400000).toISOString();
+        setSetoranUnread(await countSetoranBaru(supabase, sejak, currentUserId));
+      } catch { /* diamkan */ }
+    })();
+  }, [supabase, currentUserId]);
+
+  useEffect(() => {
+    if (!supabase || !currentUserId) return;
+    const ch = supabase
+      .channel('setoran-global')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'setoran_posts' }, (p: any) => {
+        if (p.new?.user_id === currentUserId) return;
+        if (setoranOpen) return;
+        setSetoranUnread((u) => u + 1);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [supabase, currentUserId, setoranOpen]);
+
+  const bukaSetoran = () => {
+    setSetoranOpen(true);
+    setMobileRoom(true);
+    setSetoranUnread(0);
+    try { localStorage.setItem(setoranSeenKey, new Date().toISOString()); } catch { /* diamkan */ }
+  };
+
   const openChannel = (c: any) => {
+    setSetoranOpen(false);
     setActive(c); setMobileRoom(true);
     setUnread((u) => ({ ...u, [c.id]: 0 }));
   };
@@ -261,7 +300,19 @@ export default function ChatApp() {
           <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-1">Chat</span>
         </div>
 
-        <div className="flex-1 overflow-y-auto overscroll-contain py-3 px-2">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-3 px-2">
+          {!chLoading && (
+            <button onClick={bukaSetoran}
+              className={`w-full flex items-center gap-1.5 px-2 py-1.5 mb-2 rounded-lg transition-colors ${setoranOpen ? 'bg-zinc-700/60 text-white' : setoranUnread > 0 ? 'text-white hover:bg-zinc-800/60' : 'text-zinc-500 hover:bg-zinc-800/40 hover:text-zinc-300'}`}>
+              <Camera size={14} className="shrink-0 text-amber-400/80" />
+              <span className={`text-[13px] truncate flex-1 text-left ${setoranUnread > 0 && !setoranOpen ? 'font-bold' : 'font-medium'}`}>Setoran Daily</span>
+              {setoranUnread > 0 && !setoranOpen && (
+                <span className="text-[9px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full shrink-0">
+                  {setoranUnread > 99 ? '99+' : setoranUnread}
+                </span>
+              )}
+            </button>
+          )}
           {chLoading && <div className="min-h-[55vh] flex items-center justify-center"><LoadingLogo size={44} text="Memuat channel" /></div>}
           {!chLoading && Object.entries(grouped).map(([cat, list]: any) => (
             <div key={cat} className="mb-3">
@@ -334,8 +385,10 @@ export default function ChatApp() {
       </aside>
 
       {/* ══ RUANG CHAT ══ */}
-      <div className={`${mobileRoom ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0`}>
-        {voiceCh && voiceCh.id === active?.id ? (
+      <div className={`${mobileRoom ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0 min-h-0`}>
+        {setoranOpen ? (
+          <SetoranRoom onBack={() => setMobileRoom(false)} />
+        ) : voiceCh && voiceCh.id === active?.id ? (
           <VoiceRoom channel={voiceCh} onLeave={() => setVoiceCh(null)} />
         ) : active?.is_voice ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
@@ -367,7 +420,7 @@ export default function ChatApp() {
           <Users size={14} className="text-zinc-500" />
           <span className="text-[11px] font-black text-zinc-400 uppercase tracking-wider">Anggota</span>
         </div>
-        <div className="flex-1 overflow-y-auto py-3 px-2">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-3 px-2">
           {['online', 'offline'].map((grp) => {
             const list = teamMembers.filter((m: any) => {
               const isOn = online.includes(m.id);

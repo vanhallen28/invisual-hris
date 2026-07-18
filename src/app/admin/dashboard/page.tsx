@@ -22,6 +22,37 @@ function coversToday(tanggalStr: string, todayISO: string) {
   return todayISO >= start && todayISO <= end;
 }
 
+// Sel bento — cahaya biru mengikuti kursor. Murni tampilan: tanpa state,
+// tanpa efek samping, jadi tidak memengaruhi logika halaman.
+function BentoCell({
+  children,
+  className = "",
+  onClick,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+}) {
+  const move = (e: React.MouseEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+  };
+  return (
+    <div
+      onMouseMove={move}
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 ${onClick ? "cursor-pointer" : ""} ${className}`}
+    >
+      <div
+        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        style={{ background: "radial-gradient(340px circle at var(--mx, 50%) var(--my, 50%), rgba(43,92,213,0.20), transparent 62%)" }}
+      />
+      <div className="relative z-10">{children}</div>
+    </div>
+  );
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
 
@@ -304,6 +335,10 @@ export default function AdminDashboardPage() {
 
   const onTimeToday = todayAttendances.filter(a => a.status === "Tepat Waktu");
   const lateToday = todayAttendances.filter(a => a.status === "Terlambat");
+  // Turunan untuk cincin kehadiran (tampilan saja)
+  const hadirTotal = onTimeToday.length + lateToday.length;
+  const persenHadir = employees.length ? Math.round((hadirTotal / employees.length) * 100) : 0;
+  const belumAbsen = Math.max(0, employees.length - hadirTotal - approvedLeaves.length);
 
   // =========================================================================
   // KOMPONEN HEADER KANAN (THEME + USER PROFILE + LOGOUT)
@@ -342,7 +377,7 @@ export default function AdminDashboardPage() {
         <div className="w-full flex flex-col gap-6 pb-6 font-sans animate-in fade-in duration-500">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 relative z-20">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">Panel Kontrol HRD</h1>
+              <h1 className="font-display text-2xl md:text-3xl font-bold text-white tracking-tight">Panel Kontrol HRD</h1>
               <p className="text-sm text-gray-400 mt-1">Pantau kehadiran karyawan secara real-time dari seluruh titik Invisual Studio.</p>
             </div>
             <div className="flex flex-col items-end gap-2">
@@ -373,81 +408,131 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-20">
-            <div onClick={() => setActiveModal("total")} className="bg-[#141414] border border-white/5 rounded-2xl p-5 shadow-lg cursor-pointer hover:bg-white/5 hover:scale-[1.02] hover:border-[#2b5cd5]/30 transition-all duration-200 group relative overflow-hidden">
-              <div className="absolute right-0 top-0 w-16 h-16 bg-[#2b5cd5]/10 rounded-bl-full group-hover:scale-125 transition-transform"></div>
-              <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest relative z-10">Total Karyawan</p>
-              <p className="text-3xl md:text-4xl font-black text-white relative z-10">{employees.length}</p>
-            </div>
-            <div onClick={() => setActiveModal("hadir")} className="bg-[#141414] border border-white/5 rounded-2xl p-5 shadow-lg cursor-pointer hover:bg-white/5 hover:scale-[1.02] hover:border-green-500/30 transition-all duration-200 group relative overflow-hidden">
-              <div className="absolute right-0 top-0 w-16 h-16 bg-green-500/10 rounded-bl-full group-hover:scale-125 transition-transform"></div>
-              <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest relative z-10">Tepat Waktu</p>
-              <p className="text-3xl md:text-4xl font-black text-green-400 relative z-10">{onTimeToday.length}</p>
-            </div>
-            <div onClick={() => setActiveModal("terlambat")} className="bg-[#141414] border border-white/5 rounded-2xl p-5 shadow-lg cursor-pointer hover:bg-white/5 hover:scale-[1.02] hover:border-yellow-500/30 transition-all duration-200 group relative overflow-hidden">
-              <div className="absolute right-0 top-0 w-16 h-16 bg-yellow-500/10 rounded-bl-full group-hover:scale-125 transition-transform"></div>
-              <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest relative z-10">Terlambat</p>
-              <p className="text-3xl md:text-4xl font-black text-yellow-400 relative z-10">{lateToday.length}</p>
-            </div>
-            <div onClick={() => setActiveModal("absen")} className="bg-[#141414] border border-white/5 rounded-2xl p-5 shadow-lg cursor-pointer hover:bg-white/5 hover:scale-[1.02] hover:border-red-500/30 transition-all duration-200 group relative overflow-hidden">
-              <div className="absolute right-0 top-0 w-16 h-16 bg-red-500/10 rounded-bl-full group-hover:scale-125 transition-transform"></div>
-              <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest relative z-10">Sakit / Cuti</p>
-              <p className="text-3xl md:text-4xl font-black text-red-400 relative z-10">{approvedLeaves.length}</p>
-            </div>
-          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 relative z-20">
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-20">
-            <div className="lg:col-span-2 bg-[#141414] border border-white/5 rounded-3xl p-6 shadow-xl">
-              <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
+            {/* Sel utama — cincin kehadiran */}
+            <BentoCell className="col-span-2 lg:row-span-2 flex flex-col justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-bold text-white">Butuh Persetujuan</h3>
-                  <p className="text-xs text-gray-400 mt-1">Persetujuan otomatis memotong saldo cuti tahunan.</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Kehadiran hari ini</p>
+                  <p className="text-xs text-gray-500 mt-1">{todayDate}</p>
                 </div>
-                <span className="bg-[#2b5cd5]/20 text-[#b3c5ff] text-[10px] font-bold px-3 py-1.5 rounded-full border border-[#2b5cd5]/30">{pendingApprovals.length} Tertunda</span>
+                <span className="shrink-0 bg-green-500/15 text-green-400 text-[10px] font-bold px-2.5 py-1 rounded-full">{isLoading ? "-" : `${persenHadir}% masuk`}</span>
               </div>
-              
-              {/* === PERUBAHAN LOADING MENGGUNAKAN LOGO BERPUTAR PADA TEMA GLOW === */}
+
+              <div className="flex flex-wrap items-center gap-6 py-5">
+                <svg viewBox="0 0 100 100" className="w-32 h-32 shrink-0 transition-transform duration-500 group-hover:rotate-6">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="11" />
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="#2b5cd5" strokeWidth="11" strokeLinecap="round" strokeDasharray={`${(persenHadir / 100) * 264} 264`} transform="rotate(-90 50 50)" />
+                  <text x="50" y="49" textAnchor="middle" fill="#ffffff" fontSize="24" fontWeight="700">{isLoading ? "-" : hadirTotal}</text>
+                  <text x="50" y="64" textAnchor="middle" fill="rgba(255,255,255,0.45)" fontSize="9">dari {employees.length} staf</text>
+                </svg>
+
+                <div className="space-y-2.5 flex-1 min-w-[150px]">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-[#2b5cd5]"></span>
+                    <span className="text-sm text-gray-400">Tepat waktu</span>
+                    <span className="ml-auto text-sm font-bold text-white">{onTimeToday.length}</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-yellow-500"></span>
+                    <span className="text-sm text-gray-400">Terlambat</span>
+                    <span className="ml-auto text-sm font-bold text-white">{lateToday.length}</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-red-500"></span>
+                    <span className="text-sm text-gray-400">Sakit / cuti</span>
+                    <span className="ml-auto text-sm font-bold text-white">{approvedLeaves.length}</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-white/20"></span>
+                    <span className="text-sm text-gray-400">Belum absen</span>
+                    <span className="ml-auto text-sm font-bold text-white">{belumAbsen}</span>
+                  </div>
+                </div>
+              </div>
+            </BentoCell>
+
+            {/* Empat angka ringkas — tiap sel membuka rincian */}
+            <BentoCell onClick={() => setActiveModal("total")}>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Total karyawan</p>
+              <p className="font-display mt-2 text-3xl md:text-4xl font-black text-white">{isLoading ? "-" : employees.length}</p>
+              <span className="mt-2 inline-block text-[11px] text-[#b3c5ff] opacity-0 transition-opacity group-hover:opacity-100">Lihat daftar →</span>
+            </BentoCell>
+
+            <BentoCell onClick={() => setActiveModal("hadir")}>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Tepat waktu</p>
+              <p className="font-display mt-2 text-3xl md:text-4xl font-black text-green-400">{isLoading ? "-" : onTimeToday.length}</p>
+              <span className="mt-2 inline-block text-[11px] text-[#b3c5ff] opacity-0 transition-opacity group-hover:opacity-100">Lihat daftar →</span>
+            </BentoCell>
+
+            <BentoCell onClick={() => setActiveModal("terlambat")}>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Terlambat</p>
+              <p className="font-display mt-2 text-3xl md:text-4xl font-black text-yellow-400">{isLoading ? "-" : lateToday.length}</p>
+              <span className="mt-2 inline-block text-[11px] text-[#b3c5ff] opacity-0 transition-opacity group-hover:opacity-100">Lihat daftar →</span>
+            </BentoCell>
+
+            <BentoCell onClick={() => setActiveModal("absen")}>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Sakit / cuti</p>
+              <p className="font-display mt-2 text-3xl md:text-4xl font-black text-red-400">{isLoading ? "-" : approvedLeaves.length}</p>
+              <span className="mt-2 inline-block text-[11px] text-[#b3c5ff] opacity-0 transition-opacity group-hover:opacity-100">Lihat daftar →</span>
+            </BentoCell>
+
+            {/* Butuh persetujuan */}
+            <BentoCell className="col-span-2">
+              <div className="flex justify-between items-center mb-5 border-b border-white/5 pb-4">
+                <div>
+                  <h3 className="text-base font-bold text-white">Butuh persetujuan</h3>
+                  <p className="text-[11px] text-gray-500 mt-0.5">Menyetujui cuti otomatis memotong saldo cuti tahunan.</p>
+                </div>
+                <span className="shrink-0 bg-[#2b5cd5]/20 text-[#b3c5ff] text-[10px] font-bold px-3 py-1.5 rounded-full border border-[#2b5cd5]/30">{pendingApprovals.length} tertunda</span>
+              </div>
+
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-10">
-                  <img src="/logo.png" alt="Loading Invisual..." className="h-10 w-10 animate-spin object-contain mb-3" />
-                  <p className="text-gray-500 text-[10px] font-mono tracking-widest uppercase animate-pulse">Sinkronisasi Database...</p>
+                  <img src="/logo.png" alt="Memuat data Invisual" className="h-10 w-10 animate-spin object-contain mb-3" />
+                  <p className="text-gray-500 text-[10px] font-mono tracking-widest uppercase animate-pulse">Sinkronisasi database...</p>
                 </div>
               ) : pendingApprovals.length === 0 ? (
-                <div className="text-center py-10 bg-[#1a1a1a] rounded-2xl border border-white/5"><p className="text-gray-500 text-sm">Tidak ada pengajuan izin tertunda.</p></div> 
+                <div className="text-center py-10 rounded-2xl border border-white/5 bg-white/[0.02]"><p className="text-gray-500 text-sm">Tidak ada pengajuan tertunda.</p></div>
               ) : (
-                <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                <div className="space-y-3 max-h-[280px] overflow-y-auto custom-scrollbar pr-2">
                   {pendingApprovals.map((req) => (
-                    <div key={req.id} className="bg-[#1a1a1a] border border-white/5 p-4 rounded-2xl flex justify-between items-center gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-[#2b5cd5]/20 flex items-center justify-center text-[#b3c5ff] font-bold border border-[#2b5cd5]/30">{req.nama?.charAt(0).toUpperCase() || "?"}</div>
-                        <div>
-                          <h4 className="font-bold text-white text-sm">{req.nama}</h4>
+                    <div key={req.id} className="bg-white/[0.03] border border-white/5 p-3.5 rounded-xl flex justify-between items-center gap-4 transition-colors hover:border-white/15">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 shrink-0 rounded-full bg-[#2b5cd5]/20 flex items-center justify-center text-[#b3c5ff] font-bold border border-[#2b5cd5]/30">{req.nama?.charAt(0).toUpperCase() || "?"}</div>
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-white text-sm truncate">{req.nama}</h4>
                           <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded font-bold uppercase mt-1 inline-block">{req.jenis}</span>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 shrink-0">
                         <button onClick={() => handleApprovalAction(req.id, "Ditolak")} className="px-3 py-2 text-xs font-bold text-gray-400 hover:text-white relative z-30">Tolak</button>
-                        <button onClick={() => handleApprovalAction(req.id, "Disetujui")} className="px-4 py-2 bg-[#2b5cd5] hover:bg-blue-600 text-white text-xs font-bold rounded-xl shadow-lg relative z-30">Setujui</button>
+                        <button onClick={() => handleApprovalAction(req.id, "Disetujui")} className="px-4 py-2 bg-[#2b5cd5] hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30">Setujui</button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </BentoCell>
 
-            <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 shadow-xl">
-              <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4">Log Absensi Live</h3>
-              <div className="relative border-l border-white/10 ml-3 space-y-6 max-h-[300px] overflow-y-auto custom-scrollbar">
+            {/* Log absensi live */}
+            <BentoCell className="col-span-2">
+              <div className="flex justify-between items-center mb-5 border-b border-white/5 pb-4">
+                <h3 className="text-base font-bold text-white">Log absensi live</h3>
+                <span className="text-[11px] text-gray-500">{todayAttendances.length} tercatat</span>
+              </div>
+              <div className="relative border-l border-white/10 ml-3 space-y-5 max-h-[280px] overflow-y-auto custom-scrollbar">
                 {todayAttendances.slice(0, 8).map((absen, idx) => (
                   <div key={`log-${absen.id}`} className="relative pl-6 animate-in slide-in-from-left-2" style={{ animationDelay: `${idx * 50}ms` }}>
-                    <div className={`absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full ring-4 ring-[#141414] ${absen.status === 'Terlambat' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
+                    <div className={`absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full ring-4 ring-[#0f0f0f] ${absen.status === 'Terlambat' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
                     <p className="text-sm font-bold text-white">{absen.nama}</p>
-                    <span className="text-[10px] bg-white/5 text-gray-300 px-2 py-0.5 rounded font-mono border border-white/10 mt-1 inline-block">Masuk: {absen.waktuMasuk}</span>
+                    <span className="text-[10px] bg-white/5 text-gray-300 px-2 py-0.5 rounded font-mono border border-white/10 mt-1 inline-block">Masuk {absen.waktuMasuk}</span>
                   </div>
                 ))}
-                {todayAttendances.length === 0 && <p className="text-xs text-gray-500 pl-4 italic">Belum ada absen.</p>}
+                {todayAttendances.length === 0 && <p className="text-xs text-gray-500 pl-6 italic">Belum ada yang absen hari ini.</p>}
               </div>
-            </div>
+            </BentoCell>
           </div>
         </div>
       )}
@@ -737,8 +822,8 @@ export default function AdminDashboardPage() {
             <div className="p-5">
               {activeModal === "total" && (
                 <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
-                  {employees.map(emp => (
-                    <div key={emp.id} className="flex justify-between items-center p-3 bg-[#111111] rounded-lg border border-white/5">
+                  {employees.map((emp, i) => (
+                    <div key={emp.idKaryawan || emp.id || i} className="flex justify-between items-center p-3 bg-[#111111] rounded-lg border border-white/5">
                       <div><p className="font-bold text-sm text-white">{emp.nama}</p><p className="text-[10px] text-gray-500 font-mono mt-0.5">{emp.idKaryawan} • {emp.jabatan}</p></div>
                       <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-1 rounded font-bold">Aktif</span>
                     </div>
@@ -747,8 +832,8 @@ export default function AdminDashboardPage() {
               )}
               {activeModal === "hadir" && (
                 <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
-                  {onTimeToday.map(absen => (
-                    <div key={absen.id} className="flex justify-between items-center p-3 bg-[#111111] rounded-lg border border-white/5 border-l-2 border-l-green-500">
+                  {onTimeToday.map((absen, i) => (
+                    <div key={absen.id || `ot-${i}`} className="flex justify-between items-center p-3 bg-[#111111] rounded-lg border border-white/5 border-l-2 border-l-green-500">
                       <div><p className="font-bold text-sm text-white">{absen.nama}</p><p className="text-[10px] text-gray-500">{absen.lokasi || "Lokasi Terverifikasi"}</p></div>
                       <span className="text-xs font-mono text-green-400">{absen.waktuMasuk} WIB</span>
                     </div>
@@ -758,8 +843,8 @@ export default function AdminDashboardPage() {
               )}
               {activeModal === "terlambat" && (
                 <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
-                  {lateToday.map(absen => (
-                    <div key={absen.id} className="flex justify-between items-center p-3 bg-[#111111] rounded-lg border border-white/5 border-l-2 border-l-yellow-500">
+                  {lateToday.map((absen, i) => (
+                    <div key={absen.id || `lt-${i}`} className="flex justify-between items-center p-3 bg-[#111111] rounded-lg border border-white/5 border-l-2 border-l-yellow-500">
                       <div><p className="font-bold text-sm text-white">{absen.nama}</p><p className="text-[10px] text-gray-500">{absen.lokasi}</p></div>
                       <span className="text-xs font-mono text-yellow-400">{absen.waktuMasuk} WIB</span>
                     </div>
@@ -769,8 +854,8 @@ export default function AdminDashboardPage() {
               )}
               {activeModal === "absen" && (
                 <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
-                  {approvedLeaves.map(leave => (
-                    <div key={leave.id} className="flex flex-col p-3 bg-[#111111] rounded-lg border border-white/5 border-l-2 border-l-red-500">
+                  {approvedLeaves.map((leave, i) => (
+                    <div key={leave.id || `lv-${i}`} className="flex flex-col p-3 bg-[#111111] rounded-lg border border-white/5 border-l-2 border-l-red-500">
                       <div className="flex justify-between items-center"><p className="font-bold text-sm text-white">{leave.nama}</p><span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded font-bold uppercase">{leave.jenis}</span></div>
                       <p className="text-[10px] text-gray-500 mt-1">{leave.tanggal}</p>
                     </div>
