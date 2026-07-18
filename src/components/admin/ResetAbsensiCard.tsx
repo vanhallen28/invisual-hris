@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Trash2, X, KeyRound } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 type ResetRange = "7d" | "30d" | "all";
 
@@ -22,6 +23,9 @@ export function ResetAbsensiCard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [includeApprovals, setIncludeApprovals] = useState(false);
   const [allowed, setAllowed] = useState(false); // Owner tak boleh reset → kartu disembunyikan
 
   useEffect(() => {
@@ -42,14 +46,43 @@ export function ResetAbsensiCard() {
     if (!range) return;
     setPassword("");
     setNote(null);
+    setError(null);
+    setIncludeApprovals(false);
     setModalOpen(true);
   };
 
-  const execute = () => {
-    // Sengaja belum menghapus apa pun. Diaktifkan di langkah akhir (server-side).
-    setNote(
-      "Mode tampilan: reset belum diaktifkan. Nanti password diverifikasi di server lalu data dihapus.",
-    );
+  const execute = async () => {
+    if (!range || !password || busy) return;
+    setBusy(true);
+    setNote(null);
+    setError(null);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess?.session?.access_token;
+      if (!token) {
+        setError("Sesi Supabase tidak ditemukan. Silakan logout lalu login ulang.");
+        return;
+      }
+      const res = await fetch("/api/reset-attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ range, password, includeApprovals }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(json?.error || "Gagal mereset data absensi.");
+        return;
+      }
+      setNote(
+        `Berhasil. ${json.attendanceDeleted ?? 0} data absensi dihapus` +
+          (includeApprovals ? `, ${json.approvalsDeleted ?? 0} pengajuan izin/cuti dihapus.` : "."),
+      );
+      setPassword("");
+    } catch (e: any) {
+      setError("Terjadi kesalahan: " + (e?.message || e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -156,9 +189,27 @@ export function ResetAbsensiCard() {
                 </div>
               </div>
 
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={includeApprovals}
+                  onChange={(e) => setIncludeApprovals(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-red-600"
+                />
+                <span className="text-[11px] text-gray-400">
+                  Hapus juga <span className="font-semibold text-gray-300">Izin &amp; Cuti</span> pada rentang yang sama.
+                  <span className="mt-0.5 block text-[10px] text-gray-500">Sisa cuti karyawan tidak diubah.</span>
+                </span>
+              </label>
+
               {note && (
-                <p className="rounded-md border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+                <p className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-200">
                   {note}
+                </p>
+              )}
+              {error && (
+                <p className="rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+                  {error}
                 </p>
               )}
 
@@ -166,17 +217,18 @@ export function ResetAbsensiCard() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="h-9 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-gray-300 hover:bg-white/10"
+                  disabled={busy}
+                  className="h-9 rounded-lg border border-white/10 bg-white/5 px-4 text-sm font-medium text-gray-300 hover:bg-white/10 disabled:opacity-40"
                 >
-                  Batal
+                  {note ? "Tutup" : "Batal"}
                 </button>
                 <button
                   type="button"
                   onClick={execute}
-                  disabled={!password}
+                  disabled={!password || busy}
                   className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-40"
                 >
-                  <Trash2 className="h-4 w-4" /> Reset Sekarang
+                  <Trash2 className="h-4 w-4" /> {busy ? "Memproses…" : "Reset Sekarang"}
                 </button>
               </div>
             </div>

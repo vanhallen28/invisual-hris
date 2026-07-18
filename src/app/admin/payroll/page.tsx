@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { excludeOwners } from "@/lib/owners";
 
 export default function AdminPayrollPage() {
   const [employees, setEmployees] = useState<any[]>([]);
@@ -42,7 +43,7 @@ export default function AdminPayrollPage() {
         .select("*")
         .like("tanggal", `${currentMonthPrefix}%`);
 
-      setEmployees(empData || []);
+      setEmployees(excludeOwners(empData)); // Owner tidak ikut payroll
       setAttendances(attData || []);
     } catch (error) {
       console.error("Gagal menarik data payroll:", error);

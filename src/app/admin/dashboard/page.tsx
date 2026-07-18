@@ -8,6 +8,7 @@ import { logAudit } from "@/lib/audit";
 import { CorporateSummaryCard } from "@/components/admin/CorporateSummaryCard";
 import { ResetAbsensiCard } from "@/components/admin/ResetAbsensiCard";
 import { ChatNotifCard } from "@/components/admin/ChatNotifCard";
+import { excludeOwners } from "@/lib/owners";
 
 // Cek apakah HARI INI termasuk dalam periode izin/cuti.
 // Kolom `tanggal` berupa string: "2025-07-16", "2025-07-16 s/d 2025-07-20",
@@ -128,7 +129,8 @@ export default function AdminDashboardPage() {
         });
       }
 
-      const activeEmployees = empData?.filter(e => e.isAktif ?? true) || [];
+      // Owner dikecualikan dari statistik operasional (headcount, absensi, anomali)
+      const activeEmployees = excludeOwners(empData?.filter(e => e.isAktif ?? true) || []);
       setEmployees(activeEmployees);
       setPendingApprovals(pendingData || []);
       setApprovedLeaves((approvedData || []).filter((a: any) => coversToday(a.tanggal, todayISO)));
