@@ -82,6 +82,17 @@ function PicPicker({ value, members, disabled, onChange }: any) {
   );
 }
 
+// PENTING: Field harus berada di tingkat modul, bukan di dalam ContentDetail.
+// Bila dibuat ulang tiap render, React menganggapnya komponen berbeda lalu
+// memasang ulang seluruh isinya — sehingga input kehilangan fokus tiap ketukan.
+const Field = ({ icon, label, children }: any) => (
+  <div className="mb-4">
+    <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">{icon}{label}</div>
+    {children}
+  </div>
+);
+const inputCls = "w-full bg-[#1a1c23] border border-zinc-800 focus:border-blue-500/60 rounded-lg px-3 py-2 text-xs text-zinc-100 outline-none transition-colors placeholder:text-zinc-600";
+
 const toLocalInput = (d: any) => {
   if (!d) return '';
   const dt = new Date(d);
@@ -153,13 +164,6 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
     onClose();
   };
 
-  const Field = ({ icon, label, children }: any) => (
-    <div className="mb-4">
-      <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">{icon}{label}</div>
-      {children}
-    </div>
-  );
-  const inputCls = "w-full bg-[#1a1c23] border border-zinc-800 focus:border-blue-500/60 rounded-lg px-3 py-2 text-xs text-zinc-100 outline-none transition-colors placeholder:text-zinc-600";
 
   return (
     <>

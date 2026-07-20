@@ -4,6 +4,11 @@ import { useDashboard } from '@/components/tracker/DashboardContext';
 import { X, Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, Link2, FileText, Image as ImageIcon, Paperclip, MessageSquare, ChevronDown, Send } from 'lucide-react';
 
 // invisual.docs — editor dokumen kanvas (tema gelap) + upload gambar/file + komentar.
+// Di tingkat modul agar tombol tidak dipasang ulang tiap render.
+const TBtn = ({ onDo, title, children }: any) => (
+  <button onMouseDown={(e) => { e.preventDefault(); onDo(); }} title={title} className="p-1.5 hover:bg-zinc-700 rounded text-zinc-400 hover:text-white transition-colors">{children}</button>
+);
+
 export default function DocEditor() {
   const { docEditorTarget, closeDocEditor, saveDoc, supabase, currentUserId, teamMembers }: any = useDashboard();
   const ref = useRef<HTMLDivElement>(null);
@@ -80,10 +85,6 @@ export default function DocEditor() {
     if (error) { window.alert('Gagal kirim komentar: ' + error.message); return; }
     setComments((c) => [...c, data]); setCommentText('');
   };
-
-  const TBtn = ({ onDo, title, children }: any) => (
-    <button onMouseDown={(e) => { e.preventDefault(); onDo(); }} title={title} className="p-1.5 hover:bg-zinc-700 rounded text-zinc-400 hover:text-white transition-colors">{children}</button>
-  );
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}>

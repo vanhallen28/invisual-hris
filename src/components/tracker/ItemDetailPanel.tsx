@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, AlignLeft, CheckSquare, CalendarDays, Tag, User, Link as LinkIcon, Hash, FileText, ExternalLink, Plus, Check, Search } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import TaskChat from './TaskChat';
+import RoleDistribution from './RoleDistribution';
 import Avatar from '@/components/Avatar';
 
 const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
@@ -216,6 +217,9 @@ export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
                     <div className="min-w-0">{renderField(col, item, labels, teamMembers, setVal, isManager, currentUserId)}</div>
                   </div>
                 ))}
+
+                {/* ROLE DISTRIBUTION — tabel mini berkolom custom */}
+                <RoleDistribution itemId={item.id} />
               </div>
 
               {/* CHAT */}
