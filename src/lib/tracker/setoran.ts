@@ -47,22 +47,43 @@ export async function loadSetoranPosts(supabase: SB) {
   return data || [];
 }
 
-export async function uploadSetoran(supabase: SB, file: File, userId: string, caption?: string) {
-  const aman = file.name.replace(/[^\w.\-]/g, '_');
-  const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${aman}`;
+// Tandai seluruh setoran seseorang sudah dicek. Dipanggil saat manager
+// membuka aliran orang itu. Penandanya di database, jadi berlaku untuk
+// semua manager sekaligus — bukan per perangkat.
+export async function tandaiSetoranDicek(supabase: SB, userId: string) {
+  const { error } = await supabase
+    .from('setoran_posts')
+    .update({ dilihat_pada: new Date().toISOString() })
+    .eq('user_id', userId)
+    .is('dilihat_pada', null);
+  if (error) throw new Error(error.message);
+}
 
-  const { error: upErr } = await supabase.storage
-    .from(SETORAN_BUCKET)
-    .upload(path, file, { cacheControl: '3600', upsert: false });
-  if (upErr) throw new Error(upErr.message);
+// Berkas boleh kosong — setoran tanpa gambar dipakai sebagai catatan QC.
+export async function uploadSetoran(supabase: SB, file: File | null, userId: string, caption?: string) {
+  let imageUrl: string | null = null;
+  let path: string | null = null;
 
-  const { data: pub } = supabase.storage.from(SETORAN_BUCKET).getPublicUrl(path);
+  if (file) {
+    const aman = file.name.replace(/[^\w.\-]/g, '_');
+    path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${aman}`;
+
+    const { error: upErr } = await supabase.storage
+      .from(SETORAN_BUCKET)
+      .upload(path, file, { cacheControl: '3600', upsert: false });
+    if (upErr) throw new Error(upErr.message);
+
+    const { data: pub } = supabase.storage.from(SETORAN_BUCKET).getPublicUrl(path);
+    imageUrl = pub.publicUrl;
+  } else if (!caption?.trim()) {
+    throw new Error('Tulis catatan atau lampirkan gambar dulu');
+  }
 
   const { data, error } = await supabase
     .from('setoran_posts')
     .insert({
       user_id: userId,
-      image_url: pub.publicUrl,
+      image_url: imageUrl,
       storage_path: path,
       caption: caption?.trim() || null,
     })

@@ -99,9 +99,12 @@ export async function toggleReaction(supabase: SB, messageId: string, memberId: 
 
 /* ═══════════ BELUM DIBACA ═══════════ */
 export async function markRead(supabase: SB, channelId: string, memberId: string) {
-  await supabase.from('chat_reads')
+  const { error } = await supabase.from('chat_reads')
     .upsert({ channel_id: channelId, member_id: memberId, last_read_at: new Date().toISOString() },
             { onConflict: 'channel_id,member_id' });
+  // Kalau gagal, lencana belum dibaca tidak akan hilang. Dilaporkan supaya
+  // penyebabnya terlihat, bukan menghilang tanpa jejak.
+  if (error) throw new Error(error.message);
 }
 
 export async function unreadByChannel(supabase: SB) {

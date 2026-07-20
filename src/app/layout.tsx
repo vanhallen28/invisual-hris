@@ -6,6 +6,7 @@ import "./globals.css";
 import PwaSetup from "@/components/PwaSetup";
 import PwaSplash from "@/components/PwaSplash";
 import ChatToaster from "@/components/ChatToaster";
+import GlobalSearch from "@/components/GlobalSearch";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -53,6 +54,7 @@ export default function RootLayout({
         <PwaSplash />
         {children}
         <ChatToaster />
+        <GlobalSearch />
       </body>
     </html>
   );

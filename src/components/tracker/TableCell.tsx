@@ -4,6 +4,7 @@ import { ChevronDown, Check, Trash2, Tag, User, CalendarDays, Plus, FileText } f
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import Avatar from '@/components/Avatar';
 import InlineEdit from './InlineEdit';
+import { namaPendek, cocokNama } from '@/lib/tracker/nama';
 
 export default function TableCell({ type, item, group, col }: any) {
   const { 
@@ -79,7 +80,7 @@ export default function TableCell({ type, item, group, col }: any) {
         <div onClick={() => { setOpenDropdown({ type, groupId: group.id, itemId: actualItemId, subItemId: actualSubItemId, field: col.id }); setNewLabelText(''); setNewMemberName(''); setNewLabelColor(LABEL_COLORS[0]); setColorPickerFor(null); }} className="flex gap-1 flex-wrap items-center justify-center w-full h-full cursor-pointer hover:bg-zinc-800/30 rounded-sm transition-colors overflow-hidden">
           {item[col.id]?.length > 0 ? item[col.id].map((tid:string) => { 
             const m = teamMembers.find((t:any) => t.id === tid); 
-            return m ? <div key={tid} className={`px-2 py-0.5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm border border-[#20222b] ${memberColor(m)} truncate max-w-[100px]`}>{m.name}</div> : null; 
+            return m ? <div key={tid} className={`px-2 py-0.5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm border border-[#20222b] ${memberColor(m)} truncate max-w-[100px]`} title={m.name}>{namaPendek(m)}</div> : null; 
           }) : <User size={13} className="text-zinc-600"/>}
         </div>
         {isDrop && (
@@ -89,7 +90,7 @@ export default function TableCell({ type, item, group, col }: any) {
               <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider px-2 py-1 mb-1">Assign Karyawan</div>
               <input autoComplete="off" spellCheck="false" autoFocus value={newMemberName} onChange={e=>setNewMemberName(e.target.value)} placeholder="Cari orang..." className="bg-zinc-950 text-[11px] border border-zinc-700 focus:border-blue-500 rounded-md px-2.5 py-1.5 outline-none w-full text-white shadow-inner transition-colors min-w-0 mb-1.5"/>
               <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5 pr-1 custom-scrollbar">
-                {teamMembers.filter((m:any) => m.name.toLowerCase().includes((newMemberName||'').toLowerCase())).map((m:any) => { 
+                {teamMembers.filter((m:any) => cocokNama(m, newMemberName || '')).map((m:any) => { 
                   const has = item[col.id]?.includes(m.id); 
                   return (
                     <div key={m.id} className="flex items-center justify-between text-xs px-2 py-1.5 hover:bg-zinc-700 rounded-lg text-zinc-300 w-full cursor-pointer transition-colors" onClick={(e) => { e.stopPropagation(); triggerUpdate(col.id, has ? item[col.id].filter((id:any)=>id!==m.id) : [...(item[col.id]||[]), m.id]); }}>
@@ -98,7 +99,7 @@ export default function TableCell({ type, item, group, col }: any) {
                     </div>
                   )
                 })}
-                {teamMembers.filter((m:any) => m.name.toLowerCase().includes((newMemberName||'').toLowerCase())).length === 0 && <div className="text-[11px] text-zinc-500 px-2 py-3 text-center">Tak ada yang cocok.</div>}
+                {teamMembers.filter((m:any) => cocokNama(m, newMemberName || '')).length === 0 && <div className="text-[11px] text-zinc-500 px-2 py-3 text-center">Tak ada yang cocok.</div>}
               </div>
             </div>
           </>
@@ -115,7 +116,7 @@ export default function TableCell({ type, item, group, col }: any) {
           <button onClick={() => { setOpenDropdown({ type, groupId: group.id, itemId: actualItemId, subItemId: actualSubItemId, field: col.id }); setNewLabelText(''); setNewLabelColor(LABEL_COLORS[0]); setColorPickerFor(null); }} className={`w-full h-full text-center text-[11px] font-semibold rounded-sm py-1 px-1 outline-none transition-colors truncate ${getLabelColor(col.id, item[col.id])}`}>{item[col.id] || '-'}</button>
         ) : (
           <div onClick={() => setOpenDropdown({ type, groupId: group.id, itemId: actualItemId, subItemId: actualSubItemId, field: col.id })} className="flex flex-wrap gap-1 items-center justify-center w-full h-full cursor-pointer hover:bg-zinc-800/30 p-1 rounded-sm overflow-hidden">
-            {item[col.id]?.length > 0 ? item[col.id].map((t: string, idx: number) => <span key={idx} className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-sm max-w-full truncate ${labels[col.id]?.find((l:any)=>l.text === t)?.color || 'bg-zinc-700'}`}>{t}</span>) : <Tag size={12} className="text-zinc-600"/>}
+            {item[col.id]?.length > 0 ? item[col.id].map((t: string) => <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-sm max-w-full truncate ${labels[col.id]?.find((l:any)=>l.text === t)?.color || 'bg-zinc-700'}`}>{t}</span>) : <Tag size={12} className="text-zinc-600"/>}
           </div>
         )}
         {isDrop && (

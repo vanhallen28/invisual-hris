@@ -41,7 +41,11 @@ async function migrateItemValues(
 }
 
 export async function migrateFromLocalStorage(supabase: SB, currentUserId: string) {
-  const raw = typeof window !== 'undefined' ? localStorage.getItem('inv_data_v24') : null;
+  // Peramban mode penyamaran bisa menolak akses localStorage — jangan sampai
+  // seluruh proses berhenti karena itu.
+  let raw: string | null = null;
+  try { raw = typeof window !== 'undefined' ? localStorage.getItem('inv_data_v24') : null; }
+  catch { throw new Error('Penyimpanan lokal tidak bisa dibaca di peramban ini.'); }
   if (!raw) throw new Error('Tidak ada data localStorage (inv_data_v24) untuk dimigrasi.');
   const data = JSON.parse(raw);
   const workspaces = data.workspaces || [];

@@ -35,7 +35,7 @@ export default function AdminKaryawanPage() {
 
   // FITUR NPWP TELAH DIHAPUS DARI STATE
   const [formData, setFormData] = useState({
-    idKaryawan: "", nama: "", email: "", noPonsel: "", nikKtp: "",
+    idKaryawan: "", nama: "", panggilan: "", email: "", noPonsel: "", nikKtp: "",
     alamatDomisili: "", jabatan: "UI/UX Designer", status: "PKWT (Kontrak)",
     tanggalBergabung: "", sisaCuti: 12, gajiPokok: "", namaBank: "", 
     noRekening: "", isAktif: true, role: "member",
@@ -128,7 +128,7 @@ export default function AdminKaryawanPage() {
   const openAddModal = () => {
     setIsEditMode(false);
     setFormData({
-      idKaryawan: "", nama: "", email: "", noPonsel: "", nikKtp: "",
+      idKaryawan: "", nama: "", panggilan: "", email: "", noPonsel: "", nikKtp: "",
       alamatDomisili: "", jabatan: "UI/UX Designer", status: "PKWT (Kontrak)",
       tanggalBergabung: new Date().toISOString().split('T')[0],
       sisaCuti: 12, gajiPokok: "", namaBank: "", noRekening: "", isAktif: true, role: "member",
@@ -148,6 +148,7 @@ export default function AdminKaryawanPage() {
     setFormData({
       idKaryawan: emp.idKaryawan || "",
       nama: emp.nama || "",
+      panggilan: emp.panggilan || "",
       email: emp.email || "",
       noPonsel: emp.noPonsel || "",
       nikKtp: emp.nikKtp || "",
@@ -199,6 +200,7 @@ export default function AdminKaryawanPage() {
     const payload = {
       idKaryawan: formData.idKaryawan,
       nama: formData.nama,
+      panggilan: formData.panggilan?.trim() || null,
       email: formData.email.trim().toLowerCase(),
       noPonsel: formData.noPonsel || null,
       nikKtp: formData.nikKtp ? String(formData.nikKtp) : null, 
@@ -636,6 +638,10 @@ export default function AdminKaryawanPage() {
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Nama Lengkap</label>
                     <input required type="text" value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Nama Panggilan</label>
+                    <input type="text" value={formData.panggilan} onChange={(e) => setFormData({...formData, panggilan: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none placeholder-gray-600" placeholder="Dipakai di chip PIC — kosongkan untuk memakai nama lengkap" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Email Pribadi / Kantor</label>

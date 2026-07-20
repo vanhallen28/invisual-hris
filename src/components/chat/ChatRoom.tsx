@@ -14,6 +14,7 @@ import {
 import { dbAddItem, dbSetCellValue, newId } from '@/lib/tracker/sync';
 import { EMOJI_GROUPS, BUILTIN_STICKERS, isOnlyEmoji, loadStickers, addSticker, deleteSticker } from '@/lib/tracker/emoji';
 import { pushNotify } from '@/lib/push';
+import { namaPendek } from '@/lib/tracker/nama';
 
 const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
 const timeOf = (d: any) => new Date(d).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -504,7 +505,7 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
 
                   {!grouped && (
                     <div className="flex items-baseline gap-2">
-                      <span className="text-[13px] font-bold" style={{ color: a?.color?.match(/#[0-9a-fA-F]{3,8}/)?.[0] || '#579bfc' }}>{a?.name || 'Tanpa Nama'}</span>
+                      <span className="text-[13px] font-bold" style={{ color: a?.color?.match(/#[0-9a-fA-F]{3,8}/)?.[0] || '#579bfc' }} title={a?.name}>{namaPendek(a) || 'Tanpa Nama'}</span>
                       <span className="text-[10px] text-zinc-600">{timeOf(m.created_at)}</span>
                     </div>
                   )}

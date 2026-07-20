@@ -204,7 +204,7 @@ export default function MyTasks() {
             {reminders.map((t: any, i: number) => {
               const m = dueMeta(t.due);
               return (
-                <button key={i} onClick={() => { setShowReminder(false); goTo(t); }} className="flex items-center justify-between gap-3 text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition-colors">
+                <button key={t.key} onClick={() => { setShowReminder(false); goTo(t); }} className="flex items-center justify-between gap-3 text-left px-3 py-2 rounded-lg hover:bg-zinc-800 transition-colors">
                   <span className="text-sm text-zinc-200 truncate">{t.name}</span>
                   <span className={`text-[11px] shrink-0 ${m.cls}`}>{m.label}</span>
                 </button>

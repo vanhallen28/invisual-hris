@@ -1,5 +1,5 @@
 'use client';
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AlertCircle, X } from 'lucide-react';
 import { supabase as hrisSupabase } from '@/lib/supabase';
 import { loadFullState } from '@/lib/tracker/load';
@@ -35,17 +35,22 @@ const ensureViews = (map: any, seedHidden: string[] = []) => {
 // Cocokkan members.id = employees.user_id (keduanya = auth uid), fallback via email.
 async function mergeAvatars(supabase: any, members: any[]) {
   try {
-    const { data } = await supabase.from('employees').select('user_id, email, avatarUrl');
+    const { data } = await supabase.from('employees').select('user_id, email, avatarUrl, panggilan');
     const byUser: any = {}, byEmail: any = {};
     (data || []).forEach((e: any) => {
-      if (!e.avatarUrl) return;
-      if (e.user_id) byUser[e.user_id] = e.avatarUrl;
-      if (e.email) byEmail[String(e.email).toLowerCase()] = e.avatarUrl;
+      const isi = { avatarUrl: e.avatarUrl || null, panggilan: e.panggilan || null };
+      if (!isi.avatarUrl && !isi.panggilan) return;
+      if (e.user_id) byUser[e.user_id] = isi;
+      if (e.email) byEmail[String(e.email).toLowerCase()] = isi;
     });
-    return members.map((m: any) => ({
-      ...m,
-      avatarUrl: m.avatarUrl || byUser[m.id] || byEmail[String(m.email || '').toLowerCase()] || null,
-    }));
+    return members.map((m: any) => {
+      const e = byUser[m.id] || byEmail[String(m.email || '').toLowerCase()] || {};
+      return {
+        ...m,
+        avatarUrl: m.avatarUrl || e.avatarUrl || null,
+        panggilan: m.panggilan || e.panggilan || null,
+      };
+    });
   } catch {
     return members;
   }
@@ -194,7 +199,6 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
         if (s.teamMembers.length) setTeamMembers(await mergeAvatars(supabase, s.teamMembers));
         if (s.currentUserId) setCurrentUserId(s.currentUserId);
         setCurrentUserRole(s.currentUserRole || 'member');
-      setCanContentHub(s.canContentHub !== false);
         setCanContentHub(s.canContentHub !== false);
         // Pulihkan board terakhir yang dibuka (kalau masih ada); jika tidak, board pertama.
         let saved: string | null = null;
@@ -259,6 +263,80 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     return () => { clearTimeout(timer); supabase.removeChannel(channel); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, authUser, isLoaded, currentUserRole]);
+
+  // === REALTIME PAPAN — berlaku untuk semua peran, termasuk manager ===
+  // Perubahan rekan langsung tampak tanpa memuat ulang halaman.
+  // Nilai sel ditambal langsung agar ringan; perubahan struktur
+  // (item, grup, kolom, papan) memicu muat ulang berjeda.
+
+  const tambalSel = useCallback((itemId: string, columnId: string, nilai: any) => {
+    setBoardsDataMap((peta: any) => {
+      let adaYangBerubah = false;
+      const hasil: any = {};
+      for (const bid of Object.keys(peta)) {
+        const papan = peta[bid];
+        let papanBerubah = false;
+        const grupBaru = (papan.groups || []).map((g: any) => {
+          let grupBerubah = false;
+          const itemsBaru = (g.items || []).map((it: any) => {
+            let baru = it;
+            if (it.id === itemId) { baru = { ...baru, [columnId]: nilai }; grupBerubah = true; }
+            const subs = it.subItems || [];
+            if (subs.length && subs.some((sx: any) => sx.id === itemId)) {
+              baru = { ...baru, subItems: subs.map((sx: any) => (sx.id === itemId ? { ...sx, [columnId]: nilai } : sx)) };
+              grupBerubah = true;
+            }
+            return baru;
+          });
+          if (!grupBerubah) return g;
+          papanBerubah = true;
+          return { ...g, items: itemsBaru };
+        });
+        hasil[bid] = papanBerubah ? { ...papan, groups: grupBaru } : papan;
+        if (papanBerubah) adaYangBerubah = true;
+      }
+      return adaYangBerubah ? hasil : peta;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!supabase || !authUser || !isLoaded) return;
+    let jeda: any;
+
+    // Jangan menarik data baru saat seseorang sedang mengetik — tunggu ia selesai.
+    const sedangMengetik = () => {
+      const el: any = typeof document !== 'undefined' ? document.activeElement : null;
+      return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+    };
+    const jadwalkanMuatUlang = () => {
+      clearTimeout(jeda);
+      jeda = setTimeout(() => {
+        if (sedangMengetik()) { jadwalkanMuatUlang(); return; }
+        refreshData();
+      }, 1500);
+    };
+
+    let ch: any = supabase
+      .channel('papan-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'item_values' }, (p: any) => {
+        const baris = p.new || p.old;
+        if (!baris?.item_id || !baris?.column_id) return;
+        tambalSel(baris.item_id, baris.column_id, p.eventType === 'DELETE' ? '' : baris.value);
+      });
+
+    for (const tabel of ['items', 'groups', 'columns', 'column_options', 'tree_nodes']) {
+      ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: tabel }, jadwalkanMuatUlang);
+    }
+    // Penugasan sudah dipantau langganan khusus member di atas, jadi di sini
+    // cukup untuk manager agar tidak ada pemantauan ganda.
+    if (currentUserRole === 'manager') {
+      ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: 'item_assignees' }, jadwalkanMuatUlang);
+    }
+    ch.subscribe();
+
+    return () => { clearTimeout(jeda); supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase, authUser, isLoaded, currentUserRole, tambalSel]);
 
   useEffect(() => {
     // 1d-ii: penyimpanan ke cloud menyusul di 1e. Sengaja TIDAK menulis ke localStorage

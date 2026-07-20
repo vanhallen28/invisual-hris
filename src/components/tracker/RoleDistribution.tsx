@@ -9,6 +9,7 @@ import { Plus, X, Trash2, Type, Tags, Users2, User, Search, Check, ListChecks } 
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import InlineEdit from './InlineEdit';
 import Avatar from '@/components/Avatar';
+import { namaPendek, cocokNama } from '@/lib/tracker/nama';
 
 type Kolom = { id: string; label: string; type: 'teks' | 'tag' | 'orang'; manual?: boolean };
 
@@ -108,7 +109,7 @@ function SelOrang({ nilai, boleh, teamMembers, onChange }: any) {
   const arr: string[] = Array.isArray(nilai) ? nilai : nilai ? [String(nilai)] : [];
   const terpilih = (teamMembers || []).filter((m: any) => arr.includes(m.id));
   const cocok = (teamMembers || []).filter((m: any) =>
-    String(m.name || '').toLowerCase().includes(q.trim().toLowerCase()));
+    cocokNama(m, q));
 
   const toggle = (id: string) =>
     onChange(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
@@ -119,7 +120,7 @@ function SelOrang({ nilai, boleh, teamMembers, onChange }: any) {
         {terpilih.map((m: any) => (
           <span key={m.id} className="group/orang inline-flex items-center gap-1 text-[10px] pl-0.5 pr-1.5 py-0.5 rounded-full border border-blue-500/40 bg-blue-500/10 text-zinc-100">
             <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold text-white shrink-0 ${mColor(m)}`} />
-            <span className="truncate max-w-[90px]">{m.name}</span>
+            <span className="truncate max-w-[90px]" title={m.name}>{namaPendek(m)}</span>
             {boleh && (
               <button onClick={() => toggle(m.id)} className="opacity-0 group-hover/orang:opacity-100 transition-opacity hover:text-red-400" title="Lepas">
                 <X size={9} />

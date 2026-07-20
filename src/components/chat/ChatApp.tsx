@@ -19,6 +19,7 @@ import {
   setChannelMembers, unreadByChannel,
 } from '@/lib/tracker/chat';
 import { countSetoranBaru } from '@/lib/tracker/setoran';
+import { namaPendek } from '@/lib/tracker/nama';
 
 const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
 
@@ -131,7 +132,7 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
                     <button key={m.id} onClick={() => setSel((s) => (on ? s.filter((x) => x !== m.id) : [...s, m.id]))}
                       className={`flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left ${on ? 'bg-[#124bce]/10' : 'hover:bg-zinc-700/50'}`}>
                       <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white ${mColor(m)}`} />
-                      <span className={`text-[11px] flex-1 truncate ${on ? 'text-white font-semibold' : 'text-zinc-400'}`}>{m.name}</span>
+                      <span className={`text-[11px] flex-1 truncate ${on ? 'text-white font-semibold' : 'text-zinc-400'}`} title={m.name}>{namaPendek(m)}</span>
                       {on && <Check size={12} className="text-blue-400" />}
                     </button>
                   );
@@ -167,6 +168,7 @@ export default function ChatApp() {
   const [active, setActive] = useState<any>(null);
   const [unread, setUnread] = useState<Record<string, number>>({});
   const [mobileRoom, setMobileRoom] = useState(false); // mobile: false = daftar channel, true = ruang chat
+
   const [chLoading, setChLoading] = useState(true);
   const [modal, setModal] = useState<any>(null);
   const [online, setOnline] = useState<string[]>([]);
@@ -174,6 +176,16 @@ export default function ChatApp() {
   const [notif, setNotif] = useState<'granted' | 'denied' | 'default' | 'unsupported'>('default');
   const [voiceCh, setVoiceCh] = useState<any>(null); // channel voice yang sedang diikuti
   const [setoranOpen, setSetoranOpen] = useState(false); // ruang Setoran Daily
+  // Di ponsel, membuka ruang menambah satu langkah riwayat. Tanpa ini,
+  // tombol kembali bawaan ponsel akan keluar dari halaman chat sama sekali.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!mobileRoom || window.innerWidth >= 768) return;
+    window.history.pushState({ ruangChat: true }, '');
+    const kembali = () => { setMobileRoom(false); setSetoranOpen(false); };
+    window.addEventListener('popstate', kembali);
+    return () => window.removeEventListener('popstate', kembali);
+  }, [mobileRoom]);
   const [setoranUnread, setSetoranUnread] = useState(0); // lencana setoran baru
 
   useEffect(() => { setNotif(pushStatus()); clearBadge(); }, []);
@@ -365,7 +377,7 @@ export default function ChatApp() {
               <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#101216]" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-zinc-200 truncate">{me.name}</p>
+              <p className="text-xs font-semibold text-zinc-200 truncate" title={me.name}>{namaPendek(me)}</p>
               <p className="text-[10px] text-zinc-500">{isManager ? 'Manager' : 'Member'}</p>
             </div>
             {voiceCh && (
@@ -439,7 +451,7 @@ export default function ChatApp() {
                       <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${mColor(m)}`} />
                       {grp === 'online' && <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#15171c]" />}
                     </div>
-                    <span className="text-xs text-zinc-300 truncate">{m.name}</span>
+                    <span className="text-xs text-zinc-300 truncate" title={m.name}>{namaPendek(m)}</span>
                   </div>
                 ))}
               </div>

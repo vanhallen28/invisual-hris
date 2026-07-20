@@ -62,7 +62,7 @@ export default function KanbanBoard() {
                     <h4 className="text-[14px] font-bold text-zinc-100 mb-2">{item.name}</h4>
                     {tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-2">
-                        {tags.map((t: string, idx: number) => <span key={idx} className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white ${labels[tagsKey]?.find((l: any) => l.text === t)?.color || 'bg-zinc-700'}`}>{t}</span>)}
+                        {tags.map((t: string) => <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white ${labels[tagsKey]?.find((l: any) => l.text === t)?.color || 'bg-zinc-700'}`}>{t}</span>)}
                       </div>
                     )}
                     <div className="flex items-center justify-between pt-2 border-t border-zinc-800/60 text-[11px] text-zinc-400">
