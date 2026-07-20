@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Search, ChevronDown, ChevronUp, EyeOff, X, Trash2, Check, Filter, Inbox, GripVertical } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import InlineEdit from './InlineEdit';
@@ -11,13 +11,53 @@ export default function MainTable() {
     boardData, setBoardData, columns, setColumns, subColumns, hiddenColumns, setHiddenColumns, 
     searchQuery, setSearchQuery, sortConfig, setSortConfig, teamMembers, labels,
     isHideMenuOpen, setIsHideMenuOpen, triggerConfirm, handleDeleteColumn, HEX_COLORS,
-    toggleGroupSelection, handleAddItem, handleAddGroup, updateGroup, handleDeleteGroup, reorderColumns, reorderGroups, updateColumnLabel, openDropdown
+    toggleGroupSelection, handleAddItem, handleAddGroup, updateGroup, handleDeleteGroup, reorderColumns, reorderGroups, updateColumnLabel, openDropdown,
+    activeBoardId, supabase
   } = useDashboard();
 
   const [addColMenuTarget, setAddColMenuTarget] = useState<{ type: 'main'|'sub', id: string } | null>(null);
   const [filterPerson, setFilterPerson] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [filterMenu, setFilterMenu] = useState<'person' | 'status' | null>(null);
+
+  // === GESER LEBAR KOLOM ===
+  // Lebar kolom biasa tersimpan di database (columns.width).
+  // Lebar kolom nama item disimpan per perangkat, karena tak punya baris sendiri.
+  const [resize, setResize] = useState<{ id: string; mulaiX: number; mulaiW: number; w: number } | null>(null);
+  const [lebarNama, setLebarNama] = useState(320);
+
+  useEffect(() => {
+    if (!activeBoardId) return;
+    try {
+      const v = localStorage.getItem(`lebar_nama_${activeBoardId}`);
+      setLebarNama(v ? Math.max(160, Number(v)) : 320);
+    } catch { setLebarNama(320); }
+  }, [activeBoardId]);
+
+  const simpanLebar = (id: string, w: number) => {
+    if (id === '__nama') {
+      setLebarNama(w);
+      try { localStorage.setItem(`lebar_nama_${activeBoardId}`, String(w)); } catch { /* abaikan */ }
+      return;
+    }
+    setColumns(columns.map((c: any) => (c.id === id ? { ...c, width: `${w}px` } : c)));
+    if (supabase) {
+      supabase.from('columns').update({ width: `${w}px` }).eq('id', id)
+        .then(() => {}, () => {});   // gagal simpan tak boleh mengganggu tabel
+    }
+  };
+
+  useEffect(() => {
+    if (!resize) return;
+    const gerak = (e: MouseEvent) => {
+      const w = Math.max(90, resize.mulaiW + (e.clientX - resize.mulaiX));
+      setResize((r) => (r ? { ...r, w } : r));
+    };
+    const lepas = () => { simpanLebar(resize.id, resize.w); setResize(null); };
+    window.addEventListener('mousemove', gerak);
+    window.addEventListener('mouseup', lepas);
+    return () => { window.removeEventListener('mousemove', gerak); window.removeEventListener('mouseup', lepas); };
+  }, [resize]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // === DRAG-REORDER kolom & grup ===
   const [draggedCol, setDraggedCol] = useState<string | null>(null);
@@ -32,11 +72,13 @@ export default function MainTable() {
   const statusOptions = statusColId ? (labels[statusColId] || []) : [];
   const activeFilters = (filterPerson ? 1 : 0) + (filterStatus ? 1 : 0);
 
-  const mainColsCSS = columns.length > 0 ? columns.filter((c:any) => !hiddenColumns.includes(c.id)).map((c:any) => c.width || '130px').join(' ') : '';
+  const lebarKolom = (c: any) => (resize?.id === c.id ? `${resize.w}px` : (c.width || '130px'));
+  const lebarNamaAktif = resize?.id === '__nama' ? resize.w : lebarNama;
+  const mainColsCSS = columns.length > 0 ? columns.filter((c:any) => !hiddenColumns.includes(c.id)).map(lebarKolom).join(' ') : '';
   const subColsCSS = subColumns.length > 0 ? subColumns.map((c:any) => c.width || '130px').join(' ') : '';
   
   // DIPERLEBAR MENJADI 64px AGAR DUA IKON (PLUS & TRASH) SEJAJAR SEMPURNA!
-  const gridTemplateColumns = `40px 320px ${mainColsCSS} 64px minmax(0, 1fr)`;
+  const gridTemplateColumns = `40px ${lebarNamaAktif}px ${mainColsCSS} 64px minmax(0, 1fr)`;
   const subGridTemplateColumns = `40px 280px ${subColsCSS} 64px minmax(0, 1fr)`;
 
   return (
@@ -178,7 +220,8 @@ export default function MainTable() {
                   <div className={`grid items-center border-b border-zinc-800 bg-[#1e202a] text-[11px] font-bold text-zinc-400 uppercase select-none rounded-t-md relative ${addColMenuTarget?.id === group.id ? 'z-40' : 'z-10'}`} style={{ gridTemplateColumns }}>
                     <div className="px-2 py-3 flex justify-center pl-[6px] sticky left-0 z-20 bg-[#1e202a]"><input type="checkbox" onChange={() => toggleGroupSelection(group)} className="rounded bg-zinc-950 border-zinc-700 text-blue-500 cursor-pointer w-3.5 h-3.5" /></div>
                     
-                    <div className="px-3 py-3 border-r border-zinc-800/60 flex items-center justify-between gap-1 group/namecol transition-colors min-w-0 sticky left-[40px] z-20 bg-[#1e202a]">
+                    <div className="px-3 py-3 border-r border-zinc-800/60 flex items-center justify-between gap-1 group/namecol transition-colors min-w-0 sticky left-[40px] z-20 bg-[#1e202a] relative">
+                       <span onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setResize({ id: '__nama', mulaiX: e.clientX, mulaiW: lebarNamaAktif, w: lebarNamaAktif }); }} onClick={(e) => e.stopPropagation()} title="Tarik untuk melebarkan kolom" className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500/70 active:bg-blue-500 transition-colors z-30" />
                        <div className="flex-1 min-w-0">
                           <InlineEdit value={group.itemLabel || 'Item Name'} onSave={(val: string) => updateGroup(group.id, { itemLabel: val })} textClassName="text-zinc-400 uppercase text-[11px] font-bold truncate hover:opacity-80" className="text-[11px] font-bold uppercase" />
                        </div>
@@ -201,6 +244,7 @@ export default function MainTable() {
                            <button onClick={()=>setSortConfig((s:any)=>({key:col.id, direction: s?.direction==='asc'?'desc':'asc'}))} className="text-zinc-500 hover:text-blue-400 shrink-0"><ChevronDown size={12}/></button>
                            <button onClick={()=>triggerConfirm('Hapus Kolom', `Yakin ingin menghapus kolom ${col.label}?`, () => handleDeleteColumn(col.id))} className="text-zinc-500 hover:text-red-400 shrink-0"><Trash2 size={12}/></button>
                         </div>
+                        <span onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setResize({ id: col.id, mulaiX: e.clientX, mulaiW: (parseInt(col.width) || 130), w: (parseInt(col.width) || 130) }); }} onClick={(e) => e.stopPropagation()} title="Tarik untuk melebarkan kolom" className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500/70 active:bg-blue-500 transition-colors z-30" />
                       </div>
                     ))}
                     

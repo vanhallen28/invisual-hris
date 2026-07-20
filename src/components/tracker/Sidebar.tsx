@@ -1,18 +1,57 @@
 'use client';
 import React, { useState } from 'react';
-import { Plus, ChevronDown, Pencil, Trash2, LayoutTemplate, Search, X } from 'lucide-react';
+import { Plus, ChevronDown, Pencil, Trash2, LayoutTemplate, Search, X, Copy, Check } from 'lucide-react';
 import Image from 'next/image';
 import { useDashboard, makeDefaultViews } from '@/components/tracker/DashboardContext';
+import { duplicateBoard, LABEL_MODE, KETERANGAN_MODE, type ModeDuplikat } from '@/lib/tracker/duplicate';
 
 export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
   const { 
     workspaces, setWorkspaces, activeWorkspaceId, activeBoardId, setActiveBoardId, inlineCreate, setInlineCreate, 
     inputValue, setInputValue, editingCell, setEditingCell, editValue, setEditValue, triggerConfirm, boardsDataMap, setBoardsDataMap, HEX_COLORS,
-    addYear, addMonth, addBoard, renameNode, deleteNode
+    addYear, addMonth, addBoard, renameNode, deleteNode, supabase, refreshData, pushToast
   } = useDashboard();
 
   const [collapsed, setCollapsed] = useState(false);
   const [search, setSearch] = useState('');
+
+  // ── Duplikat papan ──
+  const [dupBoard, setDupBoard] = useState<any>(null);      // papan yang sedang diduplikasi
+  const [dupName, setDupName] = useState('');
+  const [dupMode, setDupMode] = useState<ModeDuplikat>('struktur');
+  const [dupPilihOpen, setDupPilihOpen] = useState(false);
+  const [dupBulan, setDupBulan] = useState('');            // bulan tujuan
+  const [dupBulanOpen, setDupBulanOpen] = useState(false);
+  const [dupBusy, setDupBusy] = useState(false);
+
+  const bukaDuplikat = (board: any, monthId: string) => {
+    setDupBoard(board);
+    setDupName(`Salinan ${board.name}`);
+    setDupMode('struktur');
+    setDupBulan(monthId);
+    setDupPilihOpen(false);
+    setDupBulanOpen(false);
+  };
+
+  const jalankanDuplikat = async () => {
+    if (!dupBoard || dupBusy || !dupName.trim()) return;
+    setDupBusy(true);
+    try {
+      const r = await duplicateBoard(supabase, dupBoard.id, dupName, dupMode, dupBulan);
+      await refreshData();
+      setActiveBoardId(r.boardId);
+      const rincian = [`${r.kolom} kolom`, `${r.grup} grup`];
+      if (r.item) rincian.push(`${r.item} item`);
+      if (r.subitem) rincian.push(`${r.subitem} subitem`);
+      if (r.pembaruan) rincian.push(`${r.pembaruan} pembaruan`);
+      pushToast(`Papan "${dupName.trim()}" dibuat — ${rincian.join(', ')}`);
+      setDupBoard(null);
+      setMobileOpen?.(false);
+    } catch (e: any) {
+      pushToast('Gagal menduplikasi: ' + (e?.message || e));
+    }
+    setDupBusy(false);
+  };
 
   const submitInlineCreate = (e?: React.FormEvent) => {
     if(e) e.preventDefault();
@@ -41,6 +80,13 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
   // FILTER PENCARIAN: saat ada query, tampilkan hanya board yang cocok + paksa buka folder induknya
   const q = search.trim().toLowerCase();
   const activeWs = workspaces.find((w:any) => w.id === activeWorkspaceId) || workspaces[0];
+
+  // Semua bulan di workspace aktif, untuk dipilih sebagai tujuan duplikat.
+  // Harus setelah activeWs terbentuk — kalau lebih dulu, JavaScript menolaknya.
+  const daftarBulan = (activeWs?.years || []).flatMap((y: any) =>
+    (y.months || []).map((m: any) => ({ id: m.id, label: `${y.name} › ${m.name}` }))
+  );
+  const namaBulan = (id: string) => daftarBulan.find((b: any) => b.id === id)?.label || 'Pilih bulan';
   const filteredYears = (activeWs?.years || []).map((year: any) => {
     const months = (year.months || []).map((month: any) => {
       const boards = q ? (month.boards || []).filter((b: any) => b.name.toLowerCase().includes(q)) : (month.boards || []);
@@ -140,6 +186,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
                                 <div className="flex items-center gap-2 truncate flex-1 py-0.5 pl-1"><LayoutTemplate size={12} className={activeBoardId === board.id ? 'text-blue-400' : 'text-zinc-500'} /><span className="truncate">{board.name}</span></div>
                               )}
                               <div className="flex items-center gap-0.5 opacity-0 group-hover/board:opacity-100 transition-opacity">
+                                <button onClick={(e) => { e.stopPropagation(); bukaDuplikat(board, month.id); }} className="p-1 text-zinc-600 hover:text-blue-400 transition-colors" title="Duplikat papan"><Copy size={11}/></button>
                                 <button onClick={(e) => { e.stopPropagation(); setEditingCell({ type: 'board', id: board.id }); setEditValue(board.name); }} className="p-1 text-zinc-600 hover:text-blue-400 transition-colors"><Pencil size={11}/></button>
                                 <button onClick={(e) => { e.stopPropagation(); triggerConfirm('Delete Project', `Hapus "${board.name}"?`, () => handleDeleteBoard(month.id, board.id)); }} className="p-1 text-zinc-600 hover:text-red-400 transition-colors"><Trash2 size={11} /></button>
                               </div>
@@ -165,6 +212,86 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
           )}
         </div>
       </div>
+
+      {/* ══════════ MODAL DUPLIKAT PAPAN ══════════ */}
+      {dupBoard && (
+        <>
+          <div className="fixed inset-0 bg-black/60 z-[100]" onClick={() => !dupBusy && setDupBoard(null)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-md bg-[#1e2029] border border-zinc-700 rounded-2xl shadow-2xl z-[110] p-6">
+            <div className="flex items-start justify-between gap-3 mb-5">
+              <h3 className="text-base font-bold text-white leading-snug">Duplikat &quot;{dupBoard.name}&quot;</h3>
+              <button onClick={() => !dupBusy && setDupBoard(null)} className="p-1 text-zinc-500 hover:text-white shrink-0"><X size={16} /></button>
+            </div>
+
+            <label className="block text-xs font-semibold text-zinc-300 mb-1.5">Nama papan baru</label>
+            <input
+              value={dupName} onChange={(e) => setDupName(e.target.value)} autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') jalankanDuplikat(); }}
+              className="w-full bg-zinc-950 border border-zinc-700 focus:border-blue-500 rounded-lg px-3 py-2.5 text-sm text-white outline-none transition-colors mb-5"
+            />
+
+            <label className="block text-xs font-semibold text-zinc-300 mb-1.5">Simpan ke bulan</label>
+            <div className="relative mb-5">
+              <button
+                onClick={() => setDupBulanOpen((o) => !o)}
+                className="w-full flex items-center justify-between gap-2 bg-zinc-950 border border-zinc-700 hover:border-zinc-600 rounded-lg px-3 py-2.5 text-sm text-white transition-colors"
+              >
+                <span className="truncate">{namaBulan(dupBulan)}</span>
+                <ChevronDown size={15} className={`shrink-0 text-zinc-500 transition-transform ${dupBulanOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {dupBulanOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-[#252732] border border-zinc-700 rounded-lg shadow-xl overflow-hidden z-20 max-h-52 overflow-y-auto">
+                  {daftarBulan.length === 0 && <p className="px-3 py-3 text-[11px] text-zinc-500">Belum ada bulan lain.</p>}
+                  {daftarBulan.map((b: any) => (
+                    <button
+                      key={b.id} onClick={() => { setDupBulan(b.id); setDupBulanOpen(false); }}
+                      className={`w-full flex items-center justify-between gap-2 text-left px-3 py-2 transition-colors ${dupBulan === b.id ? 'bg-blue-600/20' : 'hover:bg-zinc-700/50'}`}
+                    >
+                      <span className={`text-[13px] truncate ${dupBulan === b.id ? 'text-blue-300 font-medium' : 'text-zinc-300'}`}>{b.label}</span>
+                      {dupBulan === b.id && <Check size={13} className="text-blue-400 shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <label className="block text-xs font-semibold text-zinc-300 mb-1.5">Pilih yang ikut disalin</label>
+            <div className="relative">
+              <button
+                onClick={() => setDupPilihOpen((o) => !o)}
+                className="w-full flex items-center justify-between gap-2 bg-zinc-950 border border-zinc-700 hover:border-zinc-600 rounded-lg px-3 py-2.5 text-sm text-white transition-colors"
+              >
+                <span className="truncate">{LABEL_MODE[dupMode]}</span>
+                <ChevronDown size={15} className={`shrink-0 text-zinc-500 transition-transform ${dupPilihOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {dupPilihOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-[#252732] border border-zinc-700 rounded-lg shadow-xl overflow-hidden z-10">
+                  {(['struktur', 'item', 'penuh'] as ModeDuplikat[]).map((m) => (
+                    <button
+                      key={m} onClick={() => { setDupMode(m); setDupPilihOpen(false); }}
+                      className={`w-full text-left px-3 py-2.5 transition-colors ${dupMode === m ? 'bg-blue-600/20' : 'hover:bg-zinc-700/50'}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[13px] font-medium ${dupMode === m ? 'text-blue-300' : 'text-zinc-200'}`}>{LABEL_MODE[m]}</span>
+                        {dupMode === m && <Check size={13} className="text-blue-400 shrink-0" />}
+                      </div>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">{KETERANGAN_MODE[m]}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <p className="text-[11px] text-zinc-500 mt-2 mb-6">{KETERANGAN_MODE[dupMode]}</p>
+
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDupBoard(null)} disabled={dupBusy} className="px-4 py-2 text-xs font-bold text-zinc-400 hover:text-white disabled:opacity-50 transition-colors">Batal</button>
+              <button onClick={jalankanDuplikat} disabled={dupBusy || !dupName.trim()} className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white text-xs font-bold rounded-lg transition-colors">
+                {dupBusy ? 'Menyalin…' : 'Duplikat'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
