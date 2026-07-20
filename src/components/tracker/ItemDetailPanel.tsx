@@ -4,6 +4,7 @@ import { X, Send, AlignLeft, CheckSquare, CalendarDays, Tag, User, Link as LinkI
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import TaskChat from './TaskChat';
 import RoleDistribution from './RoleDistribution';
+import TautanItem from './TautanItem';
 import Avatar from '@/components/Avatar';
 
 const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
@@ -206,6 +207,9 @@ export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
                   );
                 })()}
               </div>
+
+              {/* TAUTAN — tombol pintas yang diisi manager */}
+              <TautanItem itemId={item.id} />
 
               {/* FIELDS */}
               <div className="px-6 py-5 border-b border-zinc-800/60 flex flex-col gap-4">

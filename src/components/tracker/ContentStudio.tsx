@@ -4,7 +4,7 @@ import {
   CalendarDays, LayoutGrid, BarChart3, Table, Pencil, Plus, X, Trash2, Check, RotateCcw,
   ExternalLink, Megaphone, Target, Users, MessageSquare, Hash, Image as ImageIcon,
   ChevronLeft, ChevronRight, Sparkles, Eye, Heart, Share2, Bookmark,
-  ChevronDown, User, Search, Send,
+  ChevronDown, User, Search, Send, PenLine,
 } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import LoadingLogo from '@/components/LoadingLogo';
@@ -126,10 +126,12 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
   };
   const er = engagementRate(f);
 
-  // Manager: kunci brief & kirim ke tim (Brief → Produksi). Draft baru: INSERT saat Apply.
+  // Manager: simpan brief dan kirim pemberitahuan ke PIC.
+  // Status TIDAK dipaksa berubah — brief baru tetap berstatus 'Brief'
+  // sampai tim sendiri memindahkannya ke Produksi.
   const applyBrief = async () => {
-    const isBriefing = canManage && f.status === 'Brief';
-    if (isBriefing) {
+    const kirimBaru = canManage && !!f._draft;   // hanya saat brief pertama kali dibuat
+    if (kirimBaru) {
       if (!f.assignee_id) { pushToast('Pilih PIC dulu agar brief bisa dikerjakan tim.'); return; }
       if (!(f.platform || []).length) { pushToast('Pilih minimal satu platform.'); return; }
     }
@@ -137,19 +139,17 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
     setSaving(true);
     try {
       if (f._draft) {
-        // Draft: baru sekarang disimpan ke DB (i: langsung Produksi bila manajer mengirim).
-        const row = await onCreate({ ...f, status: isBriefing ? 'Produksi' : f.status });
+        // Draft baru disimpan ke DB apa adanya — statusnya tetap seperti yang dipilih.
+        const row = await onCreate({ ...f });
         newId = row?.id || f.id;
-      } else if (isBriefing) {
-        await save({ status: 'Produksi' });
       } else {
         await save();
       }
     } finally { setSaving(false); }
 
-    if (isBriefing) {
+    if (kirimBaru) {
       const nama = members.find((m: any) => m.id === f.assignee_id)?.name || 'tim';
-      pushToast(`Brief dikirim ke ${nama} — status: Produksi`);
+      pushToast(`Brief dikirim ke ${nama} — status tetap Brief sampai tim memulai`);
       // 🔔 Notifikasi ke PIC
       pushNotify(supabase, {
         memberIds: [f.assignee_id],
@@ -270,6 +270,10 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
               <textarea rows={4} value={f.caption || ''} onChange={(e) => set('caption', e.target.value)} onBlur={() => save()} placeholder="Tulis caption di sini…" className={inputCls} />
               <div className="text-[9px] text-zinc-600 mt-1 text-right">{(f.caption || '').length} karakter</div>
             </Field>
+            <Field icon={<PenLine size={11} />} label="Copywriting">
+              <textarea rows={5} value={f.copywriting || ''} onChange={(e) => set('copywriting', e.target.value)} onBlur={() => save()} placeholder="Naskah lengkap: hook, isi, penutup…" className={inputCls} />
+              <div className="text-[9px] text-zinc-600 mt-1 text-right">{(f.copywriting || '').length} karakter</div>
+            </Field>
             <Field icon={<Hash size={11} />} label="Hashtag">
               <textarea rows={2} value={f.hashtags || ''} onChange={(e) => set('hashtags', e.target.value)} onBlur={() => save()} placeholder="#invisual #desain …" className={inputCls} />
             </Field>
@@ -361,7 +365,7 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
             onClick={applyBrief} disabled={saving}
             className="flex-1 flex items-center justify-center gap-2 bg-[#2b5cd5] hover:bg-blue-600 disabled:opacity-60 text-white text-xs font-bold py-3 rounded-xl transition-all shadow-[0_0_16px_rgba(43,92,213,0.35)] active:scale-[0.98]"
           >
-            {saving ? 'Menyimpan…' : (canManage && f.status === 'Brief'
+            {saving ? 'Menyimpan…' : (canManage && f._draft
               ? <><Send size={14} /> Apply Brief &amp; Kirim ke Tim</>
               : <><Check size={14} /> Simpan Perubahan</>)}
           </button>
