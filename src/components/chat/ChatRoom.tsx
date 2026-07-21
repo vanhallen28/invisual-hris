@@ -185,6 +185,17 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
 
   const [msgs, setMsgs] = useState<any[]>([]);
   const [rx, setRx] = useState<any[]>([]);
+  const [lightbox, setLightbox] = useState<string | null>(null);  // gambar yang dibuka besar
+
+  // Escape menutup pratinjau. Tanpa ini, satu-satunya jalan keluar
+  // adalah tombol silang — dan itu tidak jelas di layar kecil.
+  useEffect(() => {
+    if (!lightbox) return;
+    const tekan = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightbox(null); };
+    window.addEventListener('keydown', tekan);
+    return () => window.removeEventListener('keydown', tekan);
+  }, [lightbox]);
+
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [replyTo, setReplyTo] = useState<any>(null);
@@ -358,6 +369,29 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
     setUploading(false);
   };
 
+  /* Tempel tangkapan layar langsung dari papan klip (Ctrl+V / ⌘V).
+     Hanya bertindak kalau papan klip benar-benar berisi gambar; menempel
+     teks biasa ke kolom pesan tetap berjalan seperti biasa. */
+  const tempel = (e: React.ClipboardEvent) => {
+    if (!canPost || uploading) return;
+    const gambar: File[] = [];
+    for (const item of Array.from(e.clipboardData?.items || [])) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const f = item.getAsFile();
+        if (!f) continue;
+        // Tangkapan layar dari papan klip sering tanpa nama yang berarti.
+        gambar.push(
+          f.name && f.name !== 'image.png'
+            ? f
+            : new File([f], `tangkapan-${Date.now()}.png`, { type: f.type })
+        );
+      }
+    }
+    if (!gambar.length) return;
+    e.preventDefault();
+    (async () => { for (const f of gambar) await upload(f); })();
+  };
+
   const react = async (mid: string, emoji: string) => {
     const on = !rx.some((r) => r.message_id === mid && r.member_id === currentUserId && r.emoji === emoji);
     setEmojiFor(null);
@@ -419,7 +453,7 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
   const pins = msgs.filter((m) => m.pinned);
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#1e2029]">
+    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#1e2029]" onPaste={tempel}>
       {/* header channel */}
       <div className="h-12 border-b border-zinc-800 flex items-center gap-2 px-4 shrink-0">
         {onBack && (
@@ -535,9 +569,9 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
                         att.type === 'sticker' ? (
                           <img key={k} src={att.url} alt={att.name} className="mt-1.5 w-28 h-28 object-contain" />
                         ) : /^image\//.test(att.type || '') ? (
-                          <a key={k} href={att.url} target="_blank" rel="noreferrer" className="block mt-1.5">
-                            <img src={att.url} alt={att.name} className="max-w-xs max-h-64 rounded-lg border border-zinc-800" />
-                          </a>
+                          <button key={k} onClick={() => setLightbox(att.url)} className="block mt-1.5" title="Lihat gambar">
+                            <img src={att.url} alt={att.name} className="max-w-xs max-h-64 rounded-lg border border-zinc-800 hover:border-zinc-600 transition-colors" />
+                          </button>
                         ) : (
                           <a key={k} href={att.url} target="_blank" rel="noreferrer" className="mt-1.5 inline-flex items-center gap-2 bg-[#20222b] border border-zinc-800 hover:border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-300">
                             <FileText size={13} className="text-blue-400" /> {att.name}
@@ -744,6 +778,31 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
 
       {pickerOpen && <TaskPicker onPick={(id: string) => { setAttachTask(id); setPickerOpen(false); }} onClose={() => setPickerOpen(false)} />}
       {taskModal && <CreateTaskModal message={taskModal} onDone={() => setTaskModal(null)} onClose={() => setTaskModal(null)} />}
+
+      {/* Pratinjau gambar — dulu membuka tab baru, yang berarti keluar
+          dari percakapan lalu harus kembali lagi. Sekarang menumpang
+          di atas ruang chat dan ditutup dengan klik, Escape, atau silang. */}
+      {lightbox && (
+        <>
+          <div className="fixed inset-0 bg-black/85 z-[140]" onClick={() => setLightbox(null)} />
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 pointer-events-none">
+            <img src={lightbox} alt="Pratinjau gambar" className="max-w-full max-h-full rounded-xl object-contain pointer-events-auto" />
+          </div>
+          <a
+            href={lightbox} target="_blank" rel="noreferrer"
+            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[160] text-[11px] text-zinc-400 hover:text-white bg-zinc-900/90 border border-zinc-700 rounded-lg px-3 py-1.5"
+          >
+            Buka ukuran asli
+          </a>
+          <button
+            onClick={() => setLightbox(null)}
+            title="Tutup"
+            className="fixed top-4 right-4 z-[160] p-2 bg-zinc-900/90 text-white rounded-lg hover:bg-zinc-800"
+          >
+            <X size={18} />
+          </button>
+        </>
+      )}
     </div>
   );
 }
