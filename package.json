@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",
+    "fractional-indexing": "^4.0.0",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "jszip": "^3.10.1",
@@ -20,7 +21,8 @@
     "papaparse": "^5.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "yjs": "^13.6.31"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

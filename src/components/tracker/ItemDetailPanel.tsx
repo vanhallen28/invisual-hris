@@ -5,9 +5,9 @@ import { useDashboard } from '@/components/tracker/DashboardContext';
 import TaskChat from './TaskChat';
 import RoleDistribution from './RoleDistribution';
 import TautanItem from './TautanItem';
+import TestProject from './TestProject';
 import RiwayatItem from './RiwayatItem';
 import Avatar from '@/components/Avatar';
-import { namaPendek, cocokNama } from '@/lib/tracker/nama';
 
 const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
 
@@ -18,7 +18,7 @@ function PeoplePicker({ value, teamMembers, onChange }: any) {
   const [q, setQ] = useState('');
   const arr: string[] = Array.isArray(value) ? value : [];
   const selected = teamMembers.filter((m: any) => arr.includes(m.id));
-  const filtered = teamMembers.filter((m: any) => cocokNama(m, q));
+  const filtered = teamMembers.filter((m: any) => String(m.name || '').toLowerCase().includes(q.trim().toLowerCase()));
   const toggle = (id: string) => onChange(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
 
   return (
@@ -27,7 +27,7 @@ function PeoplePicker({ value, teamMembers, onChange }: any) {
         {selected.map((m: any) => (
           <span key={m.id} className="group/chip flex items-center gap-1.5 text-[11px] pl-1 pr-1.5 py-1 rounded-full border border-blue-500/50 bg-blue-500/10 text-zinc-100">
             <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 ${mColor(m)}`} />
-            <span className="truncate max-w-[140px]" title={m.name}>{namaPendek(m)}</span>
+            <span className="truncate max-w-[140px]">{m.name}</span>
             <button onClick={() => toggle(m.id)} title="Lepas" className="p-0.5 text-zinc-500 hover:text-red-400 transition-colors"><X size={11} /></button>
           </span>
         ))}
@@ -212,6 +212,9 @@ export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
 
               {/* TAUTAN — tombol pintas yang diisi manager */}
               <TautanItem itemId={item.id} />
+
+              {/* TEST PROJECT — kanvas kolaboratif, dibuka layar penuh */}
+              <TestProject />
 
               {/* FIELDS */}
               <div className="px-6 py-5 border-b border-zinc-800/60 flex flex-col gap-4">
