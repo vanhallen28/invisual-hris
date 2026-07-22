@@ -45,7 +45,6 @@ export default function UserDashboardPage() {
   const [cameraOn, setCameraOn] = useState(false);
   const [captureMode, setCaptureMode] = useState<"in" | "out" | null>(null);
   const [jamMasuk, setJamMasuk] = useState("09:00");
-  const [toast, setToast] = useState<{ show: boolean; type: "success" | "error"; message: string }>({ show: false, type: "success", message: "" });
   // Diarahkan ke toast global standar. Tanda tangan lama (type, message)
   // dipertahankan agar semua pemanggilan showToast(...) tetap jalan.
   const showToast = (type: "success" | "error", message: string) => {
