@@ -175,7 +175,12 @@ export default function ChatApp() {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [notif, setNotif] = useState<'granted' | 'denied' | 'default' | 'unsupported'>('default');
   const [voiceCh, setVoiceCh] = useState<any>(null); // channel voice yang sedang diikuti
-  const [setoranOpen, setSetoranOpen] = useState(false); // ruang Setoran Daily
+  // Ingat apakah Setoran Daily sedang dibuka, supaya refresh halaman tidak
+  // melempar kembali ke channel #general. Dibaca dari localStorage saat muat.
+  const [setoranOpen, setSetoranOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try { return localStorage.getItem('invisual_setoran_terbuka') === '1'; } catch { return false; }
+  });
   // Di ponsel, membuka ruang menambah satu langkah riwayat. Tanpa ini,
   // tombol kembali bawaan ponsel akan keluar dari halaman chat sama sekali.
   useEffect(() => {
@@ -262,6 +267,15 @@ export default function ChatApp() {
     })();
   }, [supabase, currentUserId]);
 
+  // Dengarkan event dari SetoranRoom: begitu room menandai setoran sudah
+  // dilihat, bersihkan lencana di sidebar. Tanpa ini, event terbuang dan
+  // lencana tetap/muncul lagi saat refresh — dua sistem penanda tak sinkron.
+  useEffect(() => {
+    const onDilihat = () => setSetoranUnread(0);
+    window.addEventListener('setoran-dilihat', onDilihat);
+    return () => window.removeEventListener('setoran-dilihat', onDilihat);
+  }, []);
+
   useEffect(() => {
     if (!supabase || !currentUserId) return;
     const ch = supabase
@@ -279,11 +293,17 @@ export default function ChatApp() {
     setSetoranOpen(true);
     setMobileRoom(true);
     setSetoranUnread(0);
-    try { localStorage.setItem(setoranSeenKey, new Date().toISOString()); } catch { /* diamkan */ }
+    try { localStorage.setItem('invisual_setoran_terbuka', '1'); } catch { /* diamkan */ }
+    // Simpan waktu "terakhir dibuka" +1 detik ke depan. countSetoranBaru
+    // memakai perbandingan "lebih besar dari" (gt), jadi tanpa margin ini
+    // setoran yang tercatat di detik yang sama akan terhitung lagi saat
+    // refresh — persis penyebab lencana muncul kembali.
+    try { localStorage.setItem(setoranSeenKey, new Date(Date.now() + 1000).toISOString()); } catch { /* diamkan */ }
   };
 
   const openChannel = (c: any) => {
     setSetoranOpen(false);
+    try { localStorage.setItem('invisual_setoran_terbuka', '0'); } catch { /* diamkan */ }
     setActive(c); setMobileRoom(true);
     setUnread((u) => ({ ...u, [c.id]: 0 }));
   };

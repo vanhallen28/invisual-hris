@@ -123,7 +123,10 @@ export async function countSetoranBaru(supabase: SB, sejakISO: string, kecualiUs
 export const SETORAN_SEEN_KEY = 'invisual_setoran_seen';
 
 export function tandaiSetoranDilihat() {
-  try { localStorage.setItem(SETORAN_SEEN_KEY, new Date().toISOString()); } catch { /* abaikan */ }
+  // +1 detik ke depan: countSetoranBaru membandingkan dengan "gt" (lebih
+  // besar dari), jadi margin ini mencegah setoran yang tercatat di detik
+  // yang sama terhitung ulang saat halaman dimuat kembali.
+  try { localStorage.setItem(SETORAN_SEEN_KEY, new Date(Date.now() + 1000).toISOString()); } catch { /* abaikan */ }
 }
 
 /* ═══════════ PEMBERSIHAN 30 HARI ═══════════ */

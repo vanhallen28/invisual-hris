@@ -11,7 +11,7 @@ import LoadingLogo from '@/components/LoadingLogo';
 import {
   loadSetoranMembers, addSetoranMember, removeSetoranMember,
   loadSetoranPosts, uploadSetoran, deleteSetoran, purgeSetoranKedaluwarsa,
-  tandaiSetoranDilihat, tandaiSetoranDicek, SETORAN_HARI,
+  tandaiSetoranDilihat, SETORAN_HARI,
 } from '@/lib/tracker/setoran';
 import { namaPendek } from '@/lib/tracker/nama';
 
@@ -90,7 +90,12 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
   const [anggota, setAnggota] = useState<any[]>([]);
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [buka, setBuka] = useState<string | null>(null);   // user_id yang galerinya dibuka
+  // Aliran yang sedang dibuka — disimpan agar refresh halaman kembali ke
+  // karyawan yang sama, bukan melompat ke daftar.
+  const [buka, setBuka] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try { return localStorage.getItem('invisual_setoran_buka') || null; } catch { return null; }
+  });
   const [kelola, setKelola] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -98,6 +103,23 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
   const [pendingUrls, setPendingUrls] = useState<string[]>([]);   // pratinjau tiap berkas
   const [caption, setCaption] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // ── Lencana biru: murni lokal, tanpa database ──
+  // Menyimpan kapan perangkat ini terakhir membuka aliran tiap orang.
+  // Lencana = jumlah setoran yang lebih baru dari waktu itu. Siapa pun yang
+  // membuka aliran seseorang membuat lencananya hilang di perangkatnya.
+  const DILIHAT_KEY = 'invisual_setoran_dilihat_map';
+  const [dilihatMap, setDilihatMap] = useState<Record<string, string>>(() => {
+    if (typeof window === 'undefined') return {};
+    try { return JSON.parse(localStorage.getItem(DILIHAT_KEY) || '{}'); } catch { return {}; }
+  });
+  const tandaiDilihat = (uid: string) => {
+    setDilihatMap((lama) => {
+      const baru = { ...lama, [uid]: new Date().toISOString() };
+      try { localStorage.setItem(DILIHAT_KEY, JSON.stringify(baru)); } catch { /* diamkan */ }
+      return baru;
+    });
+  };
 
   const anggotaIds = useMemo(() => anggota.map((a) => a.user_id), [anggota]);
   const sayaAnggota = anggotaIds.includes(currentUserId);
@@ -134,14 +156,40 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
     })();
   }, [isLoaded, isManager, supabase, pushToast, refresh]);
 
-  // Tandai sudah dilihat, supaya lencana di sidebar ikut bersih.
+  // Lencana Setoran Daily di SIDEBAR (bukan lencana biru per orang) dibersihkan
+  // sekali saat ruang ini terbuka. Dijalankan sekali — tanpa dependensi `posts`
+  // yang dulu memicu re-render berantai.
   useEffect(() => {
     if (!isLoaded || !currentUserId) return;
     tandaiSetoranDilihat();
     try { window.dispatchEvent(new CustomEvent('setoran-dilihat')); } catch { /* abaikan */ }
-  }, [isLoaded, currentUserId, posts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, currentUserId]);
 
-  const postsOf = useCallback(
+  // Kelompokkan setoran yang dikirim "sekaligus": berurutan, dari orang yang
+// sama, dan berdekatan waktunya. Satu batch unggahan menghasilkan banyak
+// baris dengan created_at hanya berselisih detik, jadi ambang 2 menit sudah
+// aman memisahkan batch berbeda. Batch berisi 4+ gambar ditampilkan sebagai
+// grid album (seperti WhatsApp/Telegram); selain itu tetap gelembung satuan.
+const JENDELA_BATCH_MS = 2 * 60 * 1000;
+const MIN_ALBUM = 4;
+
+function kelompokkanBatch(urut: any[]) {
+  const grup: any[][] = [];
+  for (const p of urut) {
+    const g = grup[grup.length - 1];
+    const cocok =
+      g &&
+      g[0].user_id === p.user_id &&
+      !!g[0].image_url === !!p.image_url &&   // catatan-teks tak digabung dengan gambar
+      Math.abs(new Date(p.created_at).getTime() - new Date(g[g.length - 1].created_at).getTime()) <= JENDELA_BATCH_MS;
+    if (cocok) g.push(p);
+    else grup.push([p]);
+  }
+  return grup;
+}
+
+const postsOf = useCallback(
     (uid: string) => posts.filter((p) => p.user_id === uid),
     [posts]);
 
@@ -230,23 +278,20 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
     } catch (e: any) { pushToast('Gagal: ' + (e?.message || e)); }
   };
 
-  // Manager membuka aliran seseorang → setoran orang itu ditandai sudah dicek,
-  // sehingga lencana birunya hilang untuk semua manager, bukan cuma di perangkat ini.
-  const bukaOrang = async (uid: string) => {
+  // Membuka aliran seseorang → tandai dilihat di perangkat ini. Sederhana,
+  // seketika, tanpa database — jadi tak ada jeda jaringan maupun kedip.
+  const bukaOrang = (uid: string) => {
     setBuka(uid);
-    if (!isManager) return;
-    const adaYangBelum = posts.some((p) => p.user_id === uid && !p.dilihat_pada);
-    if (!adaYangBelum) return;
-    const stempel = new Date().toISOString();
-    setPosts((lama) => lama.map((p) =>
-      (p.user_id === uid && !p.dilihat_pada ? { ...p, dilihat_pada: stempel } : p)));
-    try { await tandaiSetoranDicek(supabase, uid); }
-    catch { /* gagal menandai tak boleh mengganggu tampilan */ }
+    tandaiDilihat(uid);
+    try { localStorage.setItem('invisual_setoran_buka', uid); } catch { /* diamkan */ }
   };
 
   const hapus = async (p: any) => {
-    try { await deleteSetoran(supabase, p); pushToast('Setoran dihapus'); await refresh(); }
-    catch (e: any) { pushToast('Gagal hapus: ' + (e?.message || e)); }
+    // Optimistik: buang dari daftar tanpa memuat ulang semuanya, supaya
+    // layar tidak berkedip/terrefresh saat kembali dari aliran seseorang.
+    setPosts((lama) => lama.filter((x) => x.id !== p.id));
+    try { await deleteSetoran(supabase, p); pushToast('Setoran dihapus'); }
+    catch (e: any) { pushToast('Gagal hapus: ' + (e?.message || e)); refresh(); }
   };
 
   const barisAnggota = useMemo(() => {
@@ -261,12 +306,16 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
         initials: m?.initials,
         color: mColor(m),
         jumlah: mine.length,
-        belum: mine.filter((p) => !p.dilihat_pada).length,   // yang belum dicek manager
+        belum: (() => {
+          const sejak = dilihatMap[uid];
+          if (!sejak) return mine.length;   // belum pernah dibuka → semua terhitung baru
+          return mine.filter((p) => new Date(p.created_at).getTime() > new Date(sejak).getTime()).length;
+        })(),
         terakhir: mine[0] || null,
         sudahHariIni: mine.some((p) => hariISO(p.created_at) === hariIni),
       };
-    }).sort((a, b) => Number(b.sudahHariIni) - Number(a.sudahHariIni) || a.nama.localeCompare(b.nama));
-  }, [anggotaIds, teamMembers, postsOf, hariIni]);
+    }).sort((a, b) => a.nama.localeCompare(b.nama, 'id', { sensitivity: 'base' }));   // A→Z tetap, tak bergeser saat lencana berubah
+  }, [anggotaIds, teamMembers, postsOf, hariIni, dilihatMap]);
 
   const sudah = barisAnggota.filter((b) => b.sudahHariIni).length;
   const dibuka = buka ? barisAnggota.find((b) => b.uid === buka) : null;
@@ -327,7 +376,7 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
         /* ── Galeri satu orang ── */
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="sticky top-0 z-10 flex items-center gap-2.5 px-4 py-3 bg-[#1e2029] border-b border-zinc-800">
-            <button onClick={() => setBuka(null)} className="p-1 text-zinc-400 hover:text-white shrink-0">
+            <button onClick={() => { setBuka(null); try { localStorage.removeItem('invisual_setoran_buka'); } catch { /* diamkan */ } }} className="p-1 text-zinc-400 hover:text-white shrink-0">
               <ChevronLeft size={18} />
             </button>
             <Avatar url={dibuka.avatarUrl} name={dibuka.nama} initials={dibuka.initials}
@@ -343,35 +392,77 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
           ) : (
             /* Alur percakapan — terlama di atas, terbaru di bawah, seperti chat biasa. */
             <div className="flex flex-col gap-3 p-4">
-              {[...postsOf(dibuka.uid)].reverse().map((p) => {
-                const bolehHapus = p.user_id === currentUserId || isManager;
-                const punyaSaya = p.user_id === currentUserId;
-                return (
-                  <div key={p.id} className={`group flex flex-col gap-1 max-w-[85%] ${punyaSaya ? 'self-end items-end' : 'self-start items-start'}`}>
-                    <div className={`rounded-2xl overflow-hidden border ${punyaSaya ? 'border-[#124bce]/40 bg-[#124bce]/10' : 'border-zinc-800 bg-[#15171c]'}`}>
-                      {p.image_url && (
-                        <button onClick={() => setLightbox(p.image_url)} className="block">
-                          <img src={p.image_url} alt={`Setoran ${tglPendek(p.created_at)}`} loading="lazy"
-                            className="max-h-72 w-auto object-cover" />
-                        </button>
-                      )}
-                      {p.caption && (
-                        <p className="text-[12px] text-zinc-200 leading-relaxed whitespace-pre-wrap break-words px-3 py-2">
-                          {p.caption}
-                        </p>
-                      )}
+              {kelompokkanBatch([...postsOf(dibuka.uid)].reverse()).map((batch) => {
+                const p0 = batch[0];
+                const punyaSaya = p0.user_id === currentUserId;
+                const bolehHapus = punyaSaya || isManager;
+                const captionBatch = batch.find((x) => x.caption)?.caption;
+
+                // Batch 4+ gambar → grid album seperti WhatsApp/Telegram.
+                const album = batch.length >= MIN_ALBUM && batch.every((x) => x.image_url);
+                if (album) {
+                  const kolom = batch.length === 4 ? 'grid-cols-2' : 'grid-cols-3';
+                  return (
+                    <div key={p0.id} className={`group flex flex-col gap-1 max-w-[85%] ${punyaSaya ? 'self-end items-end' : 'self-start items-start'}`}>
+                      <div className={`rounded-2xl overflow-hidden border p-1 ${punyaSaya ? 'border-[#124bce]/40 bg-[#124bce]/10' : 'border-zinc-800 bg-[#15171c]'}`}>
+                        <div className={`grid ${kolom} gap-1`}>
+                          {batch.map((p) => (
+                            <button key={p.id} onClick={() => setLightbox(p.image_url)} className="block aspect-square overflow-hidden rounded-lg">
+                              <img src={p.image_url} alt={`Setoran ${tglPendek(p.created_at)}`} loading="lazy"
+                                className="w-full h-full object-cover hover:opacity-90 transition-opacity" />
+                            </button>
+                          ))}
+                        </div>
+                        {captionBatch && (
+                          <p className="text-[12px] text-zinc-200 leading-relaxed whitespace-pre-wrap break-words px-2 py-2">
+                            {captionBatch}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 px-1">
+                        <span className="text-[9px] text-zinc-600">{batch.length} gambar · {tglPendek(p0.created_at)} · {jam(p0.created_at)}</span>
+                        {bolehHapus && (
+                          <button onClick={() => batch.forEach((p) => hapus(p))} title="Hapus semua"
+                            className="text-zinc-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                            <Trash2 size={11} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 px-1">
-                      <span className="text-[9px] text-zinc-600">{tglPendek(p.created_at)} · {jam(p.created_at)}</span>
-                      {bolehHapus && (
-                        <button onClick={() => hapus(p)} title="Hapus"
-                          className="text-zinc-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
-                          <Trash2 size={11} />
-                        </button>
-                      )}
+                  );
+                }
+
+                // Selain itu: gelembung satuan seperti biasa.
+                return batch.map((p) => {
+                  const hapusIni = p.user_id === currentUserId || isManager;
+                  const mine = p.user_id === currentUserId;
+                  return (
+                    <div key={p.id} className={`group flex flex-col gap-1 max-w-[85%] ${mine ? 'self-end items-end' : 'self-start items-start'}`}>
+                      <div className={`rounded-2xl overflow-hidden border ${mine ? 'border-[#124bce]/40 bg-[#124bce]/10' : 'border-zinc-800 bg-[#15171c]'}`}>
+                        {p.image_url && (
+                          <button onClick={() => setLightbox(p.image_url)} className="block">
+                            <img src={p.image_url} alt={`Setoran ${tglPendek(p.created_at)}`} loading="lazy"
+                              className="max-h-72 w-auto object-cover" />
+                          </button>
+                        )}
+                        {p.caption && (
+                          <p className="text-[12px] text-zinc-200 leading-relaxed whitespace-pre-wrap break-words px-3 py-2">
+                            {p.caption}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 px-1">
+                        <span className="text-[9px] text-zinc-600">{tglPendek(p.created_at)} · {jam(p.created_at)}</span>
+                        {hapusIni && (
+                          <button onClick={() => hapus(p)} title="Hapus"
+                            className="text-zinc-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                            <Trash2 size={11} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
+                  );
+                });
               })}
               <div ref={ujungRef} />
             </div>
