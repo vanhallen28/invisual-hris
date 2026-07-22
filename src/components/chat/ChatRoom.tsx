@@ -369,10 +369,18 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
     setUploading(false);
   };
 
-  /* Tempel tangkapan layar langsung dari papan klip (Ctrl+V / ⌘V).
-     Hanya bertindak kalau papan klip benar-benar berisi gambar; menempel
-     teks biasa ke kolom pesan tetap berjalan seperti biasa. */
-  const tempel = (e: React.ClipboardEvent) => {
+  /* Tempel tangkapan layar dari papan klip (Ctrl+V / ⌘V).
+
+     Pendengarnya dipasang di window, bukan di elemen. Peristiwa tempel
+     hanya terjadi pada elemen yang sedang difokus, dan sebuah <div>
+     tidak bisa difokus — kalau dipasang di sana, menempel hanya bekerja
+     setelah kolom pesan diklik lebih dulu. Justru itu yang mau dihindari.
+
+     Ref dipakai supaya pendaftarannya cukup sekali, tetapi isinya selalu
+     versi terbaru: kalau bergantung pada daftar dependensi, pendengarnya
+     dipasang-lepas setiap kali ada pesan masuk. */
+  const tempelRef = useRef<(e: ClipboardEvent) => void>(() => {});
+  tempelRef.current = (e: ClipboardEvent) => {
     if (!canPost || uploading) return;
     const gambar: File[] = [];
     for (const item of Array.from(e.clipboardData?.items || [])) {
@@ -387,10 +395,17 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
         );
       }
     }
+    // Papan klip berisi teks biasa — biarkan kolom pesan menanganinya.
     if (!gambar.length) return;
     e.preventDefault();
     (async () => { for (const f of gambar) await upload(f); })();
   };
+
+  useEffect(() => {
+    const dengar = (e: ClipboardEvent) => tempelRef.current(e);
+    window.addEventListener('paste', dengar);
+    return () => window.removeEventListener('paste', dengar);
+  }, []);
 
   const react = async (mid: string, emoji: string) => {
     const on = !rx.some((r) => r.message_id === mid && r.member_id === currentUserId && r.emoji === emoji);
@@ -453,7 +468,7 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
   const pins = msgs.filter((m) => m.pinned);
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#1e2029]" onPaste={tempel}>
+    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#1e2029]">
       {/* header channel */}
       <div className="h-12 border-b border-zinc-800 flex items-center gap-2 px-4 shrink-0">
         {onBack && (

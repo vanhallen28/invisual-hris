@@ -4,8 +4,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { excludeOwners } from "@/lib/owners";
+import { useToast } from "@/components/Toast";
 
 export default function AdminPayrollPage() {
+  const toast = useToast();
   const [employees, setEmployees] = useState<any[]>([]);
   const [attendances, setAttendances] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -124,12 +126,12 @@ export default function AdminPayrollPage() {
 
       if (error) throw error;
       
-      alert(`✅ Berhasil memperbarui komponen gaji untuk ${editingEmp.nama}`);
+      toast.sukses(`Komponen gaji ${editingEmp.nama} diperbarui`);
       setEditingEmp(null);
       fetchPayrollData(); 
     } catch (err: any) {
       const detailErr = err.message || JSON.stringify(err);
-      alert("❌ Gagal menyimpan data ke database.\n\nAlasan: " + detailErr);
+      toast.gagal("Gagal menyimpan ke database: " + detailErr);
     } finally {
       setIsSaving(false);
     }

@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import { X, Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, Link2, FileText, Image as ImageIcon, Paperclip, MessageSquare, ChevronDown, Send } from 'lucide-react';
+import { useToast } from "@/components/Toast";
 
 // invisual.docs — editor dokumen kanvas (tema gelap) + upload gambar/file + komentar.
 // Di tingkat modul agar tombol tidak dipasang ulang tiap render.
@@ -10,6 +11,7 @@ const TBtn = ({ onDo, title, children }: any) => (
 );
 
 export default function DocEditor() {
+  const toast = useToast();
   const { docEditorTarget, closeDocEditor, saveDoc, supabase, currentUserId, teamMembers }: any = useDashboard();
   const ref = useRef<HTMLDivElement>(null);
   const imgInput = useRef<HTMLInputElement>(null);
@@ -69,7 +71,7 @@ export default function DocEditor() {
       else document.execCommand('insertHTML', false, `<a href="${url}" target="_blank" rel="noopener">\uD83D\uDCCE ${file.name}</a>&nbsp;`);
       scheduleSave();
     } catch (e: any) {
-      window.alert('Upload gagal: ' + (e?.message || e) + '\n\nPastikan bucket "doc-assets" sudah dibuat & publik.');
+      toast.gagal('Upload gagal: ' + (e?.message || e));
     }
     setUploading(false);
   };
@@ -82,7 +84,7 @@ export default function DocEditor() {
     if (!commentText.trim() || !supabase || !dbItemId) return;
     const text = commentText.trim();
     const { data, error } = await supabase.from('item_updates').insert({ item_id: dbItemId, author_id: currentUserId, text }).select('*').single();
-    if (error) { window.alert('Gagal kirim komentar: ' + error.message); return; }
+    if (error) { toast.gagal('Gagal kirim komentar: ' + error.message); return; }
     setComments((c) => [...c, data]); setCommentText('');
   };
 

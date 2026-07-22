@@ -4,8 +4,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/Toast";
 
 export default function AuthCallbackPage() {
+  const toast = useToast();
   const router = useRouter();
   const [statusText, setStatusText] = useState("Memverifikasi akun Google Anda...");
 
@@ -38,14 +40,14 @@ export default function AuthCallbackPage() {
         if (dbError || !emp) {
           // Jika email Google tidak terdaftar di database karyawan, paksa logout!
           await supabase.auth.signOut();
-          alert(`⛔ AKSES DITOLAK\n\nEmail Google Anda (${user.email}) tidak terdaftar di Database HRD Invisual Studio. Silakan hubungi admin.`);
+          toast.gagal(`Email ${user.email} tidak terdaftar. Hubungi admin.`);
           router.replace("/login");
           return;
         }
 
         if (!emp.isAktif) {
           await supabase.auth.signOut();
-          alert("⛔ AKUN NONAKTIF\n\nStatus kepegawaian Anda telah dinonaktifkan.");
+          toast.gagal("Akun nonaktif. Status kepegawaian dinonaktifkan.");
           router.replace("/login");
           return;
         }

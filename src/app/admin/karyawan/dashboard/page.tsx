@@ -3,8 +3,10 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/Toast";
 
 export default function AdminDashboardPage() {
+  const toast = useToast();
   const [theme, setTheme] = useState<"glow" | "minimalist">("glow");
   const [adminEmail, setAdminEmail] = useState<string>("Memuat...");
   
@@ -77,7 +79,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleLogout = async () => {
-    const confirmLogout = confirm("Apakah Anda yakin ingin keluar dari Panel Executive Admin?");
+    const confirmLogout = await toast.konfirmasi("Keluar dari Panel Admin?", { labelYa: "Keluar" });
     if (!confirmLogout) return;
     
     await supabase.auth.signOut(); 
@@ -152,12 +154,12 @@ export default function AdminDashboardPage() {
       if (error) throw error;
       fetchDashboardData();
     } catch (err) {
-      alert("Gagal memperbarui status.");
+      toast.gagal("Gagal memperbarui status.");
     }
   };
 
   const handleExportCSV = () => {
-    if(todayAttendances.length === 0) return alert("Belum ada data absensi hari ini.");
+    if(todayAttendances.length === 0) return toast.info("Belum ada data absensi hari ini.");
     const headers = ["Nama Karyawan", "Waktu Masuk", "Status Absen", "Lokasi Koordinat"];
     const rows = todayAttendances.map(a => `"${a.nama}","${a.waktuMasuk}","${a.status}","${a.lokasi || 'Terverifikasi'}"`);
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
@@ -170,7 +172,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleBackupDatabase = () => {
-    if(employees.length === 0) return alert("Database kosong.");
+    if(employees.length === 0) return toast.info("Database kosong.");
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(employees, null, 2));
     const link = document.createElement("a");
     link.setAttribute("href", dataStr);
@@ -193,7 +195,7 @@ export default function AdminDashboardPage() {
 
   const executeBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!broadcastMessage.trim()) return alert("Isi email tidak boleh kosong.");
+    if (!broadcastMessage.trim()) return toast.gagal("Isi email tidak boleh kosong.");
     setIsBroadcasting(true);
     try {
       const recipients = employees.map((emp: any) => emp.email).filter(Boolean);
@@ -205,12 +207,13 @@ export default function AdminDashboardPage() {
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result?.error || "Gagal mengirim email.");
-      alert(result.mode === "SIMULATION"
-        ? `🛠️ [SIMULASI] Email ke ${result.sent} staf tercetak di terminal server.\n(Resend belum dikonfigurasi — lihat panduan .env.)`
-        : `✅ Email berhasil dikirim ke ${result.sent} staf.`);
+      toast[result.mode === "SIMULATION" ? "info" : "sukses"](
+        result.mode === "SIMULATION"
+          ? `[Simulasi] Email ke ${result.sent} staf tercetak di terminal server.`
+          : `Email berhasil dikirim ke ${result.sent} staf.`);
       closeBroadcastModal();
     } catch (err: any) {
-      alert("❌ Gagal mengirim email: " + err.message);
+      toast.gagal("Gagal mengirim email: " + err.message);
     } finally {
       setIsBroadcasting(false);
     }
@@ -224,7 +227,7 @@ export default function AdminDashboardPage() {
 
   const executeWABroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!waMessage.trim()) return alert("Pesan tidak boleh kosong!");
+    if (!waMessage.trim()) return toast.gagal("Pesan tidak boleh kosong!");
     setIsSendingWA(true);
     try {
       const targetNumbers = employees.map((emp: any) => emp.noPonsel).filter(Boolean).join(",");

@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { logAudit } from "@/lib/audit";
+import { useToast } from "@/components/Toast";
 import { CorporateSummaryCard } from "@/components/admin/CorporateSummaryCard";
 import { ResetAbsensiCard } from "@/components/admin/ResetAbsensiCard";
 import { ChatNotifCard } from "@/components/admin/ChatNotifCard";
@@ -54,6 +55,7 @@ function BentoCell({
 }
 
 export default function AdminDashboardPage() {
+  const toast = useToast();
   const router = useRouter();
 
   const [theme, setTheme] = useState<"glow" | "minimalist">("glow");
@@ -62,6 +64,7 @@ export default function AdminDashboardPage() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<any[]>([]);
   const [approvedLeaves, setApprovedLeaves] = useState<any[]>([]);
+  const [remoteToday, setRemoteToday] = useState<any[]>([]);  // WFH/WFC disetujui hari ini
   const [todayAttendances, setTodayAttendances] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -133,7 +136,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleLogout = async () => {
-    const confirmLogout = confirm("Apakah Anda yakin ingin keluar dari Panel Executive Admin?");
+    const confirmLogout = await toast.konfirmasi("Keluar dari Panel Admin?", { labelYa: "Keluar" });
     if (!confirmLogout) return;
     
     localStorage.removeItem("invisual_session");
@@ -164,7 +167,12 @@ export default function AdminDashboardPage() {
       const activeEmployees = excludeOwners(empData?.filter(e => e.isAktif ?? true) || []);
       setEmployees(activeEmployees);
       setPendingApprovals(pendingData || []);
-      setApprovedLeaves((approvedData || []).filter((a: any) => coversToday(a.tanggal, todayISO)));
+      // Pisahkan WFH/WFC dari sakit/cuti. Sebelumnya keduanya masuk satu
+      // kartu "Sakit/cuti"; sekarang kerja remote punya kartunya sendiri.
+      const menutupiHariIni = (approvedData || []).filter((a: any) => coversToday(a.tanggal, todayISO));
+      const isRemote = (j: string) => /WFH|WFC|Work From/i.test(String(j || ""));
+      setApprovedLeaves(menutupiHariIni.filter((a: any) => !isRemote(a.jenis)));
+      setRemoteToday(menutupiHariIni.filter((a: any) => isRemote(a.jenis)));
       setTodayAttendances(uniqueAttendances);
 
       const detectedAnomalies: any[] = [];
@@ -208,7 +216,7 @@ export default function AdminDashboardPage() {
       logAudit(action === "Disetujui" ? "Setujui Cuti/Izin" : "Tolak Cuti/Izin", `Pengajuan #${id}`);
       fetchDashboardData();
     } catch (err) {
-      alert("Gagal memperbarui status.");
+      toast.gagal("Gagal memperbarui status.");
     }
   };
 
@@ -224,12 +232,12 @@ export default function AdminDashboardPage() {
       if (error) throw error;
       fetchDashboardData();
     } catch (err) {
-      alert("Gagal menyetujui keterlambatan.");
+      toast.gagal("Gagal menyetujui keterlambatan.");
     }
   };
 
   const handleExportCSV = () => {
-    if(todayAttendances.length === 0) return alert("Belum ada data absensi hari ini.");
+    if(todayAttendances.length === 0) return toast.info("Belum ada data absensi hari ini.");
     const headers = ["Nama Karyawan", "Waktu Masuk", "Status Absen", "Lokasi Koordinat"];
     const rows = todayAttendances.map(a => `"${a.nama}","${a.waktuMasuk}","${a.status}","${a.lokasi || 'Terverifikasi'}"`);
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
@@ -242,7 +250,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleBackupDatabase = () => {
-    if(employees.length === 0) return alert("Database kosong.");
+    if(employees.length === 0) return toast.info("Database kosong.");
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(employees, null, 2));
     const link = document.createElement("a");
     link.setAttribute("href", dataStr);
@@ -265,7 +273,7 @@ export default function AdminDashboardPage() {
 
   const executeBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!broadcastMessage.trim()) return alert("Isi email tidak boleh kosong.");
+    if (!broadcastMessage.trim()) return toast.gagal("Isi email tidak boleh kosong.");
     setIsBroadcasting(true);
     try {
       const recipients = employees.map((emp: any) => emp.email).filter(Boolean);
@@ -277,13 +285,14 @@ export default function AdminDashboardPage() {
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result?.error || "Gagal mengirim email.");
-      alert(result.mode === "SIMULATION"
-        ? `🛠️ [SIMULASI] Email ke ${result.sent} staf tercetak di terminal server.\n(Resend belum dikonfigurasi — lihat panduan .env.)`
-        : `✅ Email berhasil dikirim ke ${result.sent} staf.`);
+      toast[result.mode === "SIMULATION" ? "info" : "sukses"](
+        result.mode === "SIMULATION"
+          ? `[Simulasi] Email ke ${result.sent} staf tercetak di terminal server.`
+          : `Email berhasil dikirim ke ${result.sent} staf.`);
       logAudit("Kirim Email Blast", `${recipients.length} penerima`, broadcastSubject || undefined);
       closeBroadcastModal();
     } catch (err: any) {
-      alert("❌ Gagal mengirim email: " + err.message);
+      toast.gagal("Gagal mengirim email: " + err.message);
     } finally {
       setIsBroadcasting(false);
     }
@@ -297,7 +306,7 @@ export default function AdminDashboardPage() {
 
   const executeWABroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!waMessage.trim()) return alert("Pesan tidak boleh kosong!");
+    if (!waMessage.trim()) return toast.gagal("Pesan tidak boleh kosong!");
     setIsSendingWA(true);
     try {
       const targetNumbers = employees.map((emp: any) => emp.noPonsel).filter(Boolean).join(",");
@@ -338,7 +347,7 @@ export default function AdminDashboardPage() {
   // Turunan untuk cincin kehadiran (tampilan saja)
   const hadirTotal = onTimeToday.length + lateToday.length;
   const persenHadir = employees.length ? Math.round((hadirTotal / employees.length) * 100) : 0;
-  const belumAbsen = Math.max(0, employees.length - hadirTotal - approvedLeaves.length);
+  const belumAbsen = Math.max(0, employees.length - hadirTotal - approvedLeaves.length - remoteToday.length);
 
   // =========================================================================
   // KOMPONEN HEADER KANAN (THEME + USER PROFILE + LOGOUT)
@@ -445,6 +454,11 @@ export default function AdminDashboardPage() {
                     <span className="ml-auto text-sm font-bold text-white">{approvedLeaves.length}</span>
                   </div>
                   <div className="flex items-center gap-2.5">
+                    <span className="w-2.5 h-2.5 rounded-sm bg-[#8ba7ff]"></span>
+                    <span className="text-sm text-gray-400">WFH / WFC</span>
+                    <span className="ml-auto text-sm font-bold text-white">{remoteToday.length}</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
                     <span className="w-2.5 h-2.5 rounded-sm bg-white/20"></span>
                     <span className="text-sm text-gray-400">Belum absen</span>
                     <span className="ml-auto text-sm font-bold text-white">{belumAbsen}</span>
@@ -475,6 +489,12 @@ export default function AdminDashboardPage() {
             <BentoCell onClick={() => setActiveModal("absen")}>
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Sakit / cuti</p>
               <p className="font-display mt-2 text-3xl md:text-4xl font-black text-red-400">{isLoading ? "-" : approvedLeaves.length}</p>
+              <span className="mt-2 inline-block text-[11px] text-[#b3c5ff] opacity-0 transition-opacity group-hover:opacity-100">Lihat daftar →</span>
+            </BentoCell>
+
+            <BentoCell onClick={() => setActiveModal("remote")}>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">WFH / WFC</p>
+              <p className="font-display mt-2 text-3xl md:text-4xl font-black text-[#8ba7ff]">{isLoading ? "-" : remoteToday.length}</p>
               <span className="mt-2 inline-block text-[11px] text-[#b3c5ff] opacity-0 transition-opacity group-hover:opacity-100">Lihat daftar →</span>
             </BentoCell>
 
@@ -526,7 +546,12 @@ export default function AdminDashboardPage() {
                 {todayAttendances.slice(0, 8).map((absen, idx) => (
                   <div key={`log-${absen.id}`} className="relative pl-6 animate-in slide-in-from-left-2" style={{ animationDelay: `${idx * 50}ms` }}>
                     <div className={`absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full ring-4 ring-[#0f0f0f] ${absen.status === 'Terlambat' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
-                    <p className="text-sm font-bold text-white">{absen.nama}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-white">{absen.nama}</p>
+                      {absen.mode_kerja && absen.mode_kerja !== "Kantor" && (
+                        <span className="text-[9px] font-bold uppercase tracking-wide bg-[#124bce]/15 text-[#8ba7ff] px-1.5 py-0.5 rounded border border-[#124bce]/30">{absen.mode_kerja}</span>
+                      )}
+                    </div>
                     <span className="text-[10px] bg-white/5 text-gray-300 px-2 py-0.5 rounded font-mono border border-white/10 mt-1 inline-block">Masuk {absen.waktuMasuk}</span>
                   </div>
                 ))}
@@ -570,6 +595,10 @@ export default function AdminDashboardPage() {
             <div onClick={() => setActiveModal("absen")} className="bg-[#0a0a0a] border border-white/10 rounded-xl p-5 cursor-pointer hover:bg-[#111111] transition-colors flex flex-col justify-between h-32 relative z-30">
               <div className="flex justify-between items-start"><p className="text-sm font-medium text-gray-400">Sakit / Cuti</p><div className="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" /></svg></div></div>
               <h2 className="text-3xl font-bold text-white">{isLoading ? "-" : approvedLeaves.length}</h2>
+            </div>
+            <div onClick={() => setActiveModal("remote")} className="bg-[#0a0a0a] border border-white/10 rounded-xl p-5 cursor-pointer hover:bg-[#111111] transition-colors flex flex-col justify-between h-32 relative z-30">
+              <div className="flex justify-between items-start"><p className="text-sm font-medium text-gray-400">WFH / WFC</p><div className="w-8 h-8 rounded-lg bg-[#124bce]/10 text-[#8ba7ff] flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg></div></div>
+              <h2 className="text-3xl font-bold text-white">{isLoading ? "-" : remoteToday.length}</h2>
             </div>
           </div>
 
@@ -861,6 +890,17 @@ export default function AdminDashboardPage() {
                     </div>
                   ))}
                   {approvedLeaves.length === 0 && <p className="text-sm text-gray-500 text-center py-4">Tidak ada cuti/sakit.</p>}
+                </div>
+              )}
+              {activeModal === "remote" && (
+                <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
+                  {remoteToday.map((leave, i) => (
+                    <div key={leave.id || `rm-${i}`} className="flex flex-col p-3 bg-[#111111] rounded-lg border border-white/5 border-l-2 border-l-[#124bce]">
+                      <div className="flex justify-between items-center"><p className="font-bold text-sm text-white">{leave.nama}</p><span className="text-[10px] bg-[#124bce]/15 text-[#8ba7ff] px-2 py-1 rounded font-bold uppercase">{leave.jenis}</span></div>
+                      <p className="text-[10px] text-gray-500 mt-1">{leave.tanggal}</p>
+                    </div>
+                  ))}
+                  {remoteToday.length === 0 && <p className="text-sm text-gray-500 text-center py-4">Tidak ada WFH/WFC hari ini.</p>}
                 </div>
               )}
             </div>

@@ -6,6 +6,7 @@ import "./globals.css";
 import PwaSetup from "@/components/PwaSetup";
 import PwaSplash from "@/components/PwaSplash";
 import ChatToaster from "@/components/ChatToaster";
+import { ToastProvider } from "@/components/Toast";
 import GlobalSearch from "@/components/GlobalSearch";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -52,9 +53,11 @@ export default function RootLayout({
       <body className={`${inter.className} bg-[#0a0a0a] text-white antialiased`} suppressHydrationWarning>
         <PwaSetup />
         <PwaSplash />
-        {children}
-        <ChatToaster />
-        <GlobalSearch />
+        <ToastProvider>
+          {children}
+          <ChatToaster />
+          <GlobalSearch />
+        </ToastProvider>
       </body>
     </html>
   );

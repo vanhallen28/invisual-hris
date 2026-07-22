@@ -17,8 +17,10 @@ import { supabase } from "@/lib/supabase";
 import { AddEmailModal } from "@/components/corporate/AddEmailModal";
 import { formatDate, cn } from "@/lib/corporate/utils";
 import type { EmailAccount } from "@/lib/corporate/types";
+import { useToast } from "@/components/Toast";
 
 export function EmailHubView() {
+  const toast = useToast();
   const [accounts, setAccounts] = useState<EmailAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -78,7 +80,7 @@ export function EmailHubView() {
   };
 
   const remove = async (a: EmailAccount) => {
-    if (!confirm(`Hapus akun "${a.email}" dari daftar?`)) return;
+    if (!(await toast.konfirmasi(`Hapus akun "${a.email}" dari daftar?`, { labelYa: "Hapus" }))) return;
     await supabase.from("email_accounts").delete().eq("id", a.id);
     setAccounts((prev) => prev.filter((x) => x.id !== a.id));
   };

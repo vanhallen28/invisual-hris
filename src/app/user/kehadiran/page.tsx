@@ -52,11 +52,31 @@ export default function UserKehadiranPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [cameraOn, setCameraOn] = useState(false);
   const [captureMode, setCaptureMode] = useState<"in" | "out" | null>(null);
+  // Lokasi kerja saat absen masuk. Default kantor; WFH/WFC hanya boleh
+  // dipilih kalau pengajuannya untuk hari ini sudah disetujui.
+  const [modeKerja, setModeKerja] = useState<"Kantor" | "WFH" | "WFC">("Kantor");
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isFlashing, setIsFlashing] = useState(false);
 
   const todayDate = new Date().toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const todayISO = new Date().toISOString().split('T')[0];
+
+  // WFH/WFC hanya boleh dipilih saat absen kalau pengajuannya untuk hari
+  // ini sudah disetujui. Tanggal pengajuan bisa satu hari ("2025-07-16")
+  // atau rentang ("2025-07-16 s/d 2025-07-20"); keduanya dicek di sini.
+  const izinDisetujuiHariIni = (kunci: string) =>
+    pengajuanList.some((r) => {
+      if (r.status !== "Disetujui") return false;
+      if (!String(r.jenis || "").includes(kunci)) return false;
+      const t = String(r.tanggal || "");
+      if (t.includes(" s/d ")) {
+        const [awal, akhir] = t.split(" s/d ");
+        return todayISO >= awal.trim() && todayISO <= akhir.trim();
+      }
+      return t.trim() === todayISO;
+    });
+  const bolehWFH = izinDisetujuiHariIni("WFH");
+  const bolehWFC = izinDisetujuiHariIni("WFC");
 
   // FUNGSI MENAMPILKAN NOTIFIKASI CANTIK
   const showToast = (type: "success" | "error", message: string) => {
@@ -238,7 +258,9 @@ export default function UserKehadiranPage() {
     try {
       const { error } = await supabase.from("attendance").insert([{
         idKaryawan: safeId, nama: currentUser.nama, tanggal: todayISO,
-        waktuMasuk: timeString, waktuKeluar: null, lokasi: "Kantor Invisual (Selfie)", status: statusKehadiran
+        waktuMasuk: timeString, waktuKeluar: null,
+        lokasi: modeKerja === "Kantor" ? "Kantor Invisual (Selfie)" : `${modeKerja} (Selfie)`,
+        mode_kerja: modeKerja, status: statusKehadiran
       }]);
       if (error) throw error;
       showToast("success", `Clock-In berhasil dicatat pada ${timeString} WIB.`);
@@ -415,7 +437,43 @@ export default function UserKehadiranPage() {
                 Absensi Selesai
               </div>
             ) : captureMode ? (
-              /* Kamera aktif → ambil foto & submit, atau batal */
+              /* Kamera aktif → pilih lokasi (khusus masuk), lalu ambil foto */
+              <div className="flex flex-col gap-2.5">
+                {captureMode === "in" && (
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Lokasi kerja</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { key: "Kantor", label: "Kantor", boleh: true },
+                        { key: "WFH", label: "WFH", boleh: bolehWFH },
+                        { key: "WFC", label: "WFC", boleh: bolehWFC },
+                      ] as const).map((opt) => {
+                        const aktif = modeKerja === opt.key;
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            disabled={!opt.boleh}
+                            onClick={() => setModeKerja(opt.key)}
+                            title={opt.boleh ? undefined : `Pengajuan ${opt.label} hari ini belum disetujui`}
+                            className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                              aktif
+                                ? "bg-[#124bce] text-white border-[#124bce]"
+                                : opt.boleh
+                                  ? "bg-white/[0.03] text-gray-300 border-white/10 hover:border-white/20"
+                                  : "bg-white/[0.02] text-gray-600 border-white/5 cursor-not-allowed"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {(!bolehWFH && !bolehWFC) && (
+                      <p className="text-[10px] text-gray-500 mt-2 leading-relaxed">WFH/WFC aktif hanya bila pengajuan hari ini sudah disetujui HRD.</p>
+                    )}
+                  </div>
+                )}
               <div className="flex gap-2.5">
                 <button
                   onClick={captureMode === "in" ? handleClockIn : handleClockOut}
@@ -435,6 +493,7 @@ export default function UserKehadiranPage() {
                 >
                   Batal
                 </button>
+              </div>
               </div>
             ) : !todayAttendance ? (
               /* Belum clock-in → tombol memulai (kamera muncul saat diklik) */

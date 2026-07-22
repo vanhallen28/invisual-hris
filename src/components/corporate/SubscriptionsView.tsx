@@ -7,6 +7,7 @@ import { AddSubscriptionModal } from "@/components/corporate/AddSubscriptionModa
 import { formatDate, cn } from "@/lib/corporate/utils";
 import type { BillingCycle, SubStatus, Subscription } from "@/lib/corporate/types";
 import { getRenewalReminders, reminderLabel } from "@/lib/corporate/reminders";
+import { useToast } from "@/components/Toast";
 
 const CYCLE_LABEL: Record<BillingCycle, string> = {
   monthly: "/bln",
@@ -30,6 +31,7 @@ function money(price: number | null, currency: string) {
 }
 
 export function SubscriptionsView() {
+  const toast = useToast();
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -71,7 +73,7 @@ export function SubscriptionsView() {
     setModalOpen(true);
   };
   const remove = async (s: Subscription) => {
-    if (!confirm(`Hapus langganan "${s.platform}"?`)) return;
+    if (!(await toast.konfirmasi(`Hapus langganan "${s.platform}"?`, { labelYa: "Hapus" }))) return;
     await supabase.from("subscriptions").delete().eq("id", s.id);
     setSubs((prev) => prev.filter((x) => x.id !== s.id));
   };

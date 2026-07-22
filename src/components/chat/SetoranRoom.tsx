@@ -169,8 +169,12 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
     setPending([]); setPendingUrls([]); setCaption('');
   };
 
-  // Tempel tangkapan layar langsung dari papan klip (Ctrl+V / ⌘V).
-  const tempel = (e: React.ClipboardEvent) => {
+  // Tempel tangkapan layar dari papan klip (Ctrl+V / ⌘V).
+  // Dipasang di window, bukan di elemen: peristiwa tempel hanya terjadi
+  // pada elemen yang sedang difokus, dan <div> tidak bisa difokus — kalau
+  // dipasang di sana, menempel baru bekerja setelah kolom teks diklik.
+  const tempelRef = useRef<(e: ClipboardEvent) => void>(() => {});
+  tempelRef.current = (e: ClipboardEvent) => {
     if (!sayaAnggota || uploading) return;
     const berkas: File[] = [];
     for (const item of Array.from(e.clipboardData?.items || [])) {
@@ -185,6 +189,12 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
     }
     if (berkas.length) { e.preventDefault(); tambahBerkas(berkas); }
   };
+
+  useEffect(() => {
+    const dengar = (e: ClipboardEvent) => tempelRef.current(e);
+    window.addEventListener('paste', dengar);
+    return () => window.removeEventListener('paste', dengar);
+  }, []);
 
   const kirim = async () => {
     if (uploading) return;
@@ -268,7 +278,7 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
 
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#1e2029]" onPaste={tempel}>
+    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#1e2029]">
 
       {/* ══ Kepala ══ */}
       <div className="h-12 border-b border-zinc-800 flex items-center gap-2 px-3 shrink-0 bg-[#1e2029]">
@@ -455,7 +465,6 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
               <input
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
-                onPaste={tempel}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!uploading) kirim(); } }}
                 placeholder="Tulis pesan…"
                 className="flex-1 min-w-0 bg-[#15171c] border border-zinc-700 focus:border-[#124bce]/60 rounded-xl px-3 py-2.5 text-xs text-zinc-100 outline-none transition-colors" />

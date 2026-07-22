@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { Shapes, Plus, X, Trash2, FileText, ChevronLeft } from 'lucide-react';
+import { useToast } from "@/components/Toast";
 
 // Proyek bersama, disiapkan oleh kanvas.sql.
 const PROYEK = '11111111-2222-4333-8444-555555555555';
@@ -73,6 +74,7 @@ const waktu = (iso: string) => {
 };
 
 export default function TestProject() {
+  const toast = useToast();
   const [buka, setBuka] = useState(false);
   const [saya, setSaya] = useState<{ id: string; nama: string } | null>(null);
   const [daftar, setDaftar] = useState<Berkas[]>([]);
@@ -127,7 +129,7 @@ export default function TestProject() {
   };
 
   const hapusBerkas = async (b: Berkas) => {
-    if (!confirm(`Hapus kanvas "${b.name}"? Isinya ikut terhapus.`)) return;
+    if (!(await toast.konfirmasi(`Hapus kanvas "${b.name}"? Isinya ikut terhapus.`, { labelYa: "Hapus" }))) return;
     try {
       const { error } = await supabase.from('kanvas_files').delete().eq('id', b.id);
       if (error) throw new Error(error.message);

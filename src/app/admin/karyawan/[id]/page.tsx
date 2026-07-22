@@ -7,8 +7,10 @@ import { useParams, useRouter } from "next/navigation";
 import { Employee } from "@/lib/types";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase"; 
+import { useToast } from "@/components/Toast";
 
 export default function DetailKaryawanPage() {
+  const toast = useToast();
   const params = useParams();
   const router = useRouter();
   const idKaryawan = params.id as string;
@@ -42,7 +44,7 @@ export default function DetailKaryawanPage() {
         setAccountNumber(data.noRekening || "");
       }
     } catch (err: any) {
-      alert("Gagal memuat detail karyawan dari Supabase: " + err.message);
+      toast.gagal("Gagal memuat detail karyawan: " + err.message);
     }
   };
 
@@ -65,11 +67,11 @@ export default function DetailKaryawanPage() {
 
       if (error) throw error;
 
-      alert("✅ Data rekening bank berhasil diperbarui di server Supabase!");
+      toast.sukses("Data rekening bank diperbarui");
       setIsEditRekeningOpen(false);
       await fetchEmployeeDetail(); 
     } catch (err: any) {
-      alert("Gaji gagal diperbarui: " + err.message);
+      toast.gagal("Gaji gagal diperbarui: " + err.message);
     }
   };
 
@@ -95,17 +97,17 @@ export default function DetailKaryawanPage() {
 
       if (error) throw error;
 
-      alert(`✅ Dokumen "${docTitle}" berhasil disimpan ke Cloud Supabase!`);
+      toast.sukses(`Dokumen "${docTitle}" tersimpan`);
       setIsUploadModalOpen(false);
       setDocFileName("");
       await fetchEmployeeDetail(); 
     } catch (err: any) {
-      alert("Gagal mengarsipkan dokumen: " + err.message);
+      toast.gagal("Gagal mengarsipkan dokumen: " + err.message);
     }
   };
 
   const handleDeleteDocument = async (idDokumen: string, judul: string) => {
-    if (!window.confirm(`Hapus dokumen ${judul} secara permanen?`)) return;
+    if (!(await toast.konfirmasi(`Hapus dokumen "${judul}" secara permanen?`, { labelYa: "Hapus" }))) return;
 
     const updatedDokumen = employee.dokumen.filter((doc: any) => doc.id !== idDokumen);
 
@@ -119,7 +121,7 @@ export default function DetailKaryawanPage() {
 
       await fetchEmployeeDetail();
     } catch (err: any) {
-      alert("Gagal menghapus dokumen: " + err.message);
+      toast.gagal("Gagal menghapus dokumen: " + err.message);
     }
   };
 

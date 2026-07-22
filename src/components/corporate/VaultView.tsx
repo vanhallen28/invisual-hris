@@ -25,8 +25,10 @@ import {
   cn,
 } from "@/lib/corporate/utils";
 import type { Category, FileWithRelations } from "@/lib/corporate/types";
+import { useToast } from "@/components/Toast";
 
 export function VaultView() {
+  const toast = useToast();
   const searchParams = useSearchParams();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -141,7 +143,7 @@ export function VaultView() {
   };
 
   const deleteFile = async (f: FileWithRelations) => {
-    if (!confirm(`Hapus "${f.file_name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+    if (!(await toast.konfirmasi(`Hapus "${f.file_name}"?`, { labelYa: "Hapus" }))) return;
     await supabase.storage.from("vault-files").remove([f.storage_path]);
     await supabase.from("files").delete().eq("id", f.id);
     setFiles((prev) => prev.filter((x) => x.id !== f.id));

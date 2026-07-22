@@ -2,9 +2,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import { Send, Maximize2, Minimize2, MessageSquare, Paperclip } from 'lucide-react';
+import { useToast } from "@/components/Toast";
 
 // Chat per-tugas (item_updates). Pesan teks = polos (tanpa bubble). Lampiran = gambar/berkas via Storage.
 export default function TaskChat({ itemId, itemName }: { itemId: string; itemName?: string }) {
+  const toast = useToast();
   const { supabase, currentUserId, teamMembers }: any = useDashboard();
   const [updates, setUpdates] = useState<any[]>([]);
   const [text, setText] = useState('');
@@ -31,7 +33,7 @@ export default function TaskChat({ itemId, itemName }: { itemId: string; itemNam
     if (!text.trim() || !supabase || !itemId) return;
     const t = text.trim();
     const { data, error } = await supabase.from('item_updates').insert({ item_id: itemId, author_id: currentUserId, text: t }).select('*').single();
-    if (error) { window.alert('Gagal kirim pesan: ' + error.message); return; }
+    if (error) { toast.gagal('Gagal kirim pesan: ' + error.message); return; }
     setUpdates((u) => [...u, data]); setText(''); scrollBottom(true);
   };
 
@@ -48,7 +50,7 @@ export default function TaskChat({ itemId, itemName }: { itemId: string; itemNam
       if (error) throw error;
       setUpdates((u) => [...u, msg]); scrollBottom(true);
     } catch (e: any) {
-      window.alert('Upload gagal: ' + (e?.message || e) + '\n\nPastikan bucket "doc-assets" ada.');
+      toast.gagal('Upload gagal: ' + (e?.message || e));
     }
     setUploading(false);
   };
