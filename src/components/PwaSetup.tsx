@@ -13,9 +13,13 @@ export default function PwaSetup() {
       .register("/sw.js")
       .catch((err) => console.error("PWA gagal diaktifkan:", err));
 
-    // Bersihkan badge di ikon PWA setiap aplikasi dibuka/difokuskan
+    // Bersihkan badge di ikon PWA setiap aplikasi dibuka/difokuskan.
+    // Selain menghapus badge sistem, hitungan yang disimpan service
+    // worker juga direset — kalau tidak, notifikasi berikutnya lanjut
+    // dari angka lama, bukan mulai dari 1.
     const clear = () => {
       try { (navigator as any).clearAppBadge?.(); } catch { /* abaikan */ }
+      try { navigator.serviceWorker?.controller?.postMessage({ type: "reset-badge" }); } catch { /* abaikan */ }
     };
     clear();
     window.addEventListener("focus", clear);

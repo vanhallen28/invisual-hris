@@ -24,7 +24,6 @@ export default function UserProfilePage() {
     const initializeProfile = async () => {
       try {
         const sessionStr = localStorage.getItem("invisualUserSession") || 
-                           sessionStorage.getItem("invisualUserSession") || 
                            localStorage.getItem("invisual_session");
 
         if (sessionStr && sessionStr !== "null" && sessionStr !== "undefined") {

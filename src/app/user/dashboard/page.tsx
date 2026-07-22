@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import LoadingLogo from "@/components/LoadingLogo";
+import { useToast } from "@/components/Toast";
 
 // Gaya sel bento + cahaya biru yang mengikuti kursor.
 // Murni tampilan: tanpa state, tanpa efek samping.
@@ -24,6 +25,7 @@ const bentoLeave = (e: { currentTarget: HTMLDivElement }) => {
 };
 
 export default function UserDashboardPage() {
+  const toast = useToast();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,9 +46,10 @@ export default function UserDashboardPage() {
   const [captureMode, setCaptureMode] = useState<"in" | "out" | null>(null);
   const [jamMasuk, setJamMasuk] = useState("09:00");
   const [toast, setToast] = useState<{ show: boolean; type: "success" | "error"; message: string }>({ show: false, type: "success", message: "" });
+  // Diarahkan ke toast global standar. Tanda tangan lama (type, message)
+  // dipertahankan agar semua pemanggilan showToast(...) tetap jalan.
   const showToast = (type: "success" | "error", message: string) => {
-    setToast({ show: true, type, message });
-    setTimeout(() => setToast({ show: false, type: "success", message: "" }), 4000);
+    if (type === "error") toast.gagal(message); else toast.sukses(message);
   };
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isFlashing, setIsFlashing] = useState(false);
@@ -79,9 +82,26 @@ export default function UserDashboardPage() {
     const initializeDashboard = async () => {
       try {
         const sessionLs = localStorage.getItem("invisualUserSession");
-        const sessionSs = sessionStorage.getItem("invisualUserSession");
-        const session = sessionSs || sessionLs || localStorage.getItem("invisual_session");
-        
+        let session = sessionLs || localStorage.getItem("invisual_session");
+
+        // Jalan penyelamat: kalau localStorage terhapus tapi sesi Supabase
+        // masih hidup, bangun ulang dari data karyawan alih-alih menendang.
+        if (!session || session === "null" || session === "undefined") {
+          try {
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            const email = authUser?.email;
+            if (email) {
+              const { data: emp } = await supabase.from("employees").select("*").eq("email", email).single();
+              if (emp && emp.nama) {
+                localStorage.setItem("invisual_session", JSON.stringify(emp));
+                session = JSON.stringify(emp);
+              }
+            }
+          } catch {
+            /* Supabase tak bisa dihubungi — lanjut ke penolakan di bawah */
+          }
+        }
+
         if (session && session !== "null" && session !== "undefined") {
           const user = JSON.parse(session);
           const userData = Array.isArray(user) ? user[0] : user;
@@ -256,24 +276,7 @@ export default function UserDashboardPage() {
   return (
     <div className="w-full flex flex-col gap-4 md:gap-6 pb-10 font-sans">
 
-      {toast.show && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[10000] w-[92%] max-w-sm animate-in slide-in-from-top-4 fade-in duration-300">
-          <div className="relative flex items-center gap-3.5 bg-[#15121A] border border-white/10 rounded-2xl shadow-2xl px-4 py-3.5 overflow-hidden">
-            <span className={`absolute left-0 top-0 bottom-0 w-1 ${toast.type === 'success' ? 'bg-green-400' : 'bg-red-400'}`} />
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
-              {toast.type === 'success' ? (
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              )}
-            </div>
-            <div className="flex-1 min-w-0 pr-1">
-              <p className={`text-[10px] font-black uppercase tracking-widest mb-0.5 ${toast.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>{toast.type === 'success' ? 'Berhasil' : 'Gagal'}</p>
-              <p className="text-[13px] font-semibold text-white leading-snug">{toast.message}</p>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* HEADER TANGGAL */}
       <div className="flex justify-end mb-1 md:mb-2">

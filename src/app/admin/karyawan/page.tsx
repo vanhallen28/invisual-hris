@@ -6,8 +6,10 @@ import { supabase } from "@/lib/supabase";
 import PerformancePanel from "@/components/PerformancePanel";
 import { logAudit } from "@/lib/audit";
 import Avatar from "@/components/Avatar";
+import { useToast } from "@/components/Toast";
 
 export default function AdminKaryawanPage() {
+  const toast = useToast();
   const [employees, setEmployees] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -25,12 +27,12 @@ export default function AdminKaryawanPage() {
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("Semua");
 
   // POPUP TOAST & KONFIRMASI HAPUS CUSTOM
-  const [toast, setToast] = useState<{ show: boolean; msg: string; type: "success" | "error" } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; id: string; nama: string } | null>(null);
 
+  // Diarahkan ke toast global standar. Tanda tangan lama (msg, type)
+  // dipertahankan agar semua pemanggilan showToast(...) tetap jalan.
   const showToast = (msg: string, type: "success" | "error") => {
-    setToast({ show: true, msg, type });
-    setTimeout(() => setToast(null), 4000);
+    if (type === "error") toast.gagal(msg); else toast.sukses(msg);
   };
 
   // FITUR NPWP TELAH DIHAPUS DARI STATE
@@ -311,17 +313,6 @@ export default function AdminKaryawanPage() {
     <div className="w-full flex flex-col gap-6 pb-28 md:pb-10 font-sans text-gray-300 animate-in fade-in duration-500 relative">
       
       {/* SISTEM TOAST NOTIFIKASI ELEGAN */}
-      {toast && (
-        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-6 py-3 rounded-full shadow-2xl animate-in slide-in-from-top-10 fade-in duration-300 ${toast.type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
-          {toast.type === 'success' ? (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" /></svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" /></svg>
-          )}
-          <span className="text-sm font-bold tracking-wide">{toast.msg}</span>
-        </div>
-      )}
-
       {/* HEADER UTAMA */}
       <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 relative overflow-hidden">
         <div>

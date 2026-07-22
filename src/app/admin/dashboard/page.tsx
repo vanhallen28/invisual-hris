@@ -100,21 +100,39 @@ export default function AdminDashboardPage() {
     // =========================================================================
     // 🔒 PENJAGA PINTU ADMIN YANG DIPERKUAT (ANTI-TENDANG)
     // =========================================================================
-    const verifyAccess = () => {
-      const sessionData = localStorage.getItem("invisual_session");
-      
+    const verifyAccess = async () => {
+      let sessionData = localStorage.getItem("invisual_session");
+
+      // Jalan penyelamat: localStorage bisa terhapus (mis. iOS membersihkan
+      // penyimpanan) padahal sesi Supabase masih hidup. Sebelum menendang,
+      // coba bangun ulang identitas dari Supabase auth. Ini TIDAK melonggarkan
+      // siapa yang boleh masuk — kalau Supabase auth juga mati, tetap ditendang.
       if (!sessionData) {
-        router.replace("/login"); 
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          const email = user?.email || "";
+          if (email && email.endsWith("@invisual.studio")) {
+            const pulih = { email, role: "admin" };
+            localStorage.setItem("invisual_session", JSON.stringify(pulih));
+            sessionData = JSON.stringify(pulih);
+          }
+        } catch {
+          /* Supabase tak bisa dihubungi — lanjut ke penolakan di bawah */
+        }
+      }
+
+      if (!sessionData) {
+        router.replace("/login");
         return false;
       }
-      
+
       try {
         const parsedSession = JSON.parse(sessionData);
         if (parsedSession.role !== "admin") {
           router.replace("/user/dashboard");
           return false;
         }
-        
+
         setAdminEmail(parsedSession.email);
         return true; // Lolos verifikasi
       } catch (e) {
@@ -124,9 +142,9 @@ export default function AdminDashboardPage() {
     };
 
     // Hanya jalankan penarikan data JIKA verifikasi lulus
-    if (verifyAccess()) {
-      fetchDashboardData();
-    }
+    verifyAccess().then((lolos) => {
+      if (lolos) fetchDashboardData();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Kosongkan dependency array agar tidak terjadi re-render berulang
 
