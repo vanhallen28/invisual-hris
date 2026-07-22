@@ -16,6 +16,12 @@
 //  aplikasi/PWA agar service worker versi baru terpasang.
 // ═══════════════════════════════════════════════════════════════
 
+const SW_VERSION = "invisual-sw-v2";
+// Muncul di Console browser saat service worker aktif. Kalau kamu TIDAK
+// melihat baris ini dengan "v2", berarti service worker LAMA masih
+// terpasang — tutup semua tab HRIS lalu buka lagi.
+console.log("[SW] aktif:", SW_VERSION);
+
 const BADGE_KEY = "invisual-badge-count";
 
 // Aktif segera, tanpa menunggu tab lama tertutup. Tanpa ini,
@@ -97,12 +103,16 @@ self.addEventListener("push", (event) => {
       // Tampilkan notifikasi terbang dengan isi pesan.
       await self.registration.showNotification(title, {
         body,
-        tag,                       // pesan dari channel sama saling menggantikan, tak menumpuk
-        renotify: true,            // tetap berdering walau tag sama
+        // Tag unik per notifikasi: dengan tag yang selalu sama, Android
+        // sering menahan bunyi & getar untuk notifikasi "yang sama".
+        // Timestamp memaksa tiap pesan diperlakukan sebagai notifikasi baru.
+        tag: tag + "-" + Date.now(),
+        renotify: true,
         badge: "/icon-192.png",    // ikon monokrom kecil di status bar Android
         icon: "/icon-192.png",     // ikon besar di dalam notifikasi
         data: { url },
-        vibrate: [80, 40, 80],
+        vibrate: [200, 80, 200],   // getar lebih tegas
+        requireInteraction: false,
       });
     })()
   );

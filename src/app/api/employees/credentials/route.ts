@@ -56,21 +56,47 @@ export async function POST(req: Request) {
 
     const sb = admin();
     const { data: emp } = await sb.from('employees').select('user_id, email, nama').eq('idKaryawan', idKaryawan).single();
+    // Metadata milik KARYAWAN target (bukan admin pemanggil), agar tidak tertimpa.
+    const { data: targetUser } = await sb.auth.admin.getUserById(emp?.user_id || '');
+    const emp_meta = targetUser?.user?.user_metadata || {};
     if (!emp?.user_id) {
       return NextResponse.json({ error: 'Karyawan belum punya akun login (user_id kosong).' }, { status: 404 });
     }
 
-    // 3) Update akun auth (email_confirm agar email baru langsung aktif tanpa verifikasi)
-    const patch: any = {};
-    if (newEmail) { patch.email = newEmail; patch.email_confirm = true; }
-    if (newPassword) patch.password = newPassword;
-    if (newName) patch.user_metadata = { ...(newName ? { name: newName } : {}) };
+    // 3) Update akun auth. Email diproses TERPISAH & diverifikasi hasilnya,
+    //    karena perubahan email lewat admin API kadang tertahan pengaturan
+    //    "Secure email change" di Supabase — kalau begitu, kita beri tahu
+    //    admin dengan jelas alih-alih diam-diam gagal.
+    if (newEmail) {
+      const { data: hasil, error: ee2 } = await sb.auth.admin.updateUserById(emp.user_id, {
+        email: newEmail,
+        email_confirm: true,
+      });
+      if (ee2) {
+        const dup = /already been registered|already exists|duplicate/i.test(ee2.message);
+        return NextResponse.json({
+          error: dup
+            ? 'Email tersebut sudah dipakai akun lain.'
+            : ('Gagal mengubah email: ' + ee2.message),
+        }, { status: 400 });
+      }
+      // Pastikan email benar-benar berpindah. Kalau Supabase menahannya
+      // (masih memakai email lama), sampaikan penyebabnya.
+      const emailBaruAktif = String(hasil?.user?.email || '').toLowerCase() === newEmail;
+      if (!emailBaruAktif) {
+        return NextResponse.json({
+          error: 'Email tertahan oleh Supabase (kemungkinan opsi "Secure email change" aktif). Matikan opsi itu di Authentication → Providers → Email, lalu coba lagi.',
+        }, { status: 409 });
+      }
+    }
 
-    if (Object.keys(patch).length) {
+    if (newPassword || newName) {
+      const patch: any = {};
+      if (newPassword) patch.password = newPassword;
+      if (newName) patch.user_metadata = { ...(emp_meta || {}), name: newName };
       const { error: ae } = await sb.auth.admin.updateUserById(emp.user_id, patch);
       if (ae) {
-        const dup = /already been registered|already exists|duplicate/i.test(ae.message);
-        return NextResponse.json({ error: dup ? 'Email tersebut sudah dipakai akun lain.' : ('Gagal memperbarui akun: ' + ae.message) }, { status: 400 });
+        return NextResponse.json({ error: 'Gagal memperbarui akun: ' + ae.message }, { status: 400 });
       }
     }
 
@@ -85,7 +111,7 @@ export async function POST(req: Request) {
     }
     // Kalau password direset manual, tak perlu paksa ganti lagi
     if (newPassword) {
-      await sb.auth.admin.updateUserById(emp.user_id, { user_metadata: { ...(u.user.user_metadata || {}), must_change_password: false } })
+      await sb.auth.admin.updateUserById(emp.user_id, { user_metadata: { ...emp_meta, ...(newName ? { name: newName } : {}), must_change_password: false } })
         .catch(() => {});
     }
 
