@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { saringTerlambat, fleksibelIds, terlambat } from "@/lib/keterlambatan";
 import LeaveCalendar from "@/components/LeaveCalendar";
 import { rapikanNama, namaResmi } from "@/lib/nama";
 import { supabase } from "@/lib/supabase";
@@ -85,6 +86,7 @@ export default function AdminKehadiranPage() {
 
   // ── HEATMAP dari data nyata ──
   const heatmapData = useMemo(() => {
+    const fleks = fleksibelIds(employees);
     // index absensi: "idKaryawan|tanggal" → baris
     const attIndex: Record<string, any> = {};
     attendance.forEach((a) => { attIndex[`${a.idKaryawan}|${a.tanggal}`] = a; });
@@ -101,7 +103,7 @@ export default function AdminKehadiranPage() {
 
         if (joined && iso < joined) { dataHarian.push("-"); continue; }           // belum bergabung
         const att = attIndex[`${emp.idKaryawan}|${iso}`];
-        if (att) { dataHarian.push(att.status === "Terlambat" ? "Telat" : "Hadir"); continue; }
+        if (att) { dataHarian.push(terlambat(att, fleks) ? "Telat" : "Hadir"); continue; }
         const leave = empLeaves.find((l) => iso >= l.range.start && iso <= l.range.end);
         if (leave) { dataHarian.push(kindOf(leave.jenis)); continue; }
         if (dow === 0 || dow === 6) { dataHarian.push("Libur"); continue; }       // akhir pekan
@@ -138,7 +140,7 @@ export default function AdminKehadiranPage() {
 
   const seringTelat = useMemo(() => {
     const count: Record<string, number> = {};
-    attendance.forEach((a) => { if (a.status === "Terlambat") count[a.idKaryawan] = (count[a.idKaryawan] || 0) + 1; });
+    attendance.forEach((a) => { if (terlambat(a, fleksibelIds(employees))) count[a.idKaryawan] = (count[a.idKaryawan] || 0) + 1; });
     return employees
       .map((e) => ({ nama: rapikanNama(e.nama), totalTelat: count[e.idKaryawan] || 0 }))
       .filter((x) => x.totalTelat > 0)
@@ -147,10 +149,11 @@ export default function AdminKehadiranPage() {
   }, [employees, attendance]);
 
   const palingDisiplin = useMemo(() => {
+    const fleksSet = fleksibelIds(employees);
     const hadir: Record<string, number> = {};
     const telat: Record<string, number> = {};
     attendance.forEach((a) => {
-      if (a.status === "Terlambat") telat[a.idKaryawan] = (telat[a.idKaryawan] || 0) + 1;
+      if (terlambat(a, fleksSet)) telat[a.idKaryawan] = (telat[a.idKaryawan] || 0) + 1;
       else hadir[a.idKaryawan] = (hadir[a.idKaryawan] || 0) + 1;
     });
     return employees

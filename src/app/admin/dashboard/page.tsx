@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { saringTerlambat, fleksibelIds, terlambat } from "@/lib/keterlambatan";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { logAudit } from "@/lib/audit";
@@ -190,7 +191,7 @@ export default function AdminDashboardPage() {
         if (issues.length > 0) detectedAnomalies.push({ idKaryawan: emp.idKaryawan, nama: emp.nama, issues: issues });
       });
 
-      const lateRecords = uniqueAttendances.filter(a => a.status === "Terlambat" && !a.anomali_disetujui) || [];
+      const lateRecords = saringTerlambat(uniqueAttendances, empData || []);
       lateRecords.forEach(late => {
         detectedAnomalies.push({ idKaryawan: late.idKaryawan, nama: late.nama, issues: [`Terlambat Presensi Masuk (${late.waktuMasuk} WIB)`], type: 'late', attendanceId: late.id });
       });
@@ -346,7 +347,7 @@ export default function AdminDashboardPage() {
   };
 
   const onTimeToday = todayAttendances.filter(a => a.status === "Tepat Waktu");
-  const lateToday = todayAttendances.filter(a => a.status === "Terlambat");
+  const lateToday = saringTerlambat(todayAttendances, employees);
   // Turunan untuk cincin kehadiran (tampilan saja)
   const hadirTotal = onTimeToday.length + lateToday.length;
   const persenHadir = employees.length ? Math.round((hadirTotal / employees.length) * 100) : 0;

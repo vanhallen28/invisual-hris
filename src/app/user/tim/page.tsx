@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { saringTerlambat, fleksibelIds, terlambat } from "@/lib/keterlambatan";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { excludeOwners } from "@/lib/owners";
@@ -121,7 +122,7 @@ export default function DashboardTimPage() {
   const namaMaster = (l: Izin) => (l.idKaryawan && namaResmi.get(l.idKaryawan)) || l.nama;
 
   const onTime = absensi.filter((a) => a.status === "Tepat Waktu");
-  const late = absensi.filter((a) => a.status === "Terlambat");
+  const late = saringTerlambat(absensi, employees);
   const hadirTotal = onTime.length + late.length;
   const belumAbsen = Math.max(0, employees.length - hadirTotal - approvedLeaves.length - remoteToday.length);
   const persen = employees.length ? Math.round((hadirTotal / employees.length) * 100) : 0;

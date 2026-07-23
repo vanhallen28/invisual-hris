@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { saringTerlambat, fleksibelIds, terlambat } from "@/lib/keterlambatan";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
 
@@ -126,7 +127,7 @@ export default function AdminDashboardPage() {
         }
       });
 
-      const lateRecords = uniqueAttendances.filter(a => a.status === "Terlambat") || [];
+      const lateRecords = saringTerlambat(uniqueAttendances, empData || []);
       lateRecords.forEach(late => {
         detectedAnomalies.push({ idKaryawan: late.idKaryawan, nama: late.nama, issues: [`Terlambat Presensi Masuk (${late.waktuMasuk} WIB)`] });
       });
@@ -263,7 +264,7 @@ export default function AdminDashboardPage() {
   };
 
   const onTimeToday = todayAttendances.filter(a => a.status === "Tepat Waktu");
-  const lateToday = todayAttendances.filter(a => a.status === "Terlambat");
+  const lateToday = saringTerlambat(todayAttendances, employees);
 
   // =========================================================================
   // KOMPONEN HEADER KANAN (THEME + USER PROFILE + LOGOUT)
