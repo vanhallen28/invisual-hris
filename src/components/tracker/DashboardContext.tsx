@@ -196,6 +196,35 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     return () => { active = false; sub?.subscription?.unsubscribe?.(); };
   }, [supabase]);
 
+  // === Tab lama didiamkan → token kedaluwarsa ===
+  // Token akses Supabase berumur ±1 jam. Saat tab dibiarkan lama di latar,
+  // pewaktu penyegaran otomatis kerap tidak jalan (peramban menidurkan timer
+  // pada tab tak aktif). Begitu tab dibuka lagi, token sudah mati dan halaman
+  // menuduh sesi hilang — persis keluhan "didiamkan lama lalu harus login ulang".
+  //
+  // Perbaikan: setiap tab kembali aktif, minta sesi lagi. getSession() otomatis
+  // menyegarkan token bila sudah lewat. Kalau memang benar-benar habis, barulah
+  // authUser dikosongkan.
+  useEffect(() => {
+    if (!supabase) return;
+    const saatKembali = async () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data?.session?.user) setAuthUser(data.session.user);
+      } catch { /* jaringan gagal → biarkan sesi lama, jangan tendang keluar */ }
+    };
+    document.addEventListener("visibilitychange", saatKembali);
+    window.addEventListener("focus", saatKembali);
+    // Jaring pengaman: periksa berkala selama tab aktif.
+    const jaga = setInterval(saatKembali, 5 * 60 * 1000);
+    return () => {
+      document.removeEventListener("visibilitychange", saatKembali);
+      window.removeEventListener("focus", saatKembali);
+      clearInterval(jaga);
+    };
+  }, [supabase]);
+
   // === LOAD dari Supabase saat user tersedia (sekali) ===
   useEffect(() => {
     if (!supabase || !authUser || isLoaded) return;
