@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -21,7 +21,7 @@ import {
 import { countSetoranBaru } from '@/lib/tracker/setoran';
 import { namaPendek } from '@/lib/tracker/nama';
 
-const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
+const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-primer-terang');
 
 /* ══════ Modal kelola channel (manajer) ══════ */
 function ChannelModal({ channel, members, onClose, onSaved }: any) {
@@ -38,7 +38,7 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
   const [busy, setBusy] = useState(false);
 
   const filtered = teamMembers.filter((m: any) => String(m.name || '').toLowerCase().includes(q.toLowerCase()));
-  const cls = "w-full bg-[#1a1c23] border border-zinc-700 focus:border-primer/60 rounded-lg px-3 py-2 text-xs text-zinc-100 outline-none";
+  const cls = "w-full bg-input border border-white/10 focus:border-primer/60 rounded-lg px-3 py-2 text-xs text-gray-100 outline-none";
 
   const submit = async () => {
     const nm = name.trim().toLowerCase().replace(/\s+/g, '-');
@@ -77,52 +77,52 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
   return (
     <>
       <div className="fixed inset-0 bg-black/60 z-[120]" onClick={onClose} />
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-md bg-[#2a2c38] border border-zinc-700 rounded-2xl shadow-2xl z-[130] p-5 max-h-[86vh] overflow-y-auto">
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-md bg-kartu border border-white/10 rounded-2xl shadow-2xl z-[130] p-5 max-h-[86vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-white">{isNew ? 'Buat Channel' : `Kelola #${channel.name}`}</h3>
-          <button onClick={onClose} className="p-1 text-zinc-500 hover:text-white"><X size={16} /></button>
+          <button onClick={onClose} className="p-1 text-gray-500 hover:text-white"><X size={16} /></button>
         </div>
 
         <div className="flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-1.5">Nama Channel</label>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Nama Channel</label>
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="misal: brief-harian" className={cls} />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-1.5">Kategori</label>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Kategori</label>
               <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="UMUM / DIVISI" className={cls} />
             </div>
           </div>
 
           <div>
-            <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-1.5">Deskripsi</label>
+            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Deskripsi</label>
             <input value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Topik channel ini…" className={cls} />
           </div>
 
-          <div className="flex flex-col gap-2 bg-[#1a1c23] border border-zinc-800 rounded-xl p-3">
+          <div className="flex flex-col gap-2 bg-input border border-white/10 rounded-xl p-3">
             <label className="flex items-center gap-2.5 cursor-pointer">
               <input type="checkbox" checked={priv} onChange={(e) => setPriv(e.target.checked)} className="accent-primer" />
-              <Lock size={12} className="text-zinc-500" />
-              <span className="text-xs text-zinc-300">Channel privat — hanya anggota terpilih</span>
+              <Lock size={12} className="text-gray-500" />
+              <span className="text-xs text-gray-300">Channel privat — hanya anggota terpilih</span>
             </label>
             <label className="flex items-center gap-2.5 cursor-pointer">
               <input type="checkbox" checked={ann} onChange={(e) => setAnn(e.target.checked)} className="accent-amber-500" />
               <Megaphone size={12} className="text-amber-400" />
-              <span className="text-xs text-zinc-300">Channel pengumuman — hanya manajer bisa kirim</span>
+              <span className="text-xs text-gray-300">Channel pengumuman — hanya manajer bisa kirim</span>
             </label>
             <label className="flex items-center gap-2.5 cursor-pointer">
               <input type="checkbox" checked={voice} onChange={(e) => setVoice(e.target.checked)} className="accent-emerald-500" />
               <Volume2 size={12} className="text-emerald-400" />
-              <span className="text-xs text-zinc-300">Channel suara — voice & video call</span>
+              <span className="text-xs text-gray-300">Channel suara — voice & video call</span>
             </label>
           </div>
 
           {priv && (
             <div>
-              <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-1.5">Anggota ({sel.length})</label>
-              <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 mb-1.5">
-                <Search size={12} className="text-zinc-500" />
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1.5">Anggota ({sel.length})</label>
+              <div className="flex items-center gap-2 bg-latar border border-white/10 rounded-lg px-2.5 py-1.5 mb-1.5">
+                <Search size={12} className="text-gray-500" />
                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama…" className="bg-transparent text-[11px] text-white outline-none w-full" />
               </div>
               <div className="max-h-44 overflow-y-auto flex flex-col gap-0.5">
@@ -130,9 +130,9 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
                   const on = sel.includes(m.id);
                   return (
                     <button key={m.id} onClick={() => setSel((s) => (on ? s.filter((x) => x !== m.id) : [...s, m.id]))}
-                      className={`flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left ${on ? 'bg-primer/10' : 'hover:bg-zinc-700/50'}`}>
+                      className={`flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left ${on ? 'bg-primer/10' : 'hover:bg-white/5'}`}>
                       <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white ${mColor(m)}`} />
-                      <span className={`text-[11px] flex-1 truncate ${on ? 'text-white font-semibold' : 'text-zinc-400'}`} title={m.name}>{namaPendek(m)}</span>
+                      <span className={`text-[11px] flex-1 truncate ${on ? 'text-white font-semibold' : 'text-gray-400'}`} title={m.name}>{namaPendek(m)}</span>
                       {on && <Check size={12} className="text-blue-400" />}
                     </button>
                   );
@@ -146,7 +146,7 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
           </button>
 
           {!isNew && (
-            <button onClick={hapus} disabled={busy} className="w-full flex items-center justify-center gap-1.5 text-[11px] text-zinc-600 hover:text-red-400 py-2 transition-colors">
+            <button onClick={hapus} disabled={busy} className="w-full flex items-center justify-center gap-1.5 text-[11px] text-gray-600 hover:text-red-400 py-2 transition-colors">
               <Trash2 size={12} /> Hapus channel ini
             </button>
           )}
@@ -202,7 +202,19 @@ export default function ChatApp() {
     } catch (e: any) { pushToast(e?.message || 'Gagal mengaktifkan notifikasi'); }
   };
 
-  const me = teamMembers.find((m: any) => m.id === currentUserId);
+  const me = useMemo(
+    () => teamMembers.find((m: any) => m.id === currentUserId),
+    [teamMembers, currentUserId],
+  );
+
+  // `pushToast` dari DashboardContext dibuat ulang setiap kali provider
+  // render (bukan useCallback). Kalau dipakai langsung sebagai dependensi,
+  // `refresh` ikut berganti identitas tiap render → useEffect di bawah
+  // memanggil refresh() TERUS-MENERUS → sidebar terlihat memuat ulang tanpa
+  // henti. Bungkus lewat ref supaya identitasnya tetap, isinya selalu baru.
+  const toastRef = useRef(pushToast);
+  useEffect(() => { toastRef.current = pushToast; });
+  const toast = useCallback((...a: any[]) => (toastRef.current as any)?.(...a), []);
 
   const refresh = useCallback(async () => {
     if (!supabase) return;
@@ -213,13 +225,24 @@ export default function ChatApp() {
       ]);
       setChannels(cs); setChMembers(cm); setUnread(un);
       setActive((a: any) => (a ? cs.find((c: any) => c.id === a.id) || cs[0] || null : cs[0] || null));
-    } catch (e: any) { pushToast('Gagal memuat channel: ' + (e?.message || e)); }
+    } catch (e: any) { toast('Gagal memuat channel: ' + (e?.message || e)); }
     setChLoading(false);
-  }, [supabase, pushToast]);
+  }, [supabase, toast]);
 
   useEffect(() => { if (isLoaded) refresh(); }, [isLoaded, refresh]);
 
   /* badge belum dibaca untuk channel LAIN + notif mention */
+  // Nilai yang berubah sering (channels/me/active) dibaca lewat ref, BUKAN
+  // dependensi. Kalau jadi dependensi, langganan realtime dibongkar-pasang
+  // setiap kali daftar channel berubah — websocket terus tersambung ulang
+  // dan sidebar tampak berkedip. Sekarang langganan dibuat SEKALI.
+  const channelsRef = useRef(channels);
+  const meRef = useRef(me);
+  const activeIdRef = useRef(active?.id);
+  useEffect(() => { channelsRef.current = channels; }, [channels]);
+  useEffect(() => { meRef.current = me; }, [me]);
+  useEffect(() => { activeIdRef.current = active?.id; }, [active?.id]);
+
   useEffect(() => {
     if (!supabase || !currentUserId) return;
     const ch = supabase
@@ -227,19 +250,21 @@ export default function ChatApp() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (p: any) => {
         const m = p.new;
         if (m.author_id === currentUserId) return;
-        if (active?.id === m.channel_id) return;
+        if (activeIdRef.current === m.channel_id) return;
         setUnread((u) => ({ ...u, [m.channel_id]: (u[m.channel_id] || 0) + 1 }));
-        if (me && String(m.content || '').includes(`@${me.name}`)) {
-          const cname = channels.find((c: any) => c.id === m.channel_id)?.name || 'channel';
-          pushToast(`🔔 Kamu disebut di #${cname}`, () => {
-            const c = channels.find((x: any) => x.id === m.channel_id);
+        const aku = meRef.current;
+        if (aku && String(m.content || '').includes(`@${aku.name}`)) {
+          const daftar = channelsRef.current;
+          const cname = daftar.find((c: any) => c.id === m.channel_id)?.name || 'channel';
+          toast(`🔔 Kamu disebut di #${cname}`, () => {
+            const c = channelsRef.current.find((x: any) => x.id === m.channel_id);
             if (c) { setActive(c); setUnread((u) => ({ ...u, [c.id]: 0 })); }
           }, 'Buka', 12000);
         }
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [supabase, currentUserId, active?.id, channels, me, pushToast]);
+  }, [supabase, currentUserId, toast]);
 
   /* presence: siapa online */
   useEffect(() => {
@@ -321,21 +346,21 @@ export default function ChatApp() {
     : [];
 
   return (
-    <div className="fixed inset-0 z-[70] flex bg-[#1e2029] text-zinc-100 font-sans overflow-hidden">
+    <div className="fixed inset-0 z-[70] flex bg-kartu-hover text-gray-100 font-sans overflow-hidden">
 
       {/* ══ SIDEBAR CHANNEL ══ */}
-      <aside className={`${mobileRoom ? 'hidden' : 'flex'} md:flex w-full md:w-64 shrink-0 flex-col bg-kartu border-r border-zinc-800/80`}>
-        <div className="h-12 border-b border-zinc-800 flex items-center gap-2 px-3 shrink-0">
-          <Link href={backHref} title="Kembali ke Portal" className="flex items-center gap-1 text-xs font-bold text-white bg-primer hover:bg-[#0f3fae] px-2.5 py-1.5 rounded-lg transition-all shadow-[0_0_12px_rgba(18,75,206,0.4)]">
+      <aside className={`${mobileRoom ? 'hidden' : 'flex'} md:flex w-full md:w-64 shrink-0 flex-col bg-kartu border-r border-white/10`}>
+        <div className="h-12 border-b border-white/10 flex items-center gap-2 px-3 shrink-0">
+          <Link href={backHref} title="Kembali ke Portal" className="flex items-center gap-1 text-xs font-bold text-white bg-primer hover:bg-primer px-2.5 py-1.5 rounded-lg transition-all shadow-[0_0_12px_rgba(18,75,206,0.4)]">
             <ChevronLeft size={14} /> Portal
           </Link>
-          <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-1">Chat</span>
+          <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Chat</span>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-3 px-2">
           {!chLoading && (
             <button onClick={bukaSetoran}
-              className={`w-full flex items-center gap-1.5 px-2 py-1.5 mb-2 rounded-lg transition-colors ${setoranOpen ? 'bg-zinc-700/60 text-white' : setoranUnread > 0 ? 'text-white hover:bg-zinc-800/60' : 'text-zinc-500 hover:bg-zinc-800/40 hover:text-zinc-300'}`}>
+              className={`w-full flex items-center gap-1.5 px-2 py-1.5 mb-2 rounded-lg transition-colors ${setoranOpen ? 'bg-white/5 text-white' : setoranUnread > 0 ? 'text-white hover:bg-white/5' : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'}`}>
               <Camera size={14} className="shrink-0 text-amber-400/80" />
               <span className={`text-[13px] truncate flex-1 text-left ${setoranUnread > 0 && !setoranOpen ? 'font-bold' : 'font-medium'}`}>Setoran Daily</span>
               {setoranUnread > 0 && !setoranOpen && (
@@ -349,7 +374,7 @@ export default function ChatApp() {
           {!chLoading && Object.entries(grouped).map(([cat, list]: any) => (
             <div key={cat} className="mb-3">
               <button onClick={() => setCollapsed((c) => ({ ...c, [cat]: !c[cat] }))}
-                className="w-full flex items-center gap-1 px-1.5 py-1 text-[10px] font-black text-zinc-500 hover:text-zinc-300 uppercase tracking-wider transition-colors">
+                className="w-full flex items-center gap-1 px-1.5 py-1 text-[10px] font-black text-gray-500 hover:text-gray-300 uppercase tracking-wider transition-colors">
                 <ChevronDown size={11} className={`transition-transform ${collapsed[cat] ? '-rotate-90' : ''}`} />
                 {cat}
               </button>
@@ -360,7 +385,7 @@ export default function ChatApp() {
                 return (
                   <div key={c.id} className="group/ch relative">
                     <button onClick={() => openChannel(c)}
-                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors ${on ? 'bg-zinc-700/60 text-white' : n > 0 ? 'text-white hover:bg-zinc-800/60' : 'text-zinc-500 hover:bg-zinc-800/40 hover:text-zinc-300'}`}>
+                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg transition-colors ${on ? 'bg-white/5 text-white' : n > 0 ? 'text-white hover:bg-white/5' : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'}`}>
                       {c.is_voice ? <Volume2 size={14} className="shrink-0 text-emerald-400/80" />
                         : c.is_announcement ? <Megaphone size={14} className="shrink-0 text-amber-400/80" />
                         : c.is_private ? <Lock size={12} className="shrink-0" />
@@ -371,7 +396,7 @@ export default function ChatApp() {
                     {isManager && (
                       <button onClick={() => setModal({ channel: c, members: chMembers.filter((m) => m.channel_id === c.id).map((m) => m.member_id) })}
                         title="Kelola channel"
-                        className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-100 md:opacity-0 md:group-hover/ch:opacity-100 p-1 text-zinc-500 hover:text-white bg-kartu rounded transition-opacity">
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-100 md:opacity-0 md:group-hover/ch:opacity-100 p-1 text-gray-500 hover:text-white bg-kartu rounded transition-opacity">
                         <Settings2 size={12} />
                       </button>
                     )}
@@ -383,7 +408,7 @@ export default function ChatApp() {
 
           {isManager && !chLoading && (
             <button onClick={() => setModal({ channel: null, members: [] })}
-              className="w-full flex items-center gap-1.5 px-2 py-1.5 mt-1 rounded-lg text-[13px] text-zinc-500 hover:text-white hover:bg-zinc-800/40 transition-colors">
+              className="w-full flex items-center gap-1.5 px-2 py-1.5 mt-1 rounded-lg text-[13px] text-gray-500 hover:text-white hover:bg-white/5 transition-colors">
               <Plus size={14} /> Buat Channel
             </button>
           )}
@@ -391,14 +416,14 @@ export default function ChatApp() {
 
         {/* footer: aku */}
         {me && (
-          <div className="h-14 border-t border-zinc-800 flex items-center gap-2.5 px-3 shrink-0 bg-[#101216]">
+          <div className="h-14 border-t border-white/10 flex items-center gap-2.5 px-3 shrink-0 bg-latar">
             <div className="relative shrink-0">
               <Avatar url={me.avatarUrl} name={me.name} initials={me.initials} className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${mColor(me)}`} />
-              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-[#101216]" />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-latar" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-zinc-200 truncate" title={me.name}>{namaPendek(me)}</p>
-              <p className="text-[10px] text-zinc-500">{isManager ? 'Manager' : 'Member'}</p>
+              <p className="text-xs font-semibold text-gray-200 truncate" title={me.name}>{namaPendek(me)}</p>
+              <p className="text-[10px] text-gray-500">{isManager ? 'Manager' : 'Member'}</p>
             </div>
             {voiceCh && (
               <button onClick={() => { openChannel(voiceCh); }} title="Kembali ke ruang suara"
@@ -408,7 +433,7 @@ export default function ChatApp() {
             )}
             {notif !== 'unsupported' && (
               <button onClick={toggleNotif} title={notif === 'granted' ? 'Matikan notifikasi' : 'Aktifkan notifikasi di HP'}
-                className={`p-2 rounded-lg transition-colors shrink-0 ${notif === 'granted' ? 'text-emerald-400 bg-emerald-500/10' : 'text-zinc-500 hover:text-white hover:bg-zinc-800'}`}>
+                className={`p-2 rounded-lg transition-colors shrink-0 ${notif === 'granted' ? 'text-emerald-400 bg-emerald-500/10' : 'text-gray-500 hover:text-white hover:bg-kartu-hover'}`}>
                 {notif === 'granted' ? <Bell size={15} /> : <BellOff size={15} />}
               </button>
             )}
@@ -429,28 +454,28 @@ export default function ChatApp() {
             </div>
             <div>
               <p className="text-lg font-bold text-white">{active.name}</p>
-              <p className="text-xs text-zinc-500 mt-1">Channel suara · {active.description || 'Ngobrol langsung dengan tim'}</p>
+              <p className="text-xs text-gray-500 mt-1">Channel suara · {active.description || 'Ngobrol langsung dengan tim'}</p>
             </div>
             <button onClick={() => setVoiceCh(active)}
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold px-6 py-3 rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.35)] active:scale-95">
               <Volume2 size={16} /> Gabung Suara
             </button>
-            <p className="text-[10px] text-zinc-600 max-w-xs">Mikrofon akan aktif saat bergabung. Kamera & berbagi layar bisa dinyalakan lewat kontrol di bawah.</p>
+            <p className="text-[10px] text-gray-600 max-w-xs">Mikrofon akan aktif saat bergabung. Kamera & berbagi layar bisa dinyalakan lewat kontrol di bawah.</p>
           </div>
         ) : active ? (
           <ChatRoom channel={active} onBack={() => setMobileRoom(false)} recipients={membersOfActive.filter((id: string) => id !== currentUserId)} />
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <p className="text-sm text-zinc-600">{channels.length === 0 ? 'Belum ada channel.' : 'Pilih channel di sebelah kiri.'}</p>
+            <p className="text-sm text-gray-600">{channels.length === 0 ? 'Belum ada channel.' : 'Pilih channel di sebelah kiri.'}</p>
           </div>
         )}
       </div>
 
       {/* ══ DAFTAR ANGGOTA ══ */}
-      <aside className="hidden xl:flex w-56 shrink-0 flex-col bg-kartu border-l border-zinc-800/80">
-        <div className="h-12 border-b border-zinc-800 flex items-center gap-2 px-4 shrink-0">
-          <Users size={14} className="text-zinc-500" />
-          <span className="text-[11px] font-black text-zinc-400 uppercase tracking-wider">Anggota</span>
+      <aside className="hidden xl:flex w-56 shrink-0 flex-col bg-kartu border-l border-white/10">
+        <div className="h-12 border-b border-white/10 flex items-center gap-2 px-4 shrink-0">
+          <Users size={14} className="text-gray-500" />
+          <span className="text-[11px] font-black text-gray-400 uppercase tracking-wider">Anggota</span>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-3 px-2">
           {['online', 'offline'].map((grp) => {
@@ -462,7 +487,7 @@ export default function ChatApp() {
             if (!list.length) return null;
             return (
               <div key={grp} className="mb-3">
-                <p className="text-[10px] font-black text-zinc-600 uppercase tracking-wider px-2 mb-1.5">
+                <p className="text-[10px] font-black text-gray-600 uppercase tracking-wider px-2 mb-1.5">
                   {grp === 'online' ? `Online — ${list.length}` : `Offline — ${list.length}`}
                 </p>
                 {list.map((m: any) => (
@@ -471,7 +496,7 @@ export default function ChatApp() {
                       <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${mColor(m)}`} />
                       {grp === 'online' && <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-kartu" />}
                     </div>
-                    <span className="text-xs text-zinc-300 truncate" title={m.name}>{namaPendek(m)}</span>
+                    <span className="text-xs text-gray-300 truncate" title={m.name}>{namaPendek(m)}</span>
                   </div>
                 ))}
               </div>

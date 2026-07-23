@@ -15,7 +15,7 @@ import {
 } from '@/lib/tracker/setoran';
 import { namaPendek } from '@/lib/tracker/nama';
 
-const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
+const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-primer-terang');
 const hariISO = (d: any) => new Date(d).toISOString().slice(0, 10);
 const tglPendek = (d: any) =>
   new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
@@ -45,20 +45,20 @@ function AnggotaModal({ anggotaIds, onClose, onChanged }: any) {
   return (
     <>
       <div className="fixed inset-0 bg-black/60 z-[120]" onClick={onClose} />
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-md bg-[#2a2c38] border border-zinc-700 rounded-2xl shadow-2xl z-[130] p-5 max-h-[86vh] flex flex-col">
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-md bg-kartu border border-white/10 rounded-2xl shadow-2xl z-[130] p-5 max-h-[86vh] flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-bold text-white">Kelola Anggota Setoran</h3>
-          <button onClick={onClose} className="p-1 text-zinc-500 hover:text-white"><X size={16} /></button>
+          <button onClick={onClose} className="p-1 text-gray-500 hover:text-white"><X size={16} /></button>
         </div>
 
-        <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 mb-2">
-          <Search size={12} className="text-zinc-500" />
+        <div className="flex items-center gap-2 bg-latar border border-white/10 rounded-lg px-2.5 py-1.5 mb-2">
+          <Search size={12} className="text-gray-500" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama…"
             className="bg-transparent text-[11px] text-white outline-none w-full" />
         </div>
 
-        <p className="text-[10px] text-zinc-500 mb-2">
-          Anggota terpilih: <span className="text-zinc-300 font-semibold">{anggotaIds.length}</span> orang.
+        <p className="text-[10px] text-gray-500 mb-2">
+          Anggota terpilih: <span className="text-gray-300 font-semibold">{anggotaIds.length}</span> orang.
           Hanya mereka yang bisa mengirim setoran.
         </p>
 
@@ -67,15 +67,15 @@ function AnggotaModal({ anggotaIds, onClose, onChanged }: any) {
             const on = anggotaIds.includes(m.id);
             return (
               <button key={m.id} onClick={() => toggle(m)} disabled={busy === m.id}
-                className={`flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors disabled:opacity-50 ${on ? 'bg-primer/10' : 'hover:bg-zinc-700/50'}`}>
+                className={`flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors disabled:opacity-50 ${on ? 'bg-primer/10' : 'hover:bg-white/5'}`}>
                 <Avatar url={m.avatarUrl} name={m.name} initials={m.initials}
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${mColor(m)}`} />
-                <span className={`text-[11px] flex-1 truncate ${on ? 'text-white font-semibold' : 'text-zinc-400'}`} title={m.name}>{namaPendek(m)}</span>
-                {on ? <Check size={13} className="text-blue-400" /> : <Plus size={13} className="text-zinc-600" />}
+                <span className={`text-[11px] flex-1 truncate ${on ? 'text-white font-semibold' : 'text-gray-400'}`} title={m.name}>{namaPendek(m)}</span>
+                {on ? <Check size={13} className="text-blue-400" /> : <Plus size={13} className="text-gray-600" />}
               </button>
             );
           })}
-          {daftar.length === 0 && <p className="text-[11px] text-zinc-600 text-center py-6">Tidak ada nama yang cocok.</p>}
+          {daftar.length === 0 && <p className="text-[11px] text-gray-600 text-center py-6">Tidak ada nama yang cocok.</p>}
         </div>
       </div>
     </>
@@ -85,6 +85,15 @@ function AnggotaModal({ anggotaIds, onClose, onChanged }: any) {
 /* ══════════════ RUANG SETORAN ══════════════ */
 export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
   const { supabase, currentUserId, currentUserRole, teamMembers, pushToast, isLoaded }: any = useDashboard();
+
+  // `pushToast` dibuat ulang tiap render oleh DashboardContext. Dipakai
+  // langsung sebagai dependensi, useCallback/useEffect di bawah berjalan
+  // TERUS-MENERUS (muat ulang tanpa henti). Ref menjaga identitas tetap,
+  // isinya selalu yang terbaru.
+  const toastRef = useRef(pushToast);
+  useEffect(() => { toastRef.current = pushToast; });
+  const toast = useCallback((...a: any[]) => (toastRef.current as any)?.(...a), []);
+
   const isManager = currentUserRole === 'manager';
 
   const [anggota, setAnggota] = useState<any[]>([]);
@@ -131,10 +140,10 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
       const [a, p] = await Promise.all([loadSetoranMembers(supabase), loadSetoranPosts(supabase)]);
       setAnggota(a); setPosts(p);
     } catch (e: any) {
-      pushToast('Gagal memuat setoran: ' + (e?.message || e));
+      toast('Gagal memuat setoran: ' + (e?.message || e));
     }
     setLoading(false);
-  }, [supabase, pushToast]);
+  }, [supabase, toast]);
 
   useEffect(() => { if (isLoaded) refresh(); }, [isLoaded, refresh]);
 
@@ -151,10 +160,10 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
     (async () => {
       try {
         const n = await purgeSetoranKedaluwarsa(supabase);
-        if (n > 0) { pushToast(`${n} setoran lewat ${SETORAN_HARI} hari dibersihkan`); refresh(); }
+        if (n > 0) { toast(`${n} setoran lewat ${SETORAN_HARI} hari dibersihkan`); refresh(); }
       } catch { /* diamkan — bukan kegagalan yang mengganggu */ }
     })();
-  }, [isLoaded, isManager, supabase, pushToast, refresh]);
+  }, [isLoaded, isManager, supabase, toast, refresh]);
 
   // Lencana Setoran Daily di SIDEBAR (bukan lencana biru per orang) dibersihkan
   // sekali saat ruang ini terbuka. Dijalankan sekali — tanpa dependensi `posts`
@@ -198,8 +207,8 @@ const postsOf = useCallback(
     const daftar = Array.from(masuk);
     const lolos: File[] = [];
     for (const f of daftar) {
-      if (!f.type.startsWith('image/')) { pushToast(`${f.name} bukan gambar, dilewati.`); continue; }
-      if (f.size > 8 * 1024 * 1024) { pushToast(`${f.name} lebih dari 8 MB, dilewati.`); continue; }
+      if (!f.type.startsWith('image/')) { toast(`${f.name} bukan gambar, dilewati.`); continue; }
+      if (f.size > 8 * 1024 * 1024) { toast(`${f.name} lebih dari 8 MB, dilewati.`); continue; }
       lolos.push(f);
     }
     if (!lolos.length) return;
@@ -266,16 +275,16 @@ const postsOf = useCallback(
       const baru = hasil.filter(Boolean);
       if (baru.length) setPosts((lama) => [...baru, ...lama]);
       else await refresh();
-    } catch (e: any) { pushToast('Gagal mengirim: ' + (e?.message || e)); }
+    } catch (e: any) { toast('Gagal mengirim: ' + (e?.message || e)); }
     setUploading(false);
   };
 
   const tambahSaya = async () => {
     try {
       await addSetoranMember(supabase, currentUserId, currentUserId);
-      pushToast('Kamu ditambahkan sebagai anggota setoran');
+      toast('Kamu ditambahkan sebagai anggota setoran');
       await refresh();
-    } catch (e: any) { pushToast('Gagal: ' + (e?.message || e)); }
+    } catch (e: any) { toast('Gagal: ' + (e?.message || e)); }
   };
 
   // Membuka aliran seseorang → tandai dilihat di perangkat ini. Sederhana,
@@ -290,8 +299,8 @@ const postsOf = useCallback(
     // Optimistik: buang dari daftar tanpa memuat ulang semuanya, supaya
     // layar tidak berkedip/terrefresh saat kembali dari aliran seseorang.
     setPosts((lama) => lama.filter((x) => x.id !== p.id));
-    try { await deleteSetoran(supabase, p); pushToast('Setoran dihapus'); }
-    catch (e: any) { pushToast('Gagal hapus: ' + (e?.message || e)); refresh(); }
+    try { await deleteSetoran(supabase, p); toast('Setoran dihapus'); }
+    catch (e: any) { toast('Gagal hapus: ' + (e?.message || e)); refresh(); }
   };
 
   const barisAnggota = useMemo(() => {
@@ -327,25 +336,25 @@ const postsOf = useCallback(
 
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-[#1e2029]">
+    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-kartu-hover">
 
       {/* ══ Kepala ══ */}
-      <div className="h-12 border-b border-zinc-800 flex items-center gap-2 px-3 shrink-0 bg-[#1e2029]">
+      <div className="h-12 border-b border-white/10 flex items-center gap-2 px-3 shrink-0 bg-kartu-hover">
         {onBack && (
-          <button onClick={onBack} className="md:hidden p-1.5 text-zinc-400 hover:text-white shrink-0">
+          <button onClick={onBack} className="md:hidden p-1.5 text-gray-400 hover:text-white shrink-0">
             <ChevronLeft size={18} />
           </button>
         )}
         <Camera size={15} className="text-amber-400 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-bold text-white truncate">Setoran Daily</p>
-          <p className="text-[10px] text-zinc-500 truncate">
+          <p className="text-[10px] text-gray-500 truncate">
             {anggotaIds.length} anggota · {sudah} sudah setor hari ini
           </p>
         </div>
         {isManager && (
           <button onClick={() => setKelola(true)} title="Kelola anggota"
-            className="flex items-center gap-1.5 text-[11px] font-bold text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1.5 rounded-lg transition-colors shrink-0">
+            className="flex items-center gap-1.5 text-[11px] font-bold text-gray-300 hover:text-white bg-kartu-hover hover:bg-kartu-hover px-2.5 py-1.5 rounded-lg transition-colors shrink-0">
             <Users size={13} /> <span className="hidden sm:inline">Anggota</span>
           </button>
         )}
@@ -360,7 +369,7 @@ const postsOf = useCallback(
             <Camera size={26} className="text-amber-400" />
           </div>
           <p className="text-sm font-bold text-white">Belum ada anggota setoran</p>
-          <p className="text-xs text-zinc-500 max-w-xs">
+          <p className="text-xs text-gray-500 max-w-xs">
             {isManager
               ? 'Tambahkan anggota lewat tombol Anggota di kanan atas. Hanya mereka yang bisa mengirim setoran.'
               : 'Hubungi manajer untuk didaftarkan sebagai anggota setoran.'}
@@ -375,20 +384,20 @@ const postsOf = useCallback(
       ) : dibuka ? (
         /* ── Galeri satu orang ── */
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-          <div className="sticky top-0 z-10 flex items-center gap-2.5 px-4 py-3 bg-[#1e2029] border-b border-zinc-800">
-            <button onClick={() => { setBuka(null); try { localStorage.removeItem('invisual_setoran_buka'); } catch { /* diamkan */ } }} className="p-1 text-zinc-400 hover:text-white shrink-0">
+          <div className="sticky top-0 z-10 flex items-center gap-2.5 px-4 py-3 bg-kartu-hover border-b border-white/10">
+            <button onClick={() => { setBuka(null); try { localStorage.removeItem('invisual_setoran_buka'); } catch { /* diamkan */ } }} className="p-1 text-gray-400 hover:text-white shrink-0">
               <ChevronLeft size={18} />
             </button>
             <Avatar url={dibuka.avatarUrl} name={dibuka.nama} initials={dibuka.initials}
               className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 ${dibuka.color}`} />
             <div className="min-w-0">
               <p className="text-[13px] font-bold text-white truncate" title={dibuka.namaPenuh}>{dibuka.nama}</p>
-              <p className="text-[10px] text-zinc-500">{dibuka.jumlah} setoran dalam {SETORAN_HARI} hari</p>
+              <p className="text-[10px] text-gray-500">{dibuka.jumlah} setoran dalam {SETORAN_HARI} hari</p>
             </div>
           </div>
 
           {dibuka.jumlah === 0 ? (
-            <p className="text-xs text-zinc-600 text-center py-16">Belum ada setoran.</p>
+            <p className="text-xs text-gray-600 text-center py-16">Belum ada setoran.</p>
           ) : (
             /* Alur percakapan — terlama di atas, terbaru di bawah, seperti chat biasa. */
             <div className="flex flex-col gap-3 p-4">
@@ -404,7 +413,7 @@ const postsOf = useCallback(
                   const kolom = batch.length === 4 ? 'grid-cols-2' : 'grid-cols-3';
                   return (
                     <div key={p0.id} className={`group flex flex-col gap-1 max-w-[85%] ${punyaSaya ? 'self-end items-end' : 'self-start items-start'}`}>
-                      <div className={`rounded-2xl overflow-hidden border p-1 ${punyaSaya ? 'border-primer/40 bg-primer/10' : 'border-zinc-800 bg-kartu'}`}>
+                      <div className={`rounded-2xl overflow-hidden border p-1 ${punyaSaya ? 'border-primer/40 bg-primer/10' : 'border-white/10 bg-kartu'}`}>
                         <div className={`grid ${kolom} gap-1`}>
                           {batch.map((p) => (
                             <button key={p.id} onClick={() => setLightbox(p.image_url)} className="block aspect-square overflow-hidden rounded-lg">
@@ -414,16 +423,16 @@ const postsOf = useCallback(
                           ))}
                         </div>
                         {captionBatch && (
-                          <p className="text-[12px] text-zinc-200 leading-relaxed whitespace-pre-wrap break-words px-2 py-2">
+                          <p className="text-[12px] text-gray-200 leading-relaxed whitespace-pre-wrap break-words px-2 py-2">
                             {captionBatch}
                           </p>
                         )}
                       </div>
                       <div className="flex items-center gap-2 px-1">
-                        <span className="text-[9px] text-zinc-600">{batch.length} gambar · {tglPendek(p0.created_at)} · {jam(p0.created_at)}</span>
+                        <span className="text-[9px] text-gray-600">{batch.length} gambar · {tglPendek(p0.created_at)} · {jam(p0.created_at)}</span>
                         {bolehHapus && (
                           <button onClick={() => batch.forEach((p) => hapus(p))} title="Hapus semua"
-                            className="text-zinc-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                            className="text-gray-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
                             <Trash2 size={11} />
                           </button>
                         )}
@@ -438,7 +447,7 @@ const postsOf = useCallback(
                   const mine = p.user_id === currentUserId;
                   return (
                     <div key={p.id} className={`group flex flex-col gap-1 max-w-[85%] ${mine ? 'self-end items-end' : 'self-start items-start'}`}>
-                      <div className={`rounded-2xl overflow-hidden border ${mine ? 'border-primer/40 bg-primer/10' : 'border-zinc-800 bg-kartu'}`}>
+                      <div className={`rounded-2xl overflow-hidden border ${mine ? 'border-primer/40 bg-primer/10' : 'border-white/10 bg-kartu'}`}>
                         {p.image_url && (
                           <button onClick={() => setLightbox(p.image_url)} className="block">
                             <img src={p.image_url} alt={`Setoran ${tglPendek(p.created_at)}`} loading="lazy"
@@ -446,16 +455,16 @@ const postsOf = useCallback(
                           </button>
                         )}
                         {p.caption && (
-                          <p className="text-[12px] text-zinc-200 leading-relaxed whitespace-pre-wrap break-words px-3 py-2">
+                          <p className="text-[12px] text-gray-200 leading-relaxed whitespace-pre-wrap break-words px-3 py-2">
                             {p.caption}
                           </p>
                         )}
                       </div>
                       <div className="flex items-center gap-2 px-1">
-                        <span className="text-[9px] text-zinc-600">{tglPendek(p.created_at)} · {jam(p.created_at)}</span>
+                        <span className="text-[9px] text-gray-600">{tglPendek(p.created_at)} · {jam(p.created_at)}</span>
                         {hapusIni && (
                           <button onClick={() => hapus(p)} title="Hapus"
-                            className="text-zinc-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                            className="text-gray-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
                             <Trash2 size={11} />
                           </button>
                         )}
@@ -471,22 +480,22 @@ const postsOf = useCallback(
       ) : (
         /* ── Daftar anggota ── */
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
-          <p className="text-[10px] text-zinc-600 px-4 pt-3 pb-2">
+          <p className="text-[10px] text-gray-600 px-4 pt-3 pb-2">
             Setoran otomatis terhapus setelah {SETORAN_HARI} hari, berikut berkasnya.
           </p>
 
           {barisAnggota.map((b) => (
             <button key={b.uid} onClick={() => bukaOrang(b.uid)}
-              className="w-full flex items-center gap-3 px-4 py-3 border-b border-zinc-800/70 hover:bg-zinc-800/40 transition-colors text-left">
+              className="w-full flex items-center gap-3 px-4 py-3 border-b border-white/10 hover:bg-white/5 transition-colors text-left">
               <Avatar url={b.avatarUrl} name={b.nama} initials={b.initials}
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${b.color}`} />
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="text-[13px] font-semibold text-white truncate">{b.nama}</p>
-                  {b.uid === currentUserId && <span className="text-[9px] text-zinc-500 shrink-0">(kamu)</span>}
+                  {b.uid === currentUserId && <span className="text-[9px] text-gray-500 shrink-0">(kamu)</span>}
                 </div>
-                <p className={`text-[11px] truncate ${b.sudahHariIni ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                <p className={`text-[11px] truncate ${b.sudahHariIni ? 'text-emerald-400' : 'text-gray-500'}`}>
                   {b.sudahHariIni
                     ? `Sudah setor hari ini · ${jam(b.terakhir.created_at)}`
                     : b.terakhir ? `Terakhir ${tglPendek(b.terakhir.created_at)}` : 'Belum pernah setor'}
@@ -495,7 +504,7 @@ const postsOf = useCallback(
 
               {b.terakhir?.image_url && (
                 <img src={b.terakhir.image_url} alt="" loading="lazy"
-                  className="w-9 h-9 rounded-lg object-cover border border-zinc-700 shrink-0" />
+                  className="w-9 h-9 rounded-lg object-cover border border-white/10 shrink-0" />
               )}
               {b.belum > 0 && (
                 <span className="text-[10px] font-bold bg-primer text-white min-w-[22px] text-center px-1.5 py-0.5 rounded-full shrink-0"
@@ -509,11 +518,11 @@ const postsOf = useCallback(
       )}
 
       {/* ══ Kolom kirim ══ */}
-      <div className="border-t border-zinc-800 px-3 py-2.5 shrink-0 bg-[#1e2029]">
+      <div className="border-t border-white/10 px-3 py-2.5 shrink-0 bg-kartu-hover">
         {!sayaAnggota ? (
           <div className="flex items-center gap-2 px-1 py-1.5">
-            <Lock size={13} className="text-zinc-600 shrink-0" />
-            <span className="text-[11px] text-zinc-500 flex-1">
+            <Lock size={13} className="text-gray-600 shrink-0" />
+            <span className="text-[11px] text-gray-500 flex-1">
               Kamu belum terdaftar sebagai anggota setoran.
             </span>
             {isManager && (
@@ -526,20 +535,20 @@ const postsOf = useCallback(
         ) : (
           <>
             {pending.length > 0 && (
-              <div className="flex items-center gap-2 mb-2 bg-kartu border border-zinc-800 rounded-xl p-2 overflow-x-auto">
+              <div className="flex items-center gap-2 mb-2 bg-kartu border border-white/10 rounded-xl p-2 overflow-x-auto">
                 {pending.map((f, i) => (
                   <div key={`${f.name}-${i}`} className="relative shrink-0">
                     <img src={pendingUrls[i] || ''} alt={f.name}
-                      className="w-11 h-11 rounded-lg object-cover border border-zinc-700" />
+                      className="w-11 h-11 rounded-lg object-cover border border-white/10" />
                     <button onClick={() => hapusSatu(i)} title="Buang"
-                      className="absolute -top-1.5 -right-1.5 bg-zinc-900 border border-zinc-700 rounded-full p-0.5 text-zinc-400 hover:text-red-400 transition-colors">
+                      className="absolute -top-1.5 -right-1.5 bg-kartu border border-white/10 rounded-full p-0.5 text-gray-400 hover:text-red-400 transition-colors">
                       <X size={10} />
                     </button>
                   </div>
                 ))}
-                <span className="text-[10px] text-zinc-500 px-1 shrink-0">{pending.length} berkas</span>
+                <span className="text-[10px] text-gray-500 px-1 shrink-0">{pending.length} berkas</span>
                 <button onClick={batalPending} title="Batalkan semua"
-                  className="ml-auto p-1 text-zinc-500 hover:text-white shrink-0"><X size={14} /></button>
+                  className="ml-auto p-1 text-gray-500 hover:text-white shrink-0"><X size={14} /></button>
               </div>
             )}
 
@@ -549,7 +558,7 @@ const postsOf = useCallback(
 
               <button onClick={() => fileRef.current?.click()} disabled={uploading}
                 title="Pilih tangkapan layar (bisa lebih dari satu)"
-                className="p-2.5 text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-xl transition-colors shrink-0 disabled:opacity-50">
+                className="p-2.5 text-gray-400 hover:text-white bg-kartu-hover hover:bg-kartu-hover rounded-xl transition-colors shrink-0 disabled:opacity-50">
                 <Paperclip size={16} />
               </button>
 
@@ -558,7 +567,7 @@ const postsOf = useCallback(
                 onChange={(e) => setCaption(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!uploading) kirim(); } }}
                 placeholder="Tulis pesan…"
-                className="flex-1 min-w-0 bg-kartu border border-zinc-700 focus:border-primer/60 rounded-xl px-3 py-2.5 text-xs text-zinc-100 outline-none transition-colors" />
+                className="flex-1 min-w-0 bg-kartu border border-white/10 focus:border-primer/60 rounded-xl px-3 py-2.5 text-xs text-gray-100 outline-none transition-colors" />
 
               <button onClick={kirim} disabled={uploading || (!pending.length && !caption.trim())}
                 title="Kirim"
@@ -578,7 +587,7 @@ const postsOf = useCallback(
             <img src={lightbox} alt="Setoran" className="max-w-full max-h-full rounded-xl object-contain pointer-events-auto" />
           </div>
           <button onClick={() => setLightbox(null)}
-            className="fixed top-4 right-4 z-[160] p-2 bg-zinc-900/90 text-white rounded-lg hover:bg-zinc-800">
+            className="fixed top-4 right-4 z-[160] p-2 bg-kartu/90 text-white rounded-lg hover:bg-kartu-hover">
             <X size={18} />
           </button>
         </>

@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 
-const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
+const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-primer-terang');
 
 /* Satu ubin untuk satu sumber video: 'camera' atau 'screen_share'.
    Ubin kamera juga menempelkan audio mikrofon peserta (sekali per orang). */
@@ -57,14 +57,14 @@ function MediaTile({ participant, source, isLocal, teamMembers }: any) {
   }, [participant, source, isLocal, isScreen]);
 
   return (
-    <div className={`relative rounded-xl overflow-hidden bg-kartu border-2 transition-colors aspect-video ${isScreen ? 'border-primer col-span-full lg:col-span-2 row-span-2' : speaking ? 'border-emerald-500' : 'border-zinc-800'}`}>
+    <div className={`relative rounded-xl overflow-hidden bg-kartu border-2 transition-colors aspect-video ${isScreen ? 'border-primer col-span-full lg:col-span-2 row-span-2' : speaking ? 'border-emerald-500' : 'border-white/10'}`}>
       <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full ${isScreen ? 'object-contain bg-black' : 'object-cover'} ${hasVideo ? '' : 'hidden'} ${(!isScreen && isLocal) ? 'scale-x-[-1]' : ''}`} />
       {!isScreen && !isLocal && <audio ref={audioRef} autoPlay />}
 
       {isScreen ? (
         <>
           {!hasVideo && (
-            <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs">Memuat layar…</div>
+            <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-xs">Memuat layar…</div>
           )}
           <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-primer/90 backdrop-blur px-2 py-1 rounded-lg z-10">
             <MonitorUp size={11} className="text-white" />
@@ -191,12 +191,12 @@ export default function VoiceRoom({ channel, onLeave }: any) {
   });
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#1a1c22]">
+    <div className="flex-1 flex flex-col min-w-0 bg-input">
       {/* header */}
-      <div className="h-12 border-b border-zinc-800 flex items-center gap-2 px-4 shrink-0">
+      <div className="h-12 border-b border-white/10 flex items-center gap-2 px-4 shrink-0">
         <Volume2 size={16} className="text-emerald-400" />
-        <span className="text-sm font-bold text-zinc-100">{channel.name}</span>
-        <span className="text-[11px] text-zinc-500">· {participants.length} terhubung</span>
+        <span className="text-sm font-bold text-gray-100">{channel.name}</span>
+        <span className="text-[11px] text-gray-500">· {participants.length} terhubung</span>
       </div>
 
       {/* grid peserta */}
@@ -208,19 +208,19 @@ export default function VoiceRoom({ channel, onLeave }: any) {
             </div>
             <div>
               <p className="text-sm font-bold text-white">Voice belum bisa digunakan</p>
-              <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed">{error}</p>
+              <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{error}</p>
             </div>
             {/(dikonfigurasi|belum diset|LIVEKIT)/i.test(error) && (
-              <p className="text-[11px] text-zinc-600 leading-relaxed bg-zinc-900/60 border border-zinc-800 rounded-xl px-4 py-3">
+              <p className="text-[11px] text-gray-600 leading-relaxed bg-kartu/60 border border-white/10 rounded-xl px-4 py-3">
                 Admin perlu mengatur kunci <b>LiveKit</b> (URL, API Key, API Secret) di environment server, lalu men-deploy ulang. Fitur teks chat tetap berjalan normal.
               </p>
             )}
-            <button onClick={onLeave} className="mt-1 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all">
+            <button onClick={onLeave} className="mt-1 flex items-center gap-2 bg-kartu-hover hover:bg-kartu-hover text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all">
               Kembali ke Chat
             </button>
           </div>
         ) : connecting ? (
-          <div className="h-full min-h-[50vh] flex flex-col items-center justify-center gap-3 text-zinc-500">
+          <div className="h-full min-h-[50vh] flex flex-col items-center justify-center gap-3 text-gray-500">
             <Loader2 size={28} className="animate-spin text-emerald-400" />
             <p className="text-sm">Menghubungkan ke ruang suara…</p>
           </div>
@@ -234,17 +234,17 @@ export default function VoiceRoom({ channel, onLeave }: any) {
       </div>
 
       {/* bilah kontrol */}
-      <div className="shrink-0 border-t border-zinc-800 bg-kartu px-4 py-3 flex items-center justify-center gap-2.5">
+      <div className="shrink-0 border-t border-white/10 bg-kartu px-4 py-3 flex items-center justify-center gap-2.5">
         <button onClick={toggleMic} title={micOn ? 'Matikan mic' : 'Nyalakan mic'}
-          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 ${micOn ? 'bg-zinc-700 text-white hover:bg-zinc-600' : 'bg-red-500 text-white'}`}>
+          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 ${micOn ? 'bg-kartu-hover text-white hover:bg-kartu-hover' : 'bg-red-500 text-white'}`}>
           {micOn ? <Mic size={18} /> : <MicOff size={18} />}
         </button>
         <button onClick={toggleCam} title={camOn ? 'Matikan kamera' : 'Nyalakan kamera'}
-          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 ${camOn ? 'bg-zinc-700 text-white hover:bg-zinc-600' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>
+          className={`w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 ${camOn ? 'bg-kartu-hover text-white hover:bg-kartu-hover' : 'bg-kartu-hover text-gray-400 hover:text-white'}`}>
           {camOn ? <Video size={18} /> : <VideoOff size={18} />}
         </button>
         <button onClick={toggleScreen} title={screenOn ? 'Stop berbagi layar' : 'Bagikan layar'}
-          className={`w-11 h-11 rounded-full items-center justify-center transition-all active:scale-90 hidden sm:flex ${screenOn ? 'bg-primer text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>
+          className={`w-11 h-11 rounded-full items-center justify-center transition-all active:scale-90 hidden sm:flex ${screenOn ? 'bg-primer text-white' : 'bg-kartu-hover text-gray-400 hover:text-white'}`}>
           {screenOn ? <ScreenShareOff size={18} /> : <ScreenShare size={18} />}
         </button>
         <button onClick={leave} title="Keluar dari voice"

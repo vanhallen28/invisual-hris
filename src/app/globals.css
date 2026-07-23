@@ -126,20 +126,55 @@ body {
   border-radius: 0.75rem;
 }
 
-/* Custom Scrollbar untuk Modal & Tabel */
-.custom-scrollbar::-webkit-scrollbar { 
-  width: 6px;  /* Lebar scrollbar vertikal */
-  height: 6px; /* Tinggi scrollbar horizontal (untuk tabel) */
+/* ═══════════════════════════════════════════════════════
+   SCROLLBAR — berlaku di SELURUH aplikasi.
+   Tipis, membulat, dan menyatu dengan tema gelap sehingga
+   tak lagi tampak sebagai batang abu-abu terang yang lebar.
+
+   Tak perlu kelas apa pun: semua area yang bisa digulir
+   otomatis ikut (chat, tabel, modal, daftar).
+   ═══════════════════════════════════════════════════════ */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
 }
-.custom-scrollbar::-webkit-scrollbar-track { 
-  background: transparent; 
+
+/* Chrome, Safari, Edge */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb { 
-  background: #333; 
-  border-radius: 10px; 
+*::-webkit-scrollbar-track {
+  background: transparent;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { 
-  background: #2b5cd5; /* Berubah menjadi biru Invisual saat disorot */
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.26);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Kelas lama tetap dipakai di banyak tempat — disamakan
+   supaya tampilannya tak berbeda dari aturan global. */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.26);
 }
 
 /* Efek kilauan tombol Clock In */
