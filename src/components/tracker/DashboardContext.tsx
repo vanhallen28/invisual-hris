@@ -175,13 +175,24 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   };
 
   // === AUTH: cek sesi + ikuti perubahan login/logout ===
+  // PENTING: pakai getSession() (membaca penyimpanan LOKAL, tanpa jaringan),
+  // BUKAN getUser() yang selalu memanggil server. Dulu memakai getUser():
+  // sekali jaringan tersendat atau token sedang disegarkan, panggilan gagal,
+  // authUser jadi null, dan halaman menuduh "Sesi tidak ditemukan" padahal
+  // pengguna masih login — itu sebabnya sering terjadi tiba-tiba.
   useEffect(() => {
     if (!supabase) { setAuthChecked(true); return; }
     let active = true;
-    supabase.auth.getUser()
-      .then(({ data }: any) => { if (active) { setAuthUser(data.user || null); setAuthChecked(true); } })
-      .catch(() => { if (active) setAuthChecked(true); }); // jaringan gagal → jangan tertahan di loading
-    const { data: sub } = supabase.auth.onAuthStateChange((_e: any, session: any) => { setAuthUser(session?.user || null); });
+    supabase.auth.getSession()
+      .then(({ data }: any) => { if (active) { setAuthUser(data?.session?.user || null); setAuthChecked(true); } })
+      .catch(() => { if (active) setAuthChecked(true); }); // gagal baca → jangan tertahan di loading
+    const { data: sub } = supabase.auth.onAuthStateChange((_e: any, session: any) => {
+      // Hanya perbarui bila benar-benar ada sesi. Peristiwa sela seperti
+      // TOKEN_REFRESHED sesaat bisa membawa session kosong — kalau langsung
+      // dipakai, pengguna terpental keluar tanpa sebab.
+      if (session?.user) setAuthUser(session.user);
+      else if (_e === 'SIGNED_OUT') setAuthUser(null);
+    });
     return () => { active = false; sub?.subscription?.unsubscribe?.(); };
   }, [supabase]);
 
