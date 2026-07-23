@@ -10,7 +10,7 @@ import Avatar from '@/components/Avatar';
 
 const BATAS = 40;
 
-const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
+const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-primer-terang');
 
 const jarak = (iso: string) => {
   const d = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -86,23 +86,23 @@ export default function RiwayatItem({ itemId }: { itemId: string }) {
       case 'dibuat':
         return <>membuat item ini</>;
       case 'nama':
-        return <>mengubah nama menjadi <span className="text-zinc-300">{potong(r.nilai_baru)}</span></>;
+        return <>mengubah nama menjadi <span className="text-gray-300">{potong(r.nilai_baru)}</span></>;
       case 'pic-tambah': {
         const m = orang(r.nilai_baru);
-        return <>menugaskan <span className="text-zinc-300">{m?.name || 'seseorang'}</span></>;
+        return <>menugaskan <span className="text-gray-300">{m?.name || 'seseorang'}</span></>;
       }
       case 'pic-lepas': {
         const m = orang(r.nilai_lama);
-        return <>melepas <span className="text-zinc-300">{m?.name || 'seseorang'}</span></>;
+        return <>melepas <span className="text-gray-300">{m?.name || 'seseorang'}</span></>;
       }
       default: {
         const lama = potong(r.nilai_lama, 24);
         const baru = potong(r.nilai_baru, 24);
         return (
           <>
-            mengubah <span className="text-zinc-400">{kolom}</span>
-            {lama ? <> dari <span className="text-zinc-500 line-through">{lama}</span></> : null}
-            {baru ? <> menjadi <span className="text-zinc-300">{baru}</span></> : <> menjadi kosong</>}
+            mengubah <span className="text-gray-400">{kolom}</span>
+            {lama ? <> dari <span className="text-gray-500 line-through">{lama}</span></> : null}
+            {baru ? <> menjadi <span className="text-gray-300">{baru}</span></> : <> menjadi kosong</>}
           </>
         );
       }
@@ -110,19 +110,19 @@ export default function RiwayatItem({ itemId }: { itemId: string }) {
   };
 
   return (
-    <div className="border-t border-zinc-800/60 pt-4 mt-4">
+    <div className="border-t border-white/10 pt-4 mt-4">
       <div className="flex items-center gap-2">
         <button onClick={() => setBuka((v) => !v)} className="flex items-center gap-2 min-w-0 flex-1 text-left">
-          {buka ? <ChevronDown size={13} className="text-zinc-500 shrink-0" /> : <ChevronRight size={13} className="text-zinc-600 shrink-0" />}
-          <History size={13} className="text-zinc-500 shrink-0" />
-          <h4 className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 truncate">Riwayat</h4>
+          {buka ? <ChevronDown size={13} className="text-gray-500 shrink-0" /> : <ChevronRight size={13} className="text-gray-600 shrink-0" />}
+          <History size={13} className="text-gray-500 shrink-0" />
+          <h4 className="text-[11px] font-bold uppercase tracking-widest text-gray-500 truncate">Riwayat</h4>
           {jumlah !== null && jumlah > 0 && (
-            <span className="text-[10px] text-zinc-600 shrink-0">{jumlah > BATAS ? `${BATAS}+` : jumlah}</span>
+            <span className="text-[10px] text-gray-600 shrink-0">{jumlah > BATAS ? `${BATAS}+` : jumlah}</span>
           )}
         </button>
         {buka && (
           <button onClick={muat} disabled={memuat} title="Muat ulang"
-            className="p-1 text-zinc-600 hover:text-white transition-colors shrink-0 disabled:opacity-40">
+            className="p-1 text-gray-600 hover:text-white transition-colors shrink-0 disabled:opacity-40">
             <RefreshCw size={11} className={memuat ? 'animate-spin' : ''} />
           </button>
         )}
@@ -130,8 +130,8 @@ export default function RiwayatItem({ itemId }: { itemId: string }) {
 
       {buka && (
         <div className="mt-2.5 flex flex-col gap-2.5">
-          {memuat && baris.length === 0 && <p className="text-[11px] text-zinc-600">Memuat riwayat…</p>}
-          {!memuat && baris.length === 0 && <p className="text-[11px] text-zinc-600">Belum ada perubahan tercatat.</p>}
+          {memuat && baris.length === 0 && <p className="text-[11px] text-gray-600">Memuat riwayat…</p>}
+          {!memuat && baris.length === 0 && <p className="text-[11px] text-gray-600">Belum ada perubahan tercatat.</p>}
 
           {baris.map((r) => {
             const m = orang(r.actor_id);
@@ -140,18 +140,18 @@ export default function RiwayatItem({ itemId }: { itemId: string }) {
                 <Avatar url={m?.avatarUrl} name={m?.name} initials={m?.initials}
                   className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 mt-0.5 ${mColor(m)}`} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] text-zinc-500 leading-snug">
-                    <span className="text-zinc-300 font-semibold">{m?.name || 'Seseorang'}</span>{' '}
+                  <p className="text-[11px] text-gray-500 leading-snug">
+                    <span className="text-gray-300 font-semibold">{m?.name || 'Seseorang'}</span>{' '}
                     {kalimat(r)}
                   </p>
-                  <p className="text-[9px] text-zinc-600 mt-0.5">{jarak(r.created_at)}</p>
+                  <p className="text-[9px] text-gray-600 mt-0.5">{jarak(r.created_at)}</p>
                 </div>
               </div>
             );
           })}
 
           {baris.length >= BATAS && (
-            <p className="text-[10px] text-zinc-600">Menampilkan {BATAS} perubahan terakhir.</p>
+            <p className="text-[10px] text-gray-600">Menampilkan {BATAS} perubahan terakhir.</p>
           )}
         </div>
       )}

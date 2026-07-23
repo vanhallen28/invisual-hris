@@ -43,7 +43,7 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
   const num = (x: any) => (typeof x === 'number' ? x : 0);
   const byPos = (a: any, b: any) => num(a.position) - num(b.position);
 
-  const teamMembers = membersRows.map((m: any) => ({ id: m.id, name: m.name, color: m.color || 'bg-[#579bfc]', initials: m.initials || '?' }));
+  const teamMembers = membersRows.map((m: any) => ({ id: m.id, name: m.name, color: m.color || 'bg-primer-terang', initials: m.initials || '?' }));
   const meRow = membersRows.find((m: any) => m.id === currentUserId);
   // Admin @invisual.studio SELALU manager (punya akses penuh: board, Content Hub, buat channel suara).
   const currentUserRole = isAdminEmail ? 'manager' : ((meRow?.role) || 'member');

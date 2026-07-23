@@ -9,7 +9,7 @@ export const PLATFORMS = [
   { id: 'linkedin', label: 'LinkedIn', color: 'bg-[#0A66C2]' },
   { id: 'youtube', label: 'YouTube', color: 'bg-[#FF0000]' },
   { id: 'threads', label: 'Threads', color: 'bg-zinc-500' },
-  { id: 'x', label: 'X / Twitter', color: 'bg-zinc-700' },
+  { id: 'x', label: 'X / Twitter', color: 'bg-kartu-hover' },
   { id: 'marketplace', label: 'Marketplace', color: 'bg-[#f59e0b]' },
 ];
 
@@ -29,16 +29,16 @@ export const CONTENT_PILLARS = [
 ];
 
 export const CONTENT_STATUS = [
-  { id: 'Brief', color: 'bg-zinc-600', ring: 'border-zinc-600' },
-  { id: 'Produksi', color: 'bg-[#579bfc]', ring: 'border-[#579bfc]' },
+  { id: 'Brief', color: 'bg-kartu-hover', ring: 'border-white/10' },
+  { id: 'Produksi', color: 'bg-primer-terang', ring: 'border-[#579bfc]' },
   { id: 'Review', color: 'bg-amber-500', ring: 'border-amber-500' },
   { id: 'Revisi', color: 'bg-red-500', ring: 'border-red-500' },
   { id: 'Approved', color: 'bg-emerald-500', ring: 'border-emerald-500' },
   { id: 'Tayang', color: 'bg-purple-500', ring: 'border-purple-500' },
 ];
 
-export const statusColor = (s: string) => CONTENT_STATUS.find((x) => x.id === s)?.color || 'bg-zinc-600';
-export const platformMeta = (p: string) => PLATFORMS.find((x) => x.id === p) || { id: p, label: p, color: 'bg-zinc-600' };
+export const statusColor = (s: string) => CONTENT_STATUS.find((x) => x.id === s)?.color || 'bg-kartu-hover';
+export const platformMeta = (p: string) => PLATFORMS.find((x) => x.id === p) || { id: p, label: p, color: 'bg-kartu-hover' };
 
 // Engagement Rate = (likes + comments + shares + saves) / reach * 100
 export const engagementRate = (c: any) => {

@@ -9,7 +9,7 @@ import NotificationCenter from '@/components/tracker/NotificationCenter';
 import LoadingLogo from '@/components/LoadingLogo';
 import { dbUpdateItemName, dbSetItemMeta, dbSetCellValue, newId, dbAddItem, dbAddSubItem, dbDeleteItem, dbAddColumn, dbDeleteColumn, dbAddLabel, dbDeleteLabel, dbUpdateLabelColor, dbAddGroup, dbUpdateGroup, dbDeleteGroup, dbAddTreeNode, dbRenameTreeNode, dbDeleteTreeNode, dbUpdateColumnLabel, dbReindexColumns, dbReindexGroups, dbReindexItems } from '@/lib/tracker/sync';
 
-const LABEL_COLORS = ['bg-[#e2445c]', 'bg-[#579bfc]', 'bg-[#fdab3d]', 'bg-[#00c875]', 'bg-[#a25ddc]', 'bg-[#ff5ac4]', 'bg-[#9d99ff]', 'bg-emerald-500', 'bg-rose-400'];
+const LABEL_COLORS = ['bg-[#e2445c]', 'bg-primer-terang', 'bg-[#fdab3d]', 'bg-[#00c875]', 'bg-[#a25ddc]', 'bg-[#ff5ac4]', 'bg-[#9d99ff]', 'bg-emerald-500', 'bg-rose-400'];
 const HEX_COLORS = ['#e2445c', '#579bfc', '#fdab3d', '#00c875', '#a25ddc', '#ff5ac4', '#9d99ff'];
 
 // Set view default tiap board (Table, Kanban, Gantt, Chart) — sama seperti tab lama
@@ -96,7 +96,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   const [currentUserRole, setCurrentUserRole] = useState<string>('member');
   const [canContentHub, setCanContentHub] = useState<boolean>(true);
   const [docEditorTarget, setDocEditorTarget] = useState<any>(null);
-  const [teamMembers, setTeamMembers] = useState<any[]>([{ id: 'me', name: 'You', color: 'bg-[#579bfc]', initials: 'Y' }]);
+  const [teamMembers, setTeamMembers] = useState<any[]>([{ id: 'me', name: 'You', color: 'bg-primer-terang', initials: 'Y' }]);
   const [labels, setLabels] = useState<any>({});
 
   // MEMORI v24: RESET TOTAL KE KANVAS KOSONG
@@ -875,24 +875,24 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   };
 
   const gate = (() => {
-    if (!supabase) return (<div className="min-h-screen w-full bg-[#181b24] text-zinc-300 flex items-center justify-center p-6 text-center text-sm">Konfigurasi Supabase belum ada. Pastikan <code className="mx-1 text-zinc-100">.env.local</code> terisi lalu restart <code className="ml-1 text-zinc-100">npm run dev</code>.</div>);
-    if (!authChecked) return (<div className="min-h-screen w-full bg-[#181b24] flex items-center justify-center"><LoadingLogo size={64} withRing text="Memeriksa sesi" /></div>);
+    if (!supabase) return (<div className="min-h-screen w-full bg-kartu text-gray-300 flex items-center justify-center p-6 text-center text-sm">Konfigurasi Supabase belum ada. Pastikan <code className="mx-1 text-gray-100">.env.local</code> terisi lalu restart <code className="ml-1 text-gray-100">npm run dev</code>.</div>);
+    if (!authChecked) return (<div className="min-h-screen w-full bg-kartu flex items-center justify-center"><LoadingLogo size={64} withRing text="Memeriksa sesi" /></div>);
     if (!authUser) return (
-      <div className="min-h-screen w-full bg-[#181b24] text-zinc-100 flex items-center justify-center p-6 font-sans">
-        <div className="w-full max-w-sm bg-[#20222b] border border-zinc-800 rounded-2xl p-6 shadow-2xl">
+      <div className="min-h-screen w-full bg-kartu text-gray-100 flex items-center justify-center p-6 font-sans">
+        <div className="w-full max-w-sm bg-kartu border border-white/10 rounded-2xl p-6 shadow-2xl">
           <h1 className="text-lg font-bold mb-1">Daily Work Tracker</h1>
-          <p className="text-sm text-zinc-500 mb-5">Masuk untuk mengakses board kamu.</p>
+          <p className="text-sm text-gray-500 mb-5">Masuk untuk mengakses board kamu.</p>
           <div className="flex flex-col gap-2">
-            <input value={loginEmail} onChange={e => setLoginEmail(e.target.value)} type="email" placeholder="Email" className="bg-zinc-950 border border-zinc-700 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none transition-colors" />
-            <input value={loginPassword} onChange={e => setLoginPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && doLogin()} type="password" placeholder="Password" className="bg-zinc-950 border border-zinc-700 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none transition-colors" />
+            <input value={loginEmail} onChange={e => setLoginEmail(e.target.value)} type="email" placeholder="Email" className="bg-latar border border-white/10 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none transition-colors" />
+            <input value={loginPassword} onChange={e => setLoginPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && doLogin()} type="password" placeholder="Password" className="bg-latar border border-white/10 focus:border-blue-500 rounded-lg px-3 py-2 text-sm outline-none transition-colors" />
             <button onClick={doLogin} disabled={loginBusy || !loginEmail || !loginPassword} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg px-4 py-2 text-sm font-semibold mt-1 transition-colors">{loginBusy ? 'Memproses…' : 'Masuk'}</button>
             {loginMsg && <div className="text-sm text-red-400 mt-1">{loginMsg}</div>}
           </div>
         </div>
       </div>
     );
-    if (loadError) return (<div className="min-h-screen w-full bg-[#181b24] text-red-300 flex items-center justify-center p-6 text-center text-sm">Gagal memuat data: {loadError}</div>);
-    if (!isLoaded) return (<div className="min-h-screen w-full bg-[#181b24] flex items-center justify-center"><LoadingLogo size={64} withRing text="Memuat data" /></div>);
+    if (loadError) return (<div className="min-h-screen w-full bg-kartu text-red-300 flex items-center justify-center p-6 text-center text-sm">Gagal memuat data: {loadError}</div>);
+    if (!isLoaded) return (<div className="min-h-screen w-full bg-kartu flex items-center justify-center"><LoadingLogo size={64} withRing text="Memuat data" /></div>);
     return null;
   })();
 
@@ -913,11 +913,11 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       {active && <NotificationCenter />}
       {confirmModal?.isOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] animate-in fade-in duration-200">
-          <div className="bg-[#1e202a] border border-zinc-800 rounded-xl p-6 max-w-sm w-full mx-4 shadow-2xl">
+          <div className="bg-kartu-hover border border-white/10 rounded-xl p-6 max-w-sm w-full mx-4 shadow-2xl">
             <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><AlertCircle size={20} className="text-red-400" /> {confirmModal.title}</h3>
-            <p className="text-sm text-zinc-400 mb-6 leading-relaxed">{confirmModal.message}</p>
+            <p className="text-sm text-gray-400 mb-6 leading-relaxed">{confirmModal.message}</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setConfirmModal(null)} className="px-4 py-2 text-xs font-semibold text-zinc-400 hover:text-white transition-colors">Cancel</button>
+              <button onClick={() => setConfirmModal(null)} className="px-4 py-2 text-xs font-semibold text-gray-400 hover:text-white transition-colors">Cancel</button>
               <button onClick={confirmModal.onConfirm} className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-500 rounded-md shadow-md transition-colors">Confirm</button>
             </div>
           </div>
@@ -928,10 +928,10 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       {toasts.length > 0 && (
         <div className="fixed bottom-6 right-6 z-[120] flex flex-col gap-2 items-end">
           {toasts.map((t:any) => (
-            <div key={t.id} className="bg-[#2a2c38] border border-zinc-700 shadow-2xl rounded-lg pl-4 pr-3 py-3 flex items-center gap-3 min-w-[240px] max-w-[360px] dwt-row-in">
-              <span className="text-sm text-zinc-200 flex-1">{t.message}</span>
+            <div key={t.id} className="bg-kartu border border-white/10 shadow-2xl rounded-lg pl-4 pr-3 py-3 flex items-center gap-3 min-w-[240px] max-w-[360px] dwt-row-in">
+              <span className="text-sm text-gray-200 flex-1">{t.message}</span>
               {t.undo && <button onClick={() => { t.undo(); dismissToast(t.id); }} className="text-xs font-bold text-blue-400 hover:text-blue-300 shrink-0 uppercase tracking-wide">{t.actionLabel || 'Undo'}</button>}
-              <button onClick={() => dismissToast(t.id)} className="text-zinc-500 hover:text-white shrink-0"><X size={14}/></button>
+              <button onClick={() => dismissToast(t.id)} className="text-gray-500 hover:text-white shrink-0"><X size={14}/></button>
             </div>
           ))}
         </div>

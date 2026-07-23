@@ -84,24 +84,24 @@ export default function MainTable() {
   return (
     <>
       <div className="flex flex-wrap items-center gap-4 mb-6 shrink-0">
-        <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs focus-within:border-blue-500 transition-colors">
-          <Search size={14} className="text-zinc-500"/>
-          <input autoComplete="off" spellCheck="false" type="text" placeholder="Search task/tag..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="bg-transparent outline-none text-zinc-200 w-44 min-w-0"/>
-          {searchQuery && <X size={14} className="text-zinc-500 cursor-pointer hover:text-white" onClick={() => setSearchQuery('')}/>}
+        <div className="flex items-center gap-2 bg-kartu border border-white/10 rounded px-2.5 py-1.5 text-xs focus-within:border-blue-500 transition-colors">
+          <Search size={14} className="text-gray-500"/>
+          <input autoComplete="off" spellCheck="false" type="text" placeholder="Search task/tag..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="bg-transparent outline-none text-gray-200 w-44 min-w-0"/>
+          {searchQuery && <X size={14} className="text-gray-500 cursor-pointer hover:text-white" onClick={() => setSearchQuery('')}/>}
         </div>
-        <div className="w-[1px] h-6 bg-zinc-700 mx-2"></div>
+        <div className="w-[1px] h-6 bg-kartu-hover mx-2"></div>
         <div className="relative">
-          <button onClick={() => setIsHideMenuOpen(!isHideMenuOpen)} className={`flex items-center gap-1.5 text-sm transition-colors ${hiddenColumns.length > 0 ? 'text-blue-400 hover:text-blue-300' : 'text-zinc-400 hover:text-zinc-200'}`}>
+          <button onClick={() => setIsHideMenuOpen(!isHideMenuOpen)} className={`flex items-center gap-1.5 text-sm transition-colors ${hiddenColumns.length > 0 ? 'text-blue-400 hover:text-blue-300' : 'text-gray-400 hover:text-gray-200'}`}>
             <EyeOff size={16}/> Hide {hiddenColumns.length > 0 ? `(${hiddenColumns.length})` : ''}
           </button>
           {isHideMenuOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsHideMenuOpen(false)}></div>
-              <div className="absolute top-full left-0 mt-2 w-48 bg-[#2a2c38] border border-zinc-700/50 shadow-2xl rounded-xl z-50 p-2 flex flex-col gap-1 animate-in fade-in zoom-in-95">
-                <div className="text-[10px] font-bold text-zinc-500 uppercase px-2 py-1 tracking-wider">Toggle Columns</div>
+              <div className="absolute top-full left-0 mt-2 w-48 bg-kartu border border-white/10 shadow-2xl rounded-xl z-50 p-2 flex flex-col gap-1 animate-in fade-in zoom-in-95">
+                <div className="text-[10px] font-bold text-gray-500 uppercase px-2 py-1 tracking-wider">Toggle Columns</div>
                 {columns.map((col:any) => {
                   const isHidden = hiddenColumns.includes(col.id);
-                  return <button key={col.id} onClick={() => setHiddenColumns((p:any) => p.includes(col.id) ? p.filter((id:any)=>id!==col.id) : [...p, col.id])} className="flex items-center gap-2.5 px-2.5 py-1.5 hover:bg-zinc-700/50 rounded-lg text-[13px] text-zinc-200 text-left transition-colors"><div className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center ${!isHidden ? 'bg-blue-600 border-blue-600' : 'border-zinc-500'}`}>{!isHidden && <Check size={10} strokeWidth={3} className="text-white"/>}</div>{col.label}</button>
+                  return <button key={col.id} onClick={() => setHiddenColumns((p:any) => p.includes(col.id) ? p.filter((id:any)=>id!==col.id) : [...p, col.id])} className="flex items-center gap-2.5 px-2.5 py-1.5 hover:bg-white/5 rounded-lg text-[13px] text-gray-200 text-left transition-colors"><div className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center ${!isHidden ? 'bg-blue-600 border-blue-600' : 'border-white/10'}`}>{!isHidden && <Check size={10} strokeWidth={3} className="text-white"/>}</div>{col.label}</button>
                 })}
               </div>
             </>
@@ -109,19 +109,19 @@ export default function MainTable() {
         </div>
         {(peopleColId || statusColId) && (
           <>
-            <div className="w-[1px] h-6 bg-zinc-700 mx-1"></div>
+            <div className="w-[1px] h-6 bg-kartu-hover mx-1"></div>
             {peopleColId && (
               <div className="relative">
-                <button onClick={() => setFilterMenu(filterMenu === 'person' ? null : 'person')} className={`flex items-center gap-1.5 text-sm transition-colors ${filterPerson ? 'text-blue-400 hover:text-blue-300' : 'text-zinc-400 hover:text-zinc-200'}`}>
+                <button onClick={() => setFilterMenu(filterMenu === 'person' ? null : 'person')} className={`flex items-center gap-1.5 text-sm transition-colors ${filterPerson ? 'text-blue-400 hover:text-blue-300' : 'text-gray-400 hover:text-gray-200'}`}>
                   <Filter size={15}/> {filterPerson ? (teamMembers.find((m:any) => m.id === filterPerson)?.name || 'Person') : 'Person'}
                 </button>
                 {filterMenu === 'person' && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setFilterMenu(null)}></div>
-                    <div className="absolute top-full left-0 mt-2 w-52 bg-[#2a2c38] border border-zinc-700/50 shadow-2xl rounded-xl z-50 p-2 flex flex-col gap-0.5 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95">
-                      <button onClick={() => { setFilterPerson(null); setFilterMenu(null); }} className="text-left text-[13px] px-2.5 py-1.5 hover:bg-zinc-700/50 rounded-lg text-zinc-400 transition-colors">All people</button>
+                    <div className="absolute top-full left-0 mt-2 w-52 bg-kartu border border-white/10 shadow-2xl rounded-xl z-50 p-2 flex flex-col gap-0.5 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95">
+                      <button onClick={() => { setFilterPerson(null); setFilterMenu(null); }} className="text-left text-[13px] px-2.5 py-1.5 hover:bg-white/5 rounded-lg text-gray-400 transition-colors">All people</button>
                       {teamMembers.map((m:any) => (
-                        <button key={m.id} onClick={() => { setFilterPerson(m.id); setFilterMenu(null); }} className="flex items-center gap-2 text-[13px] px-2.5 py-1.5 hover:bg-zinc-700/50 rounded-lg text-zinc-200 text-left transition-colors">
+                        <button key={m.id} onClick={() => { setFilterPerson(m.id); setFilterMenu(null); }} className="flex items-center gap-2 text-[13px] px-2.5 py-1.5 hover:bg-white/5 rounded-lg text-gray-200 text-left transition-colors">
                           <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 ${m.color}`}>{m.initials}</span>
                           <span className="truncate">{m.name}</span>
                           {filterPerson === m.id && <Check size={12} className="text-blue-400 ml-auto shrink-0"/>}
@@ -134,16 +134,16 @@ export default function MainTable() {
             )}
             {statusColId && (
               <div className="relative">
-                <button onClick={() => setFilterMenu(filterMenu === 'status' ? null : 'status')} className={`flex items-center gap-1.5 text-sm transition-colors ${filterStatus ? 'text-blue-400 hover:text-blue-300' : 'text-zinc-400 hover:text-zinc-200'}`}>
+                <button onClick={() => setFilterMenu(filterMenu === 'status' ? null : 'status')} className={`flex items-center gap-1.5 text-sm transition-colors ${filterStatus ? 'text-blue-400 hover:text-blue-300' : 'text-gray-400 hover:text-gray-200'}`}>
                   <Filter size={15}/> {filterStatus || 'Status'}
                 </button>
                 {filterMenu === 'status' && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setFilterMenu(null)}></div>
-                    <div className="absolute top-full left-0 mt-2 w-52 bg-[#2a2c38] border border-zinc-700/50 shadow-2xl rounded-xl z-50 p-2 flex flex-col gap-0.5 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95">
-                      <button onClick={() => { setFilterStatus(null); setFilterMenu(null); }} className="text-left text-[13px] px-2.5 py-1.5 hover:bg-zinc-700/50 rounded-lg text-zinc-400 transition-colors">All statuses</button>
+                    <div className="absolute top-full left-0 mt-2 w-52 bg-kartu border border-white/10 shadow-2xl rounded-xl z-50 p-2 flex flex-col gap-0.5 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95">
+                      <button onClick={() => { setFilterStatus(null); setFilterMenu(null); }} className="text-left text-[13px] px-2.5 py-1.5 hover:bg-white/5 rounded-lg text-gray-400 transition-colors">All statuses</button>
                       {statusOptions.map((l:any) => (
-                        <button key={l.id} onClick={() => { setFilterStatus(l.text); setFilterMenu(null); }} className="flex items-center gap-2 text-[13px] px-2.5 py-1.5 hover:bg-zinc-700/50 rounded-lg text-zinc-200 text-left transition-colors">
+                        <button key={l.id} onClick={() => { setFilterStatus(l.text); setFilterMenu(null); }} className="flex items-center gap-2 text-[13px] px-2.5 py-1.5 hover:bg-white/5 rounded-lg text-gray-200 text-left transition-colors">
                           <span className={`w-3 h-3 rounded-sm shrink-0 ${l.color}`}></span>
                           <span className="truncate">{l.text}</span>
                           {filterStatus === l.text && <Check size={12} className="text-blue-400 ml-auto shrink-0"/>}
@@ -155,7 +155,7 @@ export default function MainTable() {
               </div>
             )}
             {activeFilters > 0 && (
-              <button onClick={() => { setFilterPerson(null); setFilterStatus(null); }} className="flex items-center gap-1 text-xs text-zinc-500 hover:text-red-400 transition-colors"><X size={13}/> Clear ({activeFilters})</button>
+              <button onClick={() => { setFilterPerson(null); setFilterStatus(null); }} className="flex items-center gap-1 text-xs text-gray-500 hover:text-red-400 transition-colors"><X size={13}/> Clear ({activeFilters})</button>
             )}
           </>
         )}
@@ -193,39 +193,39 @@ export default function MainTable() {
               onDrop={e => { if (draggedGroup) { e.preventDefault(); reorderGroups(draggedGroup, group.id); setDraggedGroup(null); setDragOverGroup(null); } }}
               className={`flex flex-col group/board pb-8 relative ${hasOpenPopup ? 'z-50' : 'z-10'} ${dragOverGroup === group.id && draggedGroup && draggedGroup !== group.id ? 'outline outline-2 outline-blue-500/70 outline-offset-2 rounded' : ''} ${draggedGroup === group.id ? 'opacity-40' : ''}`}>
               <div className="flex items-center gap-2 mb-3 select-none">
-                <span draggable onDragStart={e => { setDraggedGroup(group.id); e.dataTransfer.effectAllowed = 'move'; }} onDragEnd={() => { setDraggedGroup(null); setDragOverGroup(null); }} className="cursor-grab text-zinc-600 hover:text-zinc-300 opacity-0 group-hover/board:opacity-100 transition-opacity shrink-0" title="Tarik untuk pindah grup"><GripVertical size={14}/></span>
+                <span draggable onDragStart={e => { setDraggedGroup(group.id); e.dataTransfer.effectAllowed = 'move'; }} onDragEnd={() => { setDraggedGroup(null); setDragOverGroup(null); }} className="cursor-grab text-gray-600 hover:text-gray-300 opacity-0 group-hover/board:opacity-100 transition-opacity shrink-0" title="Tarik untuk pindah grup"><GripVertical size={14}/></span>
                 <ChevronDown size={18} style={{ color: group.color }} className={`cursor-pointer transition-transform ${group.isCollapsed ? '-rotate-90' : ''}`} onClick={() => updateGroup(group.id, { isCollapsed: !group.isCollapsed })} />
                 <div style={{ color: group.color }} className="flex-1 min-w-0 max-w-sm flex items-center">
                   <InlineEdit value={group.title} onSave={(newVal: string) => updateGroup(group.id, { title: newVal })} textClassName="text-md font-bold tracking-wide hover:opacity-80 transition-opacity truncate" className="text-md font-bold px-2 py-0.5" />
                 </div>
                 {groupTotal > 0 && (
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] font-bold text-zinc-500 bg-zinc-800/50 px-2 py-0.5 rounded-full">{groupTotal} item{groupTotal > 1 ? 's' : ''}</span>
+                    <span className="text-[10px] font-bold text-gray-500 bg-white/5 px-2 py-0.5 rounded-full">{groupTotal} item{groupTotal > 1 ? 's' : ''}</span>
                     {statusDist.length > 0 && (
-                      <div className="flex h-1.5 w-28 rounded-full overflow-hidden bg-zinc-800/80" title={statusDist.map((s:any) => `${s.text}: ${s.n}`).join('  ·  ')}>
+                      <div className="flex h-1.5 w-28 rounded-full overflow-hidden bg-white/5" title={statusDist.map((s:any) => `${s.text}: ${s.n}`).join('  ·  ')}>
                         {statusDist.map((s:any) => <div key={s.id} className={s.color} style={{ width: `${(s.n / groupTotal) * 100}%` }} />)}
                       </div>
                     )}
                   </div>
                 )}
-                <button onClick={() => triggerConfirm('Hapus Grup', 'Hapus grup ini?', () => handleDeleteGroup(group.id))} className="opacity-0 group-hover/board:opacity-100 text-zinc-600 hover:text-red-400 p-1 transition-opacity"><Trash2 size={14}/></button>
+                <button onClick={() => triggerConfirm('Hapus Grup', 'Hapus grup ini?', () => handleDeleteGroup(group.id))} className="opacity-0 group-hover/board:opacity-100 text-gray-600 hover:text-red-400 p-1 transition-opacity"><Trash2 size={14}/></button>
               </div>
 
               {!group.isCollapsed && (
-                <div className="flex flex-col bg-[#20222b] border border-zinc-800/80 rounded-md min-w-max shadow-lg relative">
+                <div className="flex flex-col bg-kartu border border-white/10 rounded-md min-w-max shadow-lg relative">
                   
                   <div className="absolute left-0 top-0 bottom-0 z-30 pointer-events-none rounded-tl-md" style={{ width: '6px', backgroundColor: group.color, clipPath: 'polygon(0 0, 100% 0, 3px 100%, 0 100%)' }} />
 
                   {/* HEADER TABEL UTAMA */}
-                  <div className={`grid items-center border-b border-zinc-800 bg-[#1e202a] text-[11px] font-bold text-zinc-400 uppercase select-none rounded-t-md relative ${addColMenuTarget?.id === group.id ? 'z-40' : 'z-10'}`} style={{ gridTemplateColumns }}>
-                    <div className="px-2 py-3 flex justify-center pl-[6px] sticky left-0 z-20 bg-[#1e202a]"><input type="checkbox" onChange={() => toggleGroupSelection(group)} className="rounded bg-zinc-950 border-zinc-700 text-blue-500 cursor-pointer w-3.5 h-3.5" /></div>
+                  <div className={`grid items-center border-b border-white/10 bg-kartu-hover text-[11px] font-bold text-gray-400 uppercase select-none rounded-t-md relative ${addColMenuTarget?.id === group.id ? 'z-40' : 'z-10'}`} style={{ gridTemplateColumns }}>
+                    <div className="px-2 py-3 flex justify-center pl-[6px] sticky left-0 z-20 bg-kartu-hover"><input type="checkbox" onChange={() => toggleGroupSelection(group)} className="rounded bg-latar border-white/10 text-blue-500 cursor-pointer w-3.5 h-3.5" /></div>
                     
-                    <div className="px-3 py-3 border-r border-zinc-800/60 flex items-center justify-between gap-1 group/namecol transition-colors min-w-0 sticky left-[40px] z-20 bg-[#1e202a] relative">
+                    <div className="px-3 py-3 border-r border-white/10 flex items-center justify-between gap-1 group/namecol transition-colors min-w-0 sticky left-[40px] z-20 bg-kartu-hover relative">
                        <span onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setResize({ id: '__nama', mulaiX: e.clientX, mulaiW: lebarNamaAktif, w: lebarNamaAktif }); }} onClick={(e) => e.stopPropagation()} title="Tarik untuk melebarkan kolom" className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500/70 active:bg-blue-500 transition-colors z-30" />
                        <div className="flex-1 min-w-0">
-                          <InlineEdit value={group.itemLabel || 'Item Name'} onSave={(val: string) => updateGroup(group.id, { itemLabel: val })} textClassName="text-zinc-400 uppercase text-[11px] font-bold truncate hover:opacity-80" className="text-[11px] font-bold uppercase" />
+                          <InlineEdit value={group.itemLabel || 'Item Name'} onSave={(val: string) => updateGroup(group.id, { itemLabel: val })} textClassName="text-gray-400 uppercase text-[11px] font-bold truncate hover:opacity-80" className="text-[11px] font-bold uppercase" />
                        </div>
-                       <button onClick={()=>setSortConfig((s:any)=>({key:'name', direction: s?.direction==='asc'?'desc':'asc'}))} className="text-zinc-500 group-hover/namecol:text-blue-400 shrink-0">
+                       <button onClick={()=>setSortConfig((s:any)=>({key:'name', direction: s?.direction==='asc'?'desc':'asc'}))} className="text-gray-500 group-hover/namecol:text-blue-400 shrink-0">
                          {sortConfig?.key==='name' && (sortConfig.direction==='asc'?<ChevronDown size={12}/>:<ChevronUp size={12}/>)}
                          {sortConfig?.key!=='name' && <ChevronDown size={12} className="opacity-0 group-hover/namecol:opacity-100"/>}
                        </button>
@@ -235,38 +235,38 @@ export default function MainTable() {
                       <div key={col.id}
                         onDragOver={e => { if (draggedCol) { e.preventDefault(); setDragOverCol(col.id); } }}
                         onDrop={e => { if (draggedCol) { e.preventDefault(); reorderColumns(draggedCol, col.id); setDraggedCol(null); setDragOverCol(null); } }}
-                        className={`px-3 py-3 border-r border-zinc-800/60 flex items-center justify-between gap-1.5 group/col transition-colors min-w-0 relative ${dragOverCol === col.id && draggedCol && draggedCol !== col.id ? 'bg-blue-500/15' : ''} ${draggedCol === col.id ? 'opacity-40' : ''}`}>
-                        <span draggable onDragStart={e => { setDraggedCol(col.id); e.dataTransfer.effectAllowed = 'move'; }} onDragEnd={() => { setDraggedCol(null); setDragOverCol(null); }} className="cursor-grab text-zinc-600 hover:text-zinc-300 opacity-0 group-hover/col:opacity-100 transition-opacity shrink-0" title="Tarik untuk pindah kolom"><GripVertical size={11}/></span>
+                        className={`px-3 py-3 border-r border-white/10 flex items-center justify-between gap-1.5 group/col transition-colors min-w-0 relative ${dragOverCol === col.id && draggedCol && draggedCol !== col.id ? 'bg-blue-500/15' : ''} ${draggedCol === col.id ? 'opacity-40' : ''}`}>
+                        <span draggable onDragStart={e => { setDraggedCol(col.id); e.dataTransfer.effectAllowed = 'move'; }} onDragEnd={() => { setDraggedCol(null); setDragOverCol(null); }} className="cursor-grab text-gray-600 hover:text-gray-300 opacity-0 group-hover/col:opacity-100 transition-opacity shrink-0" title="Tarik untuk pindah kolom"><GripVertical size={11}/></span>
                         <div className="flex-1 min-w-0 flex items-center justify-center">
                           <InlineEdit value={col.label} onSave={(newVal: string) => updateColumnLabel(col.id, newVal)} textClassName="text-center hover:text-white truncate" className="text-center text-xs" />
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover/col:opacity-100 transition-opacity shrink-0">
-                           <button onClick={()=>setSortConfig((s:any)=>({key:col.id, direction: s?.direction==='asc'?'desc':'asc'}))} className="text-zinc-500 hover:text-blue-400 shrink-0"><ChevronDown size={12}/></button>
-                           <button onClick={()=>triggerConfirm('Hapus Kolom', `Yakin ingin menghapus kolom ${col.label}?`, () => handleDeleteColumn(col.id))} className="text-zinc-500 hover:text-red-400 shrink-0"><Trash2 size={12}/></button>
+                           <button onClick={()=>setSortConfig((s:any)=>({key:col.id, direction: s?.direction==='asc'?'desc':'asc'}))} className="text-gray-500 hover:text-blue-400 shrink-0"><ChevronDown size={12}/></button>
+                           <button onClick={()=>triggerConfirm('Hapus Kolom', `Yakin ingin menghapus kolom ${col.label}?`, () => handleDeleteColumn(col.id))} className="text-gray-500 hover:text-red-400 shrink-0"><Trash2 size={12}/></button>
                         </div>
                         <span onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setResize({ id: col.id, mulaiX: e.clientX, mulaiW: (parseInt(col.width) || 130), w: (parseInt(col.width) || 130) }); }} onClick={(e) => e.stopPropagation()} title="Tarik untuk melebarkan kolom" className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500/70 active:bg-blue-500 transition-colors z-30" />
                       </div>
                     ))}
                     
-                    <div className="relative flex h-full border-l border-zinc-800/60">
-                      <button onClick={() => setAddColMenuTarget({type: 'main', id: group.id})} className="h-full w-full hover:bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white transition-colors" title="Add Column"><Plus size={14} /></button>
+                    <div className="relative flex h-full border-l border-white/10">
+                      <button onClick={() => setAddColMenuTarget({type: 'main', id: group.id})} className="h-full w-full hover:bg-kartu-hover flex items-center justify-center text-gray-400 hover:text-white transition-colors" title="Add Column"><Plus size={14} /></button>
                       {addColMenuTarget?.id === group.id && addColMenuTarget.type === 'main' && <ColumnCenterMenu target="main" onClose={() => setAddColMenuTarget(null)} />}
                     </div>
-                    <div className="h-full w-full bg-[#1e202a] rounded-tr-md"></div>
+                    <div className="h-full w-full bg-kartu-hover rounded-tr-md"></div>
                   </div>
 
                   {filteredItems.length === 0 && (
-                    <div className="px-6 py-10 flex flex-col items-center justify-center gap-3 text-center border-b border-zinc-800/40 relative z-20">
+                    <div className="px-6 py-10 flex flex-col items-center justify-center gap-3 text-center border-b border-white/10 relative z-20">
                       {(activeFilters > 0 || searchQuery) ? (
                         <>
-                          <Search size={28} className="text-zinc-700" />
-                          <p className="text-sm text-zinc-500">Tidak ada item yang cocok dengan pencarian/filter.</p>
+                          <Search size={28} className="text-gray-700" />
+                          <p className="text-sm text-gray-500">Tidak ada item yang cocok dengan pencarian/filter.</p>
                           <button onClick={() => { setSearchQuery(''); setFilterPerson(null); setFilterStatus(null); }} className="text-xs font-semibold text-blue-400 hover:text-blue-300">Reset semua</button>
                         </>
                       ) : (
                         <>
-                          <Inbox size={28} className="text-zinc-700" />
-                          <p className="text-sm text-zinc-500">Grup ini masih kosong.</p>
+                          <Inbox size={28} className="text-gray-700" />
+                          <p className="text-sm text-gray-500">Grup ini masih kosong.</p>
                           <button onClick={() => handleAddItem(group.id)} className="text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5"><Plus size={13}/> Tambah item pertama</button>
                         </>
                       )}
@@ -285,24 +285,24 @@ export default function MainTable() {
                     ))}
                   </div>
 
-                  <div className="grid items-center border-t border-zinc-800 bg-[#20222b] h-[34px] rounded-b-md relative z-0" style={{ gridTemplateColumns }}>
+                  <div className="grid items-center border-t border-white/10 bg-kartu h-[34px] rounded-b-md relative z-0" style={{ gridTemplateColumns }}>
                     <div className="absolute left-0 top-0 bottom-0 z-30 pointer-events-none rounded-bl-md" style={{ width: '6px', backgroundColor: group.color, clipPath: 'polygon(0 0, 100% 0, 50% 100%, 0 100%)' }} />
 
-                    <div className="h-full border-r border-zinc-800/50 pl-[6px] sticky left-0 z-20 bg-[#20222b]"></div>
-                    <div className="px-4 py-1 h-full flex items-center text-[12px] text-zinc-400 font-bold hover:bg-[#282a36] cursor-pointer transition-colors border-r border-zinc-800/50 sticky left-[40px] z-20 bg-[#20222b]" onClick={() => handleAddItem(group.id)}>+ Add item</div>
+                    <div className="h-full border-r border-white/10 pl-[6px] sticky left-0 z-20 bg-kartu"></div>
+                    <div className="px-4 py-1 h-full flex items-center text-[12px] text-gray-400 font-bold hover:bg-kartu cursor-pointer transition-colors border-r border-white/10 sticky left-[40px] z-20 bg-kartu" onClick={() => handleAddItem(group.id)}>+ Add item</div>
                     {columns.map((col:any) => {
                       if (hiddenColumns.includes(col.id)) return null;
-                      return <div key={col.id} className="h-full border-r border-zinc-800/50"></div>;
+                      return <div key={col.id} className="h-full border-r border-white/10"></div>;
                     })}
                     <div className="h-full"></div>
-                    <div className="h-full w-full bg-[#20222b] rounded-br-md"></div>
+                    <div className="h-full w-full bg-kartu rounded-br-md"></div>
                   </div>
                 </div>
               )}
             </div>
           );
         })}
-        <button onClick={handleAddGroup} className="flex items-center gap-2 px-4 py-2 border border-zinc-700 hover:border-zinc-500 text-zinc-400 hover:text-white rounded-md w-fit bg-[#1e202a] font-bold text-xs transition-colors shadow-sm"><Plus size={14} /> Add New Group</button>
+        <button onClick={handleAddGroup} className="flex items-center gap-2 px-4 py-2 border border-white/10 hover:border-white/10 text-gray-400 hover:text-white rounded-md w-fit bg-kartu-hover font-bold text-xs transition-colors shadow-sm"><Plus size={14} /> Add New Group</button>
       </div>
     </>
   );

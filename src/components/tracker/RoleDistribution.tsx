@@ -39,7 +39,7 @@ const warnaTag = (t: string) =>
   PALET[Math.abs([...String(t)].reduce((a, c) => a + c.charCodeAt(0), 0)) % PALET.length];
 
 const idBaru = () => Math.random().toString(36).slice(2, 9);
-const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
+const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-primer-terang');
 
 // Susunan awal, meniru contoh yang dipakai tim.
 const BAWAAN: Data = {
@@ -86,15 +86,15 @@ function SelTag({ nilai, boleh, onChange }: any) {
           onBlur={tambah}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); tambah(); } if (e.key === 'Escape') { setTeks(''); setTulis(false); } }}
           placeholder="Tulis lalu Enter"
-          className="bg-zinc-950 border border-blue-500 rounded px-1.5 py-0.5 text-[10px] text-white outline-none w-28"
+          className="bg-latar border border-blue-500 rounded px-1.5 py-0.5 text-[10px] text-white outline-none w-28"
         />
       ) : (
-        <button onClick={() => setTulis(true)} className="text-zinc-600 hover:text-blue-400 transition-colors" title="Tambah tag">
+        <button onClick={() => setTulis(true)} className="text-gray-600 hover:text-blue-400 transition-colors" title="Tambah tag">
           <Plus size={11} />
         </button>
       ))}
 
-      {!boleh && arr.length === 0 && <span className="text-[11px] text-zinc-600">—</span>}
+      {!boleh && arr.length === 0 && <span className="text-[11px] text-gray-600">—</span>}
     </div>
   );
 }
@@ -118,7 +118,7 @@ function SelOrang({ nilai, boleh, teamMembers, onChange }: any) {
     <div className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center gap-1">
         {terpilih.map((m: any) => (
-          <span key={m.id} className="group/orang inline-flex items-center gap-1 text-[10px] pl-0.5 pr-1.5 py-0.5 rounded-full border border-blue-500/40 bg-blue-500/10 text-zinc-100">
+          <span key={m.id} className="group/orang inline-flex items-center gap-1 text-[10px] pl-0.5 pr-1.5 py-0.5 rounded-full border border-blue-500/40 bg-blue-500/10 text-gray-100">
             <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold text-white shrink-0 ${mColor(m)}`} />
             <span className="truncate max-w-[90px]" title={m.name}>{namaPendek(m)}</span>
             {boleh && (
@@ -132,7 +132,7 @@ function SelOrang({ nilai, boleh, teamMembers, onChange }: any) {
         {/* Nilai lama dari kolom tag yang berubah jadi kolom orang —
             ditampilkan redup agar tak hilang diam-diam, dan bisa dilepas. */}
         {arr.filter((v) => !(teamMembers || []).some((m: any) => m.id === v)).map((v) => (
-          <span key={v} className="group/asing inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border border-zinc-700 bg-zinc-800/60 text-zinc-500">
+          <span key={v} className="group/asing inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border border-white/10 bg-white/5 text-gray-500">
             <span className="truncate max-w-[90px] line-through">{v}</span>
             {boleh && (
               <button onClick={() => onChange(arr.filter((x) => x !== v))} className="opacity-0 group-hover/asing:opacity-100 transition-opacity hover:text-red-400" title="Buang">
@@ -143,17 +143,17 @@ function SelOrang({ nilai, boleh, teamMembers, onChange }: any) {
         ))}
 
         {boleh && (
-          <button onClick={() => { setBuka(!buka); setQ(''); }} className="text-zinc-600 hover:text-blue-400 transition-colors" title="Pilih orang">
+          <button onClick={() => { setBuka(!buka); setQ(''); }} className="text-gray-600 hover:text-blue-400 transition-colors" title="Pilih orang">
             <Plus size={11} />
           </button>
         )}
-        {!boleh && terpilih.length === 0 && <span className="text-[11px] text-zinc-600">—</span>}
+        {!boleh && terpilih.length === 0 && <span className="text-[11px] text-gray-600">—</span>}
       </div>
 
       {boleh && buka && (
-        <div className="bg-[#22242e] border border-zinc-700 rounded-lg p-1.5">
-          <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 mb-1">
-            <Search size={10} className="text-zinc-500 shrink-0" />
+        <div className="bg-kartu border border-white/10 rounded-lg p-1.5">
+          <div className="flex items-center gap-1.5 bg-latar border border-white/10 rounded px-2 py-1 mb-1">
+            <Search size={10} className="text-gray-500 shrink-0" />
             <input
               autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama…"
               onKeyDown={(e) => { if (e.key === 'Escape') setBuka(false); }}
@@ -165,16 +165,16 @@ function SelOrang({ nilai, boleh, teamMembers, onChange }: any) {
               const on = arr.includes(m.id);
               return (
                 <button key={m.id} onClick={() => toggle(m.id)}
-                  className={`flex items-center gap-1.5 px-1.5 py-1 rounded text-left transition-colors ${on ? 'bg-blue-500/15' : 'hover:bg-zinc-700/60'}`}>
+                  className={`flex items-center gap-1.5 px-1.5 py-1 rounded text-left transition-colors ${on ? 'bg-blue-500/15' : 'hover:bg-white/5'}`}>
                   <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold text-white shrink-0 ${mColor(m)}`} />
-                  <span className={`text-[10px] truncate flex-1 ${on ? 'text-white font-semibold' : 'text-zinc-300'}`}>{m.name}</span>
+                  <span className={`text-[10px] truncate flex-1 ${on ? 'text-white font-semibold' : 'text-gray-300'}`}>{m.name}</span>
                   {on && <Check size={10} className="text-blue-400 shrink-0" />}
                 </button>
               );
             })}
-            {cocok.length === 0 && <p className="text-[10px] text-zinc-600 text-center py-2">Tak ada nama yang cocok.</p>}
+            {cocok.length === 0 && <p className="text-[10px] text-gray-600 text-center py-2">Tak ada nama yang cocok.</p>}
           </div>
-          <button onClick={() => setBuka(false)} className="w-full mt-1 text-[10px] text-zinc-500 hover:text-white py-1 transition-colors">Selesai</button>
+          <button onClick={() => setBuka(false)} className="w-full mt-1 text-[10px] text-gray-500 hover:text-white py-1 transition-colors">Selesai</button>
         </div>
       )}
     </div>
@@ -200,7 +200,7 @@ function SelPilihan({ nilai, boleh, opsi, onChange }: any) {
           <span
             key={t}
             className={`group/pil inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded ${
-              kenal(t) ? `${warna(t)} text-white` : 'border border-zinc-700 bg-zinc-800/60 text-zinc-500'
+              kenal(t) ? `${warna(t)} text-white` : 'border border-white/10 bg-white/5 text-gray-500'
             }`}
           >
             <span className={kenal(t) ? '' : 'line-through'}>{t}</span>
@@ -213,30 +213,30 @@ function SelPilihan({ nilai, boleh, opsi, onChange }: any) {
         ))}
 
         {boleh && (
-          <button onClick={() => setBuka(!buka)} className="text-zinc-600 hover:text-blue-400 transition-colors" title="Pilih">
+          <button onClick={() => setBuka(!buka)} className="text-gray-600 hover:text-blue-400 transition-colors" title="Pilih">
             <Plus size={11} />
           </button>
         )}
-        {!boleh && arr.length === 0 && <span className="text-[11px] text-zinc-600">—</span>}
+        {!boleh && arr.length === 0 && <span className="text-[11px] text-gray-600">—</span>}
       </div>
 
       {boleh && buka && (
-        <div className="bg-[#22242e] border border-zinc-700 rounded-lg p-1.5">
+        <div className="bg-kartu border border-white/10 rounded-lg p-1.5">
           <div className="max-h-32 overflow-y-auto flex flex-wrap gap-1">
             {opsi.map((o: any) => {
               const on = arr.includes(o.text);
               return (
                 <button
                   key={o.id} onClick={() => toggle(o.text)}
-                  className={`text-[10px] font-semibold px-2 py-1 rounded transition-all ${on ? `${o.color} text-white` : 'bg-zinc-800/70 text-zinc-400 hover:bg-zinc-700'}`}
+                  className={`text-[10px] font-semibold px-2 py-1 rounded transition-all ${on ? `${o.color} text-white` : 'bg-white/5 text-gray-400 hover:bg-kartu-hover'}`}
                 >
                   {o.text}
                 </button>
               );
             })}
-            {opsi.length === 0 && <p className="text-[10px] text-zinc-600 py-1">Kolom papan ini belum punya pilihan.</p>}
+            {opsi.length === 0 && <p className="text-[10px] text-gray-600 py-1">Kolom papan ini belum punya pilihan.</p>}
           </div>
-          <button onClick={() => setBuka(false)} className="w-full mt-1 text-[10px] text-zinc-500 hover:text-white py-1 transition-colors">Selesai</button>
+          <button onClick={() => setBuka(false)} className="w-full mt-1 text-[10px] text-gray-500 hover:text-white py-1 transition-colors">Selesai</button>
         </div>
       )}
     </div>
@@ -314,18 +314,18 @@ export default function RoleDistribution({ itemId }: { itemId: string }) {
   /* ── Keadaan kosong ── */
   if (memuat) {
     return (
-      <div className="border-t border-zinc-800/60 pt-5 mt-5">
-        <p className="text-[11px] text-zinc-600">Memuat Role Distribution…</p>
+      <div className="border-t border-white/10 pt-5 mt-5">
+        <p className="text-[11px] text-gray-600">Memuat Role Distribution…</p>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="border-t border-zinc-800/60 pt-5 mt-5">
+      <div className="border-t border-white/10 pt-5 mt-5">
         <div className="flex items-center gap-2 mb-3">
-          <Users2 size={14} className="text-zinc-500" />
-          <h4 className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">Role Distribution</h4>
+          <Users2 size={14} className="text-gray-500" />
+          <h4 className="text-[11px] font-bold uppercase tracking-widest text-gray-500">Role Distribution</h4>
         </div>
         {boleh ? (
           <button
@@ -335,58 +335,58 @@ export default function RoleDistribution({ itemId }: { itemId: string }) {
             <Plus size={12} /> Buat Role Distribution
           </button>
         ) : (
-          <p className="text-[11px] text-zinc-600">Belum dibuat. Hanya manager yang dapat membuatnya.</p>
+          <p className="text-[11px] text-gray-600">Belum dibuat. Hanya manager yang dapat membuatnya.</p>
         )}
       </div>
     );
   }
 
   return (
-    <div className="border-t border-zinc-800/60 pt-5 mt-5">
+    <div className="border-t border-white/10 pt-5 mt-5">
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2 min-w-0">
-          <Users2 size={14} className="text-zinc-500 shrink-0" />
-          <h4 className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 truncate">Role Distribution</h4>
+          <Users2 size={14} className="text-gray-500 shrink-0" />
+          <h4 className="text-[11px] font-bold uppercase tracking-widest text-gray-500 truncate">Role Distribution</h4>
         </div>
         {boleh && (
-          <button onClick={tambahKolom} className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded transition-colors shrink-0" title="Tambah kolom">
+          <button onClick={tambahKolom} className="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-white bg-kartu-hover hover:bg-kartu-hover px-2 py-1 rounded transition-colors shrink-0" title="Tambah kolom">
             <Plus size={11} /> Kolom
           </button>
         )}
       </div>
 
-      <div className="overflow-x-auto custom-scrollbar rounded-lg border border-zinc-800">
+      <div className="overflow-x-auto custom-scrollbar rounded-lg border border-white/10">
         <table className="w-full text-left" style={{ minWidth: Math.max(320, d.columns.length * 150) }}>
           <thead>
-            <tr className="bg-zinc-900/60">
+            <tr className="bg-kartu/60">
               {d.columns.map((col) => {
                 const opsi = opsiUntuk(col.label);
                 const te = tipeEfektif(col, opsi);
                 return (
-                <th key={col.id} className="group/col px-2.5 py-2 border-r border-zinc-800 last:border-r-0 align-middle">
+                <th key={col.id} className="group/col px-2.5 py-2 border-r border-white/10 last:border-r-0 align-middle">
                   <div className="flex items-center gap-1">
                     <div className="flex-1 min-w-0">
                       {boleh ? (
                         <InlineEdit
                           value={col.label}
                           onSave={(v: string) => ubahKolom(col.id, col.manual ? { label: v } : { label: v, type: tebakTipe(v) })}
-                          textClassName="text-[10px] font-bold uppercase tracking-wide text-zinc-400 truncate hover:text-white"
+                          textClassName="text-[10px] font-bold uppercase tracking-wide text-gray-400 truncate hover:text-white"
                           className="text-[10px] font-bold uppercase"
                         />
                       ) : (
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-zinc-400 truncate">{col.label}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400 truncate">{col.label}</span>
                       )}
                     </div>
                     {boleh && (
                       <div className="flex items-center gap-0.5 opacity-0 group-hover/col:opacity-100 transition-opacity shrink-0">
                         <button
                           onClick={() => ubahKolom(col.id, { type: te === 'teks' ? 'tag' : te === 'tag' ? 'orang' : 'teks', manual: true })}
-                          className="p-0.5 text-zinc-600 hover:text-blue-400 transition-colors"
+                          className="p-0.5 text-gray-600 hover:text-blue-400 transition-colors"
                           title={te === 'pilihan' ? 'Mengikuti pilihan kolom papan — klik untuk atur sendiri' : te === 'teks' ? 'Sekarang teks — klik untuk tag' : te === 'tag' ? 'Sekarang tag — klik untuk orang' : 'Sekarang orang — klik untuk teks'}
                         >
                           {te === 'teks' ? <Type size={10} /> : te === 'tag' ? <Tags size={10} /> : te === 'orang' ? <User size={10} /> : <ListChecks size={10} />}
                         </button>
-                        <button onClick={() => hapusKolom(col)} className="p-0.5 text-zinc-600 hover:text-red-400 transition-colors" title="Hapus kolom">
+                        <button onClick={() => hapusKolom(col)} className="p-0.5 text-gray-600 hover:text-red-400 transition-colors" title="Hapus kolom">
                           <Trash2 size={10} />
                         </button>
                       </div>
@@ -401,12 +401,12 @@ export default function RoleDistribution({ itemId }: { itemId: string }) {
 
           <tbody>
             {d.rows.map((row) => (
-              <tr key={row.id} className="group/row border-t border-zinc-800 hover:bg-zinc-800/30 transition-colors">
+              <tr key={row.id} className="group/row border-t border-white/10 hover:bg-white/5 transition-colors">
                 {d.columns.map((col) => {
                   const opsi = opsiUntuk(col.label);
                   const te = tipeEfektif(col, opsi);
                   return (
-                  <td key={col.id} className="px-2.5 py-2 border-r border-zinc-800 last:border-r-0 align-top">
+                  <td key={col.id} className="px-2.5 py-2 border-r border-white/10 last:border-r-0 align-top">
                     {te === 'pilihan' ? (
                       <SelPilihan nilai={row.cells[col.id]} boleh={boleh} opsi={opsi} onChange={(v: any) => ubahSel(row.id, col.id, v)} />
                     ) : te === 'tag' ? (
@@ -418,18 +418,18 @@ export default function RoleDistribution({ itemId }: { itemId: string }) {
                         value={row.cells[col.id] || ''}
                         onSave={(v: string) => ubahSel(row.id, col.id, v)}
                         placeholder="—"
-                        textClassName="text-[11px] text-zinc-200 truncate text-left"
+                        textClassName="text-[11px] text-gray-200 truncate text-left"
                         className="text-[11px]"
                       />
                     ) : (
-                      <span className="text-[11px] text-zinc-300">{row.cells[col.id] || '—'}</span>
+                      <span className="text-[11px] text-gray-300">{row.cells[col.id] || '—'}</span>
                     )}
                   </td>
                   );
                 })}
                 {boleh && (
                   <td className="px-1 align-middle">
-                    <button onClick={() => hapusBaris(row.id)} className="p-1 text-zinc-700 hover:text-red-400 opacity-0 group-hover/row:opacity-100 transition-all" title="Hapus baris">
+                    <button onClick={() => hapusBaris(row.id)} className="p-1 text-gray-700 hover:text-red-400 opacity-0 group-hover/row:opacity-100 transition-all" title="Hapus baris">
                       <Trash2 size={11} />
                     </button>
                   </td>
@@ -438,14 +438,14 @@ export default function RoleDistribution({ itemId }: { itemId: string }) {
             ))}
 
             {d.rows.length === 0 && (
-              <tr><td colSpan={d.columns.length + 1} className="px-3 py-4 text-center text-[11px] text-zinc-600">Belum ada baris.</td></tr>
+              <tr><td colSpan={d.columns.length + 1} className="px-3 py-4 text-center text-[11px] text-gray-600">Belum ada baris.</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
       {boleh && (
-        <button onClick={tambahBaris} className="mt-2 flex items-center gap-1.5 text-[11px] text-zinc-500 hover:text-blue-300 transition-colors">
+        <button onClick={tambahBaris} className="mt-2 flex items-center gap-1.5 text-[11px] text-gray-500 hover:text-blue-300 transition-colors">
           <Plus size={12} /> Tambah baris
         </button>
       )}

@@ -15,18 +15,18 @@ export default function MemberView() {
   const initials = me?.initials || (name ? name.slice(0, 2).toUpperCase() : '?');
 
   return (
-    <div className={`min-h-screen w-full bg-[#181b24] text-zinc-100 font-sans transition-[padding] duration-300 ease-out ${detailItem ? 'sm:pr-[480px]' : ''}`}>
-      <div className="flex items-center justify-between px-5 h-14 border-b border-zinc-800 bg-[#1e202a] sticky top-0 z-30">
+    <div className={`min-h-screen w-full bg-kartu text-gray-100 font-sans transition-[padding] duration-300 ease-out ${detailItem ? 'sm:pr-[480px]' : ''}`}>
+      <div className="flex items-center justify-between px-5 h-14 border-b border-white/10 bg-kartu-hover sticky top-0 z-30">
         <div className="flex items-center gap-2.5 min-w-0">
           <Image src="/invisual-light.svg" alt="Invisual" width={120} height={26} className="brightness-0 invert opacity-90 shrink-0" />
-          <span className="text-zinc-500 font-medium text-sm border-l border-zinc-700 pl-2.5 hidden sm:inline">My Tasks</span>
+          <span className="text-gray-500 font-medium text-sm border-l border-white/10 pl-2.5 hidden sm:inline">My Tasks</span>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-[#579bfc] flex items-center justify-center text-[10px] font-bold text-white shadow-sm">{initials}</div>
-            <span className="text-sm text-zinc-300 hidden sm:block">{name}</span>
+            <div className="w-7 h-7 rounded-full bg-primer-terang flex items-center justify-center text-[10px] font-bold text-white shadow-sm">{initials}</div>
+            <span className="text-sm text-gray-300 hidden sm:block">{name}</span>
           </div>
-          <button onClick={doLogout} className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors"><LogOut size={13} /> Keluar</button>
+          <button onClick={doLogout} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white bg-kartu-hover hover:bg-kartu-hover px-3 py-1.5 rounded-lg transition-colors"><LogOut size={13} /> Keluar</button>
         </div>
       </div>
 

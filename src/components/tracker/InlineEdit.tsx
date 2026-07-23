@@ -38,7 +38,7 @@ export default function InlineEdit({ value, onSave, className = '', textClassNam
             if (e.key === 'Escape') { sudahSimpan.current = true; setVal(value); setIsEditing(false); }
           }} 
           onClick={(e) => e.stopPropagation()} 
-          className={`bg-zinc-950 border border-blue-500 rounded px-1.5 py-0.5 outline-none text-white shadow-inner w-full min-w-0 box-border truncate ${className}`} 
+          className={`bg-latar border border-blue-500 rounded px-1.5 py-0.5 outline-none text-white shadow-inner w-full min-w-0 box-border truncate ${className}`} 
           style={style} 
         />
       </div>
@@ -50,7 +50,7 @@ export default function InlineEdit({ value, onSave, className = '', textClassNam
        {isLink && val ? (
           <a href={String(val).startsWith('http') ? String(val) : `https://${val}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="truncate block max-w-full text-blue-400 hover:underline hover:text-blue-300 transition-colors relative z-20">{val}</a>
        ) : (
-          <span className={`truncate block max-w-full w-full min-h-[16px] ${!val ? 'text-zinc-500 italic font-normal' : ''}`}>{val || placeholder}</span>
+          <span className={`truncate block max-w-full w-full min-h-[16px] ${!val ? 'text-gray-500 italic font-normal' : ''}`}>{val || placeholder}</span>
        )}
     </div>
   );

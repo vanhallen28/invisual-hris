@@ -82,7 +82,7 @@ export default function TautanItem({ itemId }: { itemId: string }) {
   if (!siap) {
     return (
       <div className="px-6 pb-5">
-        <p className="text-[11px] text-zinc-600">Kolom tautan belum disiapkan. Jalankan <span className="text-zinc-400">tautan-item.sql</span> di Supabase.</p>
+        <p className="text-[11px] text-gray-600">Kolom tautan belum disiapkan. Jalankan <span className="text-gray-400">tautan-item.sql</span> di Supabase.</p>
       </div>
     );
   }
@@ -94,12 +94,12 @@ export default function TautanItem({ itemId }: { itemId: string }) {
     <div className="px-6 pb-5">
       <div className="flex items-center justify-between gap-2 mb-2.5">
         <div className="flex items-center gap-2 min-w-0">
-          <Link2 size={13} className="text-zinc-500 shrink-0" />
-          <h4 className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 truncate">Project Brief</h4>
+          <Link2 size={13} className="text-gray-500 shrink-0" />
+          <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 truncate">Project Brief</h4>
         </div>
         {boleh && sunting === null && (
           <button onClick={mulaiBaru}
-            className="flex items-center gap-1 text-[10px] font-bold text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded transition-colors shrink-0">
+            className="flex items-center gap-1 text-[10px] font-bold text-gray-400 hover:text-white bg-kartu-hover hover:bg-kartu-hover px-2 py-1 rounded transition-colors shrink-0">
             <Plus size={11} /> Tambah
           </button>
         )}
@@ -120,11 +120,11 @@ export default function TautanItem({ itemId }: { itemId: string }) {
             {boleh && (
               <div className="absolute -top-1.5 -right-1.5 flex items-center gap-0.5 opacity-0 group-hover/t:opacity-100 transition-opacity">
                 <button onClick={() => mulaiSunting(t)} title="Ubah"
-                  className="p-1 bg-zinc-800 border border-zinc-700 rounded text-zinc-400 hover:text-white transition-colors">
+                  className="p-1 bg-kartu-hover border border-white/10 rounded text-gray-400 hover:text-white transition-colors">
                   <Pencil size={9} />
                 </button>
                 <button onClick={() => hapus(t)} title="Hapus"
-                  className="p-1 bg-zinc-800 border border-zinc-700 rounded text-zinc-500 hover:text-red-400 transition-colors">
+                  className="p-1 bg-kartu-hover border border-white/10 rounded text-gray-500 hover:text-red-400 transition-colors">
                   <Trash2 size={9} />
                 </button>
               </div>
@@ -133,27 +133,27 @@ export default function TautanItem({ itemId }: { itemId: string }) {
         ))}
 
         {boleh && daftar.length === 0 && sunting === null && (
-          <p className="text-[11px] text-zinc-600 py-1">Belum ada brief. Tekan Tambah untuk mengisi.</p>
+          <p className="text-[11px] text-gray-600 py-1">Belum ada brief. Tekan Tambah untuk mengisi.</p>
         )}
       </div>
 
       {/* ── Borang isi ── */}
       {boleh && sunting !== null && (
-        <div className="bg-[#22242e] border border-zinc-700 rounded-lg p-2.5 mt-2.5 flex flex-col gap-2">
+        <div className="bg-kartu border border-white/10 rounded-lg p-2.5 mt-2.5 flex flex-col gap-2">
           <input
             value={label} onChange={(e) => setLabel(e.target.value)} autoFocus
             placeholder="Nama tombol — misalnya Brief CIRI"
             onKeyDown={(e) => { if (e.key === 'Enter') simpanBorang(); if (e.key === 'Escape') batal(); }}
-            className="bg-zinc-950 border border-zinc-700 focus:border-blue-500 rounded px-2 py-1.5 text-[11px] text-white outline-none transition-colors"
+            className="bg-latar border border-white/10 focus:border-blue-500 rounded px-2 py-1.5 text-[11px] text-white outline-none transition-colors"
           />
           <input
             value={url} onChange={(e) => setUrl(e.target.value)}
             placeholder="Tempel alamat tautan…"
             onKeyDown={(e) => { if (e.key === 'Enter') simpanBorang(); if (e.key === 'Escape') batal(); }}
-            className="bg-zinc-950 border border-zinc-700 focus:border-blue-500 rounded px-2 py-1.5 text-[11px] text-white outline-none transition-colors"
+            className="bg-latar border border-white/10 focus:border-blue-500 rounded px-2 py-1.5 text-[11px] text-white outline-none transition-colors"
           />
           <div className="flex justify-end gap-2">
-            <button onClick={batal} className="text-[10px] text-zinc-500 hover:text-white px-2 py-1 transition-colors">Batal</button>
+            <button onClick={batal} className="text-[10px] text-gray-500 hover:text-white px-2 py-1 transition-colors">Batal</button>
             <button onClick={simpanBorang} disabled={!url.trim()}
               className="text-[10px] font-bold bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-3 py-1 rounded transition-colors">
               {sunting ? 'Simpan' : 'Tambahkan'}

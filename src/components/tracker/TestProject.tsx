@@ -171,26 +171,26 @@ export default function TestProject() {
           <style dangerouslySetInnerHTML={{ __html: GAYA_KANVAS }} />
 
           {/* ══ Kepala ══ */}
-          <div className="h-12 shrink-0 border-b border-zinc-800 bg-[#1e2029] flex items-center gap-2 px-3">
+          <div className="h-12 shrink-0 border-b border-white/10 bg-kartu-hover flex items-center gap-2 px-3">
             {aktif ? (
               <button onClick={() => setAktif(null)} title="Kembali ke daftar"
-                className="p-1.5 text-zinc-400 hover:text-white transition-colors">
+                className="p-1.5 text-gray-400 hover:text-white transition-colors">
                 <ChevronLeft size={16} />
               </button>
             ) : (
-              <Shapes size={15} className="text-zinc-500 ml-1 shrink-0" />
+              <Shapes size={15} className="text-gray-500 ml-1 shrink-0" />
             )}
             <span className="text-sm font-bold text-white truncate flex-1">
               {aktif ? aktif.name : 'Test Project'}
             </span>
             {!aktif && (
               <button onClick={buatBerkas} disabled={sibuk}
-                className="flex items-center gap-1.5 text-[11px] font-bold text-white bg-[#124bce] hover:bg-blue-600 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors shrink-0">
+                className="flex items-center gap-1.5 text-[11px] font-bold text-white bg-primer hover:bg-blue-600 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors shrink-0">
                 <Plus size={12} /> Kanvas baru
               </button>
             )}
             <button onClick={tutupSemua} title="Tutup"
-              className="p-1.5 text-zinc-400 hover:text-white transition-colors shrink-0">
+              className="p-1.5 text-gray-400 hover:text-white transition-colors shrink-0">
               <X size={16} />
             </button>
           </div>
@@ -213,14 +213,14 @@ export default function TestProject() {
                   </div>
                 )}
 
-                {memuat && <p className="text-xs text-zinc-500">Memuat daftar kanvas…</p>}
+                {memuat && <p className="text-xs text-gray-500">Memuat daftar kanvas…</p>}
 
                 {!memuat && daftar.length === 0 && !galat && (
                   <div className="text-center py-20">
-                    <Shapes size={28} className="text-zinc-700 mx-auto mb-3" />
-                    <p className="text-xs text-zinc-500 mb-4">Belum ada kanvas.</p>
+                    <Shapes size={28} className="text-gray-700 mx-auto mb-3" />
+                    <p className="text-xs text-gray-500 mb-4">Belum ada kanvas.</p>
                     <button onClick={buatBerkas} disabled={sibuk}
-                      className="text-[11px] font-bold text-white bg-[#124bce] hover:bg-blue-600 disabled:opacity-50 px-4 py-2 rounded-lg transition-colors">
+                      className="text-[11px] font-bold text-white bg-primer hover:bg-blue-600 disabled:opacity-50 px-4 py-2 rounded-lg transition-colors">
                       Buat kanvas pertama
                     </button>
                   </div>
@@ -228,18 +228,18 @@ export default function TestProject() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-5xl">
                   {daftar.map((b) => (
-                    <div key={b.id} className="group relative rounded-xl border border-zinc-800 bg-[#1e2029] hover:border-zinc-700 transition-colors overflow-hidden">
+                    <div key={b.id} className="group relative rounded-xl border border-white/10 bg-kartu-hover hover:border-white/10 transition-colors overflow-hidden">
                       <button onClick={() => bukaBerkas(b)} disabled={sibuk} className="block w-full text-left">
-                        <div className="aspect-[4/3] bg-[#191b22] flex items-center justify-center">
-                          <FileText size={22} className="text-zinc-700" />
+                        <div className="aspect-[4/3] bg-kartu flex items-center justify-center">
+                          <FileText size={22} className="text-gray-700" />
                         </div>
                         <div className="px-3 py-2">
-                          <p className="text-[12px] font-semibold text-zinc-200 truncate">{b.name}</p>
-                          <p className="text-[10px] text-zinc-600">{waktu(b.updated_at)}</p>
+                          <p className="text-[12px] font-semibold text-gray-200 truncate">{b.name}</p>
+                          <p className="text-[10px] text-gray-600">{waktu(b.updated_at)}</p>
                         </div>
                       </button>
                       <button onClick={() => hapusBerkas(b)} title="Hapus kanvas"
-                        className="absolute top-1.5 right-1.5 p-1 bg-zinc-900/90 rounded text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                        className="absolute top-1.5 right-1.5 p-1 bg-kartu/90 rounded text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
                         <Trash2 size={11} />
                       </button>
                     </div>

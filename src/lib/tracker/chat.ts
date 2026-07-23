@@ -165,8 +165,8 @@ export function taskMeta(boardsDataMap: any, boardId: string, item: any, labels:
 
   const status = statusCol ? item[statusCol.id] : '';
   const statusColor = statusCol
-    ? (labels?.[statusCol.id] || []).find((l: any) => l.text === status)?.color || 'bg-zinc-700'
-    : 'bg-zinc-700';
+    ? (labels?.[statusCol.id] || []).find((l: any) => l.text === status)?.color || 'bg-kartu-hover'
+    : 'bg-kartu-hover';
 
   const people: string[] = peopleCol ? (item[peopleCol.id] || []) : [];
   const tl = timeCol ? item[timeCol.id] : null;

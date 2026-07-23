@@ -19,7 +19,7 @@ import {
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const DAYS = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
 const fmtDate = (d: any) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '—');
-const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-[#579bfc]');
+const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-primer-terang');
 
 /* Dropdown PIC: avatar + pencarian — menggantikan <select> polos yang berdempetan */
 function PicPicker({ value, members, disabled, onChange }: any) {
@@ -33,47 +33,47 @@ function PicPicker({ value, members, disabled, onChange }: any) {
       <button
         type="button" disabled={disabled}
         onClick={() => { setOpen(!open); setQ(''); }}
-        className="w-full flex items-center gap-2.5 bg-[#1a1c23] border border-zinc-800 hover:border-zinc-700 rounded-lg px-3 py-2.5 text-left transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+        className="w-full flex items-center gap-2.5 bg-input border border-white/10 hover:border-white/10 rounded-lg px-3 py-2.5 text-left transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
       >
         {sel ? (
           <>
             <Avatar url={sel.avatarUrl} name={sel.name} initials={sel.initials} className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${mColor(sel)}`} />
-            <span className="text-xs text-zinc-100 flex-1 truncate">{sel.name}</span>
+            <span className="text-xs text-gray-100 flex-1 truncate">{sel.name}</span>
           </>
         ) : (
           <>
-            <span className="w-6 h-6 rounded-full border border-dashed border-zinc-700 flex items-center justify-center shrink-0"><User size={11} className="text-zinc-600" /></span>
-            <span className="text-xs text-zinc-500 flex-1">Belum ditugaskan</span>
+            <span className="w-6 h-6 rounded-full border border-dashed border-white/10 flex items-center justify-center shrink-0"><User size={11} className="text-gray-600" /></span>
+            <span className="text-xs text-gray-500 flex-1">Belum ditugaskan</span>
           </>
         )}
-        <ChevronDown size={14} className={`text-zinc-500 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={14} className={`text-gray-500 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && !disabled && (
         <>
           <div className="fixed inset-0 z-[95]" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 right-0 top-full mt-1.5 z-[100] bg-[#2a2c38] border border-zinc-700 rounded-xl shadow-2xl p-2">
-            <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 mb-1.5">
-              <Search size={12} className="text-zinc-500 shrink-0" />
+          <div className="absolute left-0 right-0 top-full mt-1.5 z-[100] bg-kartu border border-white/10 rounded-xl shadow-2xl p-2">
+            <div className="flex items-center gap-2 bg-latar border border-white/10 rounded-lg px-2.5 py-1.5 mb-1.5">
+              <Search size={12} className="text-gray-500 shrink-0" />
               <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama…"
-                className="bg-transparent text-[11px] text-white outline-none w-full placeholder:text-zinc-600" />
+                className="bg-transparent text-[11px] text-white outline-none w-full placeholder:text-gray-600" />
             </div>
             <div className="max-h-64 overflow-y-auto overscroll-contain flex flex-col gap-0.5">
               <button type="button" onClick={() => { onChange(null); setOpen(false); }}
-                className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-zinc-700/60 text-left">
-                <span className="w-6 h-6 rounded-full border border-dashed border-zinc-700 flex items-center justify-center shrink-0"><User size={11} className="text-zinc-600" /></span>
-                <span className="text-[11px] text-zinc-500 flex-1">Belum ditugaskan</span>
+                className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-white/5 text-left">
+                <span className="w-6 h-6 rounded-full border border-dashed border-white/10 flex items-center justify-center shrink-0"><User size={11} className="text-gray-600" /></span>
+                <span className="text-[11px] text-gray-500 flex-1">Belum ditugaskan</span>
                 {!value && <Check size={13} className="text-blue-400 shrink-0" />}
               </button>
               {filtered.map((m: any) => (
                 <button key={m.id} type="button" onClick={() => { onChange(m.id); setOpen(false); }}
-                  className={`flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors ${value === m.id ? 'bg-blue-500/10' : 'hover:bg-zinc-700/60'}`}>
+                  className={`flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors ${value === m.id ? 'bg-blue-500/10' : 'hover:bg-white/5'}`}>
                   <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${mColor(m)}`} />
-                  <span className={`text-[11px] truncate flex-1 ${value === m.id ? 'text-white font-semibold' : 'text-zinc-300'}`}>{m.name}</span>
+                  <span className={`text-[11px] truncate flex-1 ${value === m.id ? 'text-white font-semibold' : 'text-gray-300'}`}>{m.name}</span>
                   {value === m.id && <Check size={13} className="text-blue-400 shrink-0" />}
                 </button>
               ))}
-              {filtered.length === 0 && <span className="text-[11px] text-zinc-600 px-2 py-3">Tidak ada nama yang cocok.</span>}
+              {filtered.length === 0 && <span className="text-[11px] text-gray-600 px-2 py-3">Tidak ada nama yang cocok.</span>}
             </div>
           </div>
         </>
@@ -87,11 +87,11 @@ function PicPicker({ value, members, disabled, onChange }: any) {
 // memasang ulang seluruh isinya — sehingga input kehilangan fokus tiap ketukan.
 const Field = ({ icon, label, children }: any) => (
   <div className="mb-4">
-    <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">{icon}{label}</div>
+    <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">{icon}{label}</div>
     {children}
   </div>
 );
-const inputCls = "w-full bg-[#1a1c23] border border-zinc-800 focus:border-blue-500/60 rounded-lg px-3 py-2 text-xs text-zinc-100 outline-none transition-colors placeholder:text-zinc-600";
+const inputCls = "w-full bg-input border border-white/10 focus:border-blue-500/60 rounded-lg px-3 py-2 text-xs text-gray-100 outline-none transition-colors placeholder:text-gray-600";
 
 const toLocalInput = (d: any) => {
   if (!d) return '';
@@ -168,14 +168,14 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-[85]" onClick={handleClose} />
-      <div className="fixed top-0 right-0 h-full w-full sm:w-[520px] bg-[#1e2029] border-l border-zinc-800 z-[90] flex flex-col shadow-2xl">
+      <div className="fixed top-0 right-0 h-full w-full sm:w-[520px] bg-kartu-hover border-l border-white/10 z-[90] flex flex-col shadow-2xl">
         {/* header */}
-        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-zinc-800 shrink-0">
+        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-white/10 shrink-0">
           <div className="flex-1 min-w-0">
             <input
               value={f.title || ''} onChange={(e) => set('title', e.target.value)} onBlur={() => save()}
               disabled={!canManage}
-              className="w-full bg-transparent text-lg font-bold text-white outline-none focus:bg-zinc-800/40 rounded px-1 -ml-1 disabled:opacity-100"
+              className="w-full bg-transparent text-lg font-bold text-white outline-none focus:bg-white/5 rounded px-1 -ml-1 disabled:opacity-100"
             />
             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
               <span className={`text-[9px] font-bold text-white px-2 py-0.5 rounded-full ${statusColor(f.status)}`}>{f.status}</span>
@@ -184,18 +184,18 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
               ))}
             </div>
           </div>
-          <button onClick={handleClose} className="p-1.5 text-zinc-500 hover:text-white rounded-lg hover:bg-zinc-800 shrink-0"><X size={18} /></button>
+          <button onClick={handleClose} className="p-1.5 text-gray-500 hover:text-white rounded-lg hover:bg-kartu-hover shrink-0"><X size={18} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5">
           {/* ── PENJADWALAN ── */}
           <div className="grid grid-cols-2 gap-3 mb-5">
             <div>
-              <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Jadwal Tayang</div>
+              <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Jadwal Tayang</div>
               <input type="datetime-local" disabled={!canManage} value={toLocalInput(f.publish_at)} onChange={(e) => set('publish_at', e.target.value ? new Date(e.target.value).toISOString() : null)} onBlur={() => save()} className={`${inputCls} [color-scheme:dark]`} />
             </div>
             <div>
-              <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Tipe Konten</div>
+              <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Tipe Konten</div>
               <select disabled={!canManage} value={f.content_type || 'Feed'} onChange={(e) => { set('content_type', e.target.value); save({ content_type: e.target.value }); }} className={inputCls}>
                 {CONTENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
@@ -216,7 +216,7 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
                   const on = (f.platform || []).includes(p.id);
                   return (
                     <button key={p.id} onClick={() => { const arr: string[] = f.platform || []; const next = arr.includes(p.id) ? arr.filter((x) => x !== p.id) : [...arr, p.id]; setF((s: any) => ({ ...s, platform: next })); save({ platform: next }); }}
-                      className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-all border ${on ? `${p.color} text-white border-transparent` : 'border-zinc-700 text-zinc-400 hover:border-zinc-500'}`}>
+                      className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-all border ${on ? `${p.color} text-white border-transparent` : 'border-white/10 text-gray-400 hover:border-white/10'}`}>
                       <span className="inline-flex items-center gap-1"><PlatformIcon id={p.id} className="w-3 h-3" />{p.label}</span>
                     </button>
                   );
@@ -233,7 +233,7 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
           </Field>
 
           {/* ── BRIEF (manager) ── */}
-          <div className="bg-[#191b22] border border-zinc-800 rounded-xl p-4 mb-5">
+          <div className="bg-kartu border border-white/10 rounded-xl p-4 mb-5">
             <div className="flex items-center gap-2 mb-3.5">
               <Megaphone size={13} className="text-blue-400" />
               <span className="text-[11px] font-bold text-blue-300 uppercase tracking-wider">Brief dari Manager</span>
@@ -261,18 +261,18 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
           </div>
 
           {/* ── PRODUKSI (tim) ── */}
-          <div className="bg-[#191b22] border border-zinc-800 rounded-xl p-4 mb-5">
+          <div className="bg-kartu border border-white/10 rounded-xl p-4 mb-5">
             <div className="flex items-center gap-2 mb-3.5">
               <ImageIcon size={13} className="text-emerald-400" />
               <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Produksi Tim</span>
             </div>
             <Field icon={<MessageSquare size={11} />} label="Caption">
               <textarea rows={4} value={f.caption || ''} onChange={(e) => set('caption', e.target.value)} onBlur={() => save()} placeholder="Tulis caption di sini…" className={inputCls} />
-              <div className="text-[9px] text-zinc-600 mt-1 text-right">{(f.caption || '').length} karakter</div>
+              <div className="text-[9px] text-gray-600 mt-1 text-right">{(f.caption || '').length} karakter</div>
             </Field>
             <Field icon={<PenLine size={11} />} label="Copywriting">
               <textarea rows={5} value={f.copywriting || ''} onChange={(e) => set('copywriting', e.target.value)} onBlur={() => save()} placeholder="Naskah lengkap: hook, isi, penutup…" className={inputCls} />
-              <div className="text-[9px] text-zinc-600 mt-1 text-right">{(f.copywriting || '').length} karakter</div>
+              <div className="text-[9px] text-gray-600 mt-1 text-right">{(f.copywriting || '').length} karakter</div>
             </Field>
             <Field icon={<Hash size={11} />} label="Hashtag">
               <textarea rows={2} value={f.hashtags || ''} onChange={(e) => set('hashtags', e.target.value)} onBlur={() => save()} placeholder="#invisual #desain …" className={inputCls} />
@@ -284,11 +284,11 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
               </div>
             </Field>
             <div>
-              <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Status Pengerjaan</div>
+              <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Status Pengerjaan</div>
               <div className="flex flex-wrap gap-1.5">
                 {CONTENT_STATUS.map((s) => (
                   <button key={s.id} onClick={() => { set('status', s.id); save({ status: s.id }); }}
-                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-all border ${f.status === s.id ? `${s.color} text-white border-transparent` : 'border-zinc-700 text-zinc-400 hover:border-zinc-500'}`}>
+                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-all border ${f.status === s.id ? `${s.color} text-white border-transparent` : 'border-white/10 text-gray-400 hover:border-white/10'}`}>
                     {s.id}
                   </button>
                 ))}
@@ -298,7 +298,7 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
 
           {/* ── REVIEW & APPROVAL (manager) ── */}
           {canManage && (
-            <div className="bg-[#191b22] border border-zinc-800 rounded-xl p-4 mb-5">
+            <div className="bg-kartu border border-white/10 rounded-xl p-4 mb-5">
               <div className="flex items-center gap-2 mb-3.5">
                 <Check size={13} className="text-amber-400" />
                 <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider">Review Manager</span>
@@ -323,12 +323,12 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
           {!canManage && f.review_note && (
             <div className="bg-red-500/[0.06] border border-red-500/20 rounded-xl p-3.5 mb-5">
               <div className="text-[10px] font-bold text-red-300 uppercase tracking-wider mb-1.5">Catatan Revisi Manager</div>
-              <p className="text-xs text-zinc-300 leading-relaxed">{f.review_note}</p>
+              <p className="text-xs text-gray-300 leading-relaxed">{f.review_note}</p>
             </div>
           )}
 
           {/* ── PERFORMA ── */}
-          <div className="bg-[#191b22] border border-zinc-800 rounded-xl p-4 mb-4">
+          <div className="bg-kartu border border-white/10 rounded-xl p-4 mb-4">
             <div className="flex items-center justify-between mb-3.5">
               <div className="flex items-center gap-2">
                 <BarChart3 size={13} className="text-purple-400" />
@@ -345,31 +345,31 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
                 { k: 'saves', label: 'Save', icon: <Bookmark size={10} /> },
               ].map((m) => (
                 <div key={m.k}>
-                  <div className="flex items-center gap-1 text-[9px] text-zinc-500 mb-1">{m.icon}{m.label}</div>
-                  <input type="number" min={0} value={f[m.k] ?? 0} onChange={(e) => set(m.k, Number(e.target.value))} onBlur={() => save()} className="w-full bg-[#1a1c23] border border-zinc-800 focus:border-purple-500/50 rounded-lg px-2 py-1.5 text-xs text-zinc-100 outline-none" />
+                  <div className="flex items-center gap-1 text-[9px] text-gray-500 mb-1">{m.icon}{m.label}</div>
+                  <input type="number" min={0} value={f[m.k] ?? 0} onChange={(e) => set(m.k, Number(e.target.value))} onBlur={() => save()} className="w-full bg-input border border-white/10 focus:border-purple-500/50 rounded-lg px-2 py-1.5 text-xs text-gray-100 outline-none" />
                 </div>
               ))}
             </div>
           </div>
 
           {canManage && (
-            <button onClick={() => onDelete(f.id)} className="w-full flex items-center justify-center gap-1.5 text-[11px] text-zinc-600 hover:text-red-400 py-2.5 transition-colors">
+            <button onClick={() => onDelete(f.id)} className="w-full flex items-center justify-center gap-1.5 text-[11px] text-gray-600 hover:text-red-400 py-2.5 transition-colors">
               <Trash2 size={13} /> Hapus konten ini
             </button>
           )}
         </div>
 
         {/* ══ FOOTER AKSI ══ */}
-        <div className="shrink-0 border-t border-zinc-800 bg-[#191b22] px-5 py-3.5 flex items-center gap-2">
+        <div className="shrink-0 border-t border-white/10 bg-kartu px-5 py-3.5 flex items-center gap-2">
           <button
             onClick={applyBrief} disabled={saving}
-            className="flex-1 flex items-center justify-center gap-2 bg-[#2b5cd5] hover:bg-blue-600 disabled:opacity-60 text-white text-xs font-bold py-3 rounded-xl transition-all shadow-[0_0_16px_rgba(43,92,213,0.35)] active:scale-[0.98]"
+            className="flex-1 flex items-center justify-center gap-2 bg-primer-terang hover:bg-blue-600 disabled:opacity-60 text-white text-xs font-bold py-3 rounded-xl transition-all shadow-[0_0_16px_rgba(43,92,213,0.35)] active:scale-[0.98]"
           >
             {saving ? 'Menyimpan…' : (canManage && f._draft
               ? <><Send size={14} /> Apply Brief &amp; Kirim ke Tim</>
               : <><Check size={14} /> Simpan Perubahan</>)}
           </button>
-          <button onClick={handleClose} className="px-4 py-3 text-xs font-semibold text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-xl transition-colors">
+          <button onClick={handleClose} className="px-4 py-3 text-xs font-semibold text-gray-400 hover:text-white hover:bg-kartu-hover rounded-xl transition-colors">
             Tutup
           </button>
         </div>
@@ -377,16 +377,16 @@ export function ContentDetail({ post, members, canManage, currentUserId, onClose
 
       {confirmClose && (
         <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setConfirmClose(false)}>
-          <div className="w-full max-w-sm rounded-2xl border border-zinc-700 bg-[#1e2029] p-5 shadow-2xl animate-in fade-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-kartu-hover p-5 shadow-2xl animate-in fade-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-amber-500/25 bg-amber-500/15 text-amber-400"><Trash2 size={18} /></span>
               <div>
                 <h3 className="text-sm font-bold text-white">Buang draft brief?</h3>
-                <p className="mt-1 text-xs text-zinc-400">Brief ini belum disimpan. Kalau ditutup sekarang, isinya akan hilang.</p>
+                <p className="mt-1 text-xs text-gray-400">Brief ini belum disimpan. Kalau ditutup sekarang, isinya akan hilang.</p>
               </div>
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setConfirmClose(false)} className="h-9 rounded-lg border border-zinc-700 bg-zinc-800/60 px-4 text-xs font-semibold text-zinc-300 transition-colors hover:bg-zinc-700">Batal</button>
+              <button onClick={() => setConfirmClose(false)} className="h-9 rounded-lg border border-white/10 bg-white/5 px-4 text-xs font-semibold text-gray-300 transition-colors hover:bg-kartu-hover">Batal</button>
               <button onClick={() => { setConfirmClose(false); onClose(); }} className="h-9 rounded-lg bg-red-600 px-4 text-xs font-semibold text-white transition-colors hover:bg-red-500">Buang draft</button>
             </div>
           </div>
@@ -497,11 +497,11 @@ export default function ContentStudio() {
   /* ── KALENDER ── */
   /* ── MAIN TABLE ── */
   const renderMainTable = () => (
-    <div className="overflow-x-auto mt-scroll rounded-xl border border-zinc-800">
+    <div className="overflow-x-auto mt-scroll rounded-xl border border-white/10">
       <style>{`.mt-scroll::-webkit-scrollbar{height:8px;width:8px}.mt-scroll::-webkit-scrollbar-track{background:transparent}.mt-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:9999px}.mt-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.22)}`}</style>
       <table className="w-full text-xs whitespace-nowrap">
         <thead>
-          <tr className="border-b border-zinc-800 bg-[#20222b] text-left text-zinc-500">
+          <tr className="border-b border-white/10 bg-kartu text-left text-gray-500">
             <th className="px-3 py-2.5 font-semibold">Judul</th>
             <th className="px-3 py-2.5 font-semibold">Content Pillar</th>
             <th className="px-3 py-2.5 font-semibold">Platform</th>
@@ -514,32 +514,32 @@ export default function ContentStudio() {
             <th className="px-3 py-2.5 font-semibold text-center">Aksi</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-800">
+        <tbody className="divide-y divide-white/10">
           {shown.length === 0 ? (
-            <tr><td colSpan={9 + CHECKS.length} className="px-3 py-10 text-center text-zinc-600">Belum ada brief. Klik "Buat Brief" untuk menambah.</td></tr>
+            <tr><td colSpan={9 + CHECKS.length} className="px-3 py-10 text-center text-gray-600">Belum ada brief. Klik "Buat Brief" untuk menambah.</td></tr>
           ) : shown.map((p) => {
             const pic = member(p.assignee_id);
             const prog = progressOf(p);
             return (
-              <tr key={p.id} className="hover:bg-zinc-800/40">
+              <tr key={p.id} className="hover:bg-white/5">
                 <td className="px-3 py-2.5">
                   <div className="flex items-center gap-2">
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusColor(p.status)}`} />
-                    <span className="font-medium text-zinc-100 truncate max-w-[200px]">{p.title}</span>
+                    <span className="font-medium text-gray-100 truncate max-w-[200px]">{p.title}</span>
                   </div>
                 </td>
-                <td className="px-3 py-2.5 text-zinc-400">{p.content_pillar || <span className="text-zinc-600">—</span>}</td>
+                <td className="px-3 py-2.5 text-gray-400">{p.content_pillar || <span className="text-gray-600">—</span>}</td>
                 <td className="px-3 py-2.5">
                   <div className="flex items-center gap-1.5">
                     {(p.platform || []).length
-                      ? (p.platform || []).slice(0, 4).map((pl: string) => <PlatformIcon key={pl} id={pl} className="w-3.5 h-3.5 text-zinc-400" />)
-                      : <span className="text-zinc-600">—</span>}
+                      ? (p.platform || []).slice(0, 4).map((pl: string) => <PlatformIcon key={pl} id={pl} className="w-3.5 h-3.5 text-gray-400" />)
+                      : <span className="text-gray-600">—</span>}
                   </div>
                 </td>
-                <td className="px-3 py-2.5 text-zinc-400">{p.content_type || <span className="text-zinc-600">—</span>}</td>
+                <td className="px-3 py-2.5 text-gray-400">{p.content_type || <span className="text-gray-600">—</span>}</td>
                 <td className="px-3 py-2.5"><span className={`text-[10px] text-white px-2 py-0.5 rounded-full ${statusColor(p.status)}`}>{p.status}</span></td>
-                <td className="px-3 py-2.5">{pic ? <span className="text-zinc-300">{pic.name}</span> : <span className="text-zinc-600">—</span>}</td>
-                <td className="px-3 py-2.5 text-zinc-400">{p.publish_at ? fmtDate(p.publish_at) : <span className="text-zinc-600">—</span>}</td>
+                <td className="px-3 py-2.5">{pic ? <span className="text-gray-300">{pic.name}</span> : <span className="text-gray-600">—</span>}</td>
+                <td className="px-3 py-2.5 text-gray-400">{p.publish_at ? fmtDate(p.publish_at) : <span className="text-gray-600">—</span>}</td>
                 {CHECKS.map((c) => (
                   <td key={c.key} className="px-2 py-2.5 text-center">
                     <input
@@ -553,16 +553,16 @@ export default function ContentStudio() {
                 ))}
                 <td className="px-3 py-2.5">
                   <div className="flex items-center gap-2 min-w-[96px]">
-                    <div className="flex-1 h-1.5 rounded-full bg-zinc-700 overflow-hidden">
+                    <div className="flex-1 h-1.5 rounded-full bg-kartu-hover overflow-hidden">
                       <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${prog}%` }} />
                     </div>
-                    <span className="text-[10px] text-zinc-400 w-8 text-right">{prog}%</span>
+                    <span className="text-[10px] text-gray-400 w-8 text-right">{prog}%</span>
                   </div>
                 </td>
                 <td className="px-3 py-2.5">
                   <div className="flex items-center justify-center gap-1">
-                    <button onClick={() => setOpen(p)} title="Edit brief" className="p-1.5 rounded-lg text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-white"><Pencil size={13} /></button>
-                    {canManage && <button onClick={() => remove(p.id)} title="Hapus brief" className="p-1.5 rounded-lg text-zinc-400 transition-colors hover:bg-red-500/10 hover:text-red-400"><Trash2 size={13} /></button>}
+                    <button onClick={() => setOpen(p)} title="Edit brief" className="p-1.5 rounded-lg text-gray-400 transition-colors hover:bg-kartu-hover hover:text-white"><Pencil size={13} /></button>
+                    {canManage && <button onClick={() => remove(p.id)} title="Hapus brief" className="p-1.5 rounded-lg text-gray-400 transition-colors hover:bg-red-500/10 hover:text-red-400"><Trash2 size={13} /></button>}
                   </div>
                 </td>
               </tr>
@@ -592,15 +592,15 @@ export default function ContentStudio() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <button onClick={() => setCursor((c) => ({ y: c.m === 0 ? c.y - 1 : c.y, m: c.m === 0 ? 11 : c.m - 1 }))} className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400"><ChevronLeft size={15} /></button>
-            <span className="text-sm font-bold text-zinc-100 w-40 text-center">{MONTHS[cursor.m]} {cursor.y}</span>
-            <button onClick={() => setCursor((c) => ({ y: c.m === 11 ? c.y + 1 : c.y, m: c.m === 11 ? 0 : c.m + 1 }))} className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400"><ChevronRight size={15} /></button>
+            <button onClick={() => setCursor((c) => ({ y: c.m === 0 ? c.y - 1 : c.y, m: c.m === 0 ? 11 : c.m - 1 }))} className="p-1.5 rounded-lg bg-kartu-hover hover:bg-kartu-hover text-gray-400"><ChevronLeft size={15} /></button>
+            <span className="text-sm font-bold text-gray-100 w-40 text-center">{MONTHS[cursor.m]} {cursor.y}</span>
+            <button onClick={() => setCursor((c) => ({ y: c.m === 11 ? c.y + 1 : c.y, m: c.m === 11 ? 0 : c.m + 1 }))} className="p-1.5 rounded-lg bg-kartu-hover hover:bg-kartu-hover text-gray-400"><ChevronRight size={15} /></button>
           </div>
-          <span className="text-[11px] text-zinc-500">{shown.filter((p) => p.publish_at && new Date(p.publish_at).getMonth() === cursor.m).length} konten bulan ini</span>
+          <span className="text-[11px] text-gray-500">{shown.filter((p) => p.publish_at && new Date(p.publish_at).getMonth() === cursor.m).length} konten bulan ini</span>
         </div>
 
         <div className="grid grid-cols-7 gap-1.5 mb-1.5">
-          {DAYS.map((d) => <div key={d} className="text-[10px] font-bold text-zinc-600 uppercase text-center py-1">{d}</div>)}
+          {DAYS.map((d) => <div key={d} className="text-[10px] font-bold text-gray-600 uppercase text-center py-1">{d}</div>)}
         </div>
         <div className="grid grid-cols-7 gap-1.5">
           {cells.map((d, i) => {
@@ -609,19 +609,19 @@ export default function ContentStudio() {
             const isToday = today.getFullYear() === cursor.y && today.getMonth() === cursor.m && today.getDate() === d;
             return (
               <div key={d} onClick={() => list.length > 0 && setDayPopup(dayPopup === d ? null : d)}
-                className={`relative min-h-[92px] rounded-lg border p-1.5 flex flex-col gap-1 transition-colors ${list.length > 0 ? 'cursor-pointer' : ''} ${isToday ? 'border-blue-500/50 bg-blue-500/[0.05]' : 'border-zinc-800 bg-[#20222b] hover:border-zinc-700'}`}>
-                <span className={`text-[10px] font-bold ${isToday ? 'text-blue-400' : 'text-zinc-500'}`}>{d}</span>
+                className={`relative min-h-[92px] rounded-lg border p-1.5 flex flex-col gap-1 transition-colors ${list.length > 0 ? 'cursor-pointer' : ''} ${isToday ? 'border-blue-500/50 bg-blue-500/[0.05]' : 'border-white/10 bg-kartu hover:border-white/10'}`}>
+                <span className={`text-[10px] font-bold ${isToday ? 'text-blue-400' : 'text-gray-500'}`}>{d}</span>
                 {list.slice(0, 3).map((p) => (
                   <div key={p.id} className={`text-[9px] leading-tight text-white px-1.5 py-1 rounded ${statusColor(p.status)} truncate`}>{p.title}</div>
                 ))}
-                {list.length > 3 && <span className="text-[9px] text-zinc-600 px-1">+{list.length - 3} lagi</span>}
+                {list.length > 3 && <span className="text-[9px] text-gray-600 px-1">+{list.length - 3} lagi</span>}
 
                 {dayPopup === d && (
-                  <div data-day-popup className="absolute bottom-full left-0 mb-1.5 z-50 w-60 max-w-[80vw] bg-[#2a2c38] border border-zinc-700 rounded-xl shadow-2xl p-2 animate-in fade-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
-                    <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider px-1 pb-1.5">{d} {MONTHS[cursor.m]} · {list.length} brief</div>
+                  <div data-day-popup className="absolute bottom-full left-0 mb-1.5 z-50 w-60 max-w-[80vw] bg-kartu border border-white/10 rounded-xl shadow-2xl p-2 animate-in fade-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1 pb-1.5">{d} {MONTHS[cursor.m]} · {list.length} brief</div>
                     <div className="max-h-56 overflow-y-auto flex flex-col gap-1 custom-scrollbar">
                       {list.length === 0
-                        ? <div className="text-[11px] text-zinc-500 px-1 py-2">Belum ada brief di hari ini.</div>
+                        ? <div className="text-[11px] text-gray-500 px-1 py-2">Belum ada brief di hari ini.</div>
                         : list.map((p) => (
                           <div key={p.id} className={`flex items-center gap-1 rounded-lg ${statusColor(p.status)}`}>
                             <button onClick={(e) => { e.stopPropagation(); setOpen(p); setDayPopup(null); }} className="flex-1 min-w-0 text-left px-2 py-1.5 hover:opacity-90">
@@ -641,11 +641,11 @@ export default function ContentStudio() {
             );
           })}
         </div>
-        {canManage && <p className="text-[10px] text-zinc-600 mt-3 text-center">Klik tanggal untuk melihat &amp; mengedit brief pada hari itu.</p>}
+        {canManage && <p className="text-[10px] text-gray-600 mt-3 text-center">Klik tanggal untuk melihat &amp; mengedit brief pada hari itu.</p>}
 
         {/* Konten yang belum punya jadwal tayang */}
         {unscheduled.length > 0 && (
-          <div className="mt-6 bg-[#20222b] border border-amber-500/20 rounded-xl p-4">
+          <div className="mt-6 bg-kartu border border-amber-500/20 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2.5">
               <CalendarDays size={12} className="text-amber-400" />
               <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider">Belum Dijadwalkan ({unscheduled.length})</span>
@@ -657,7 +657,7 @@ export default function ContentStudio() {
                 </button>
               ))}
             </div>
-            <p className="text-[9px] text-zinc-600 mt-2.5">Buka kontennya lalu isi Jadwal Tayang agar muncul di kalender.</p>
+            <p className="text-[9px] text-gray-600 mt-2.5">Buka kontennya lalu isi Jadwal Tayang agar muncul di kalender.</p>
           </div>
         )}
       </div>
@@ -675,34 +675,34 @@ export default function ContentStudio() {
             <div className="flex items-center justify-between mb-2.5 px-1">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${s.color}`} />
-                <span className="text-xs font-bold text-zinc-200">{s.id}</span>
+                <span className="text-xs font-bold text-gray-200">{s.id}</span>
               </div>
-              <span className="text-[10px] text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded">{list.length}</span>
+              <span className="text-[10px] text-gray-500 bg-kartu-hover px-1.5 py-0.5 rounded">{list.length}</span>
             </div>
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { const id = e.dataTransfer.getData('cid'); const p = posts.find((x) => x.id === id); if (p && p.status !== s.id && canManage) save({ ...p, status: s.id }); }}
-              className="flex flex-col gap-2 min-h-[160px] bg-[#1a1c23]/60 rounded-xl p-2 border border-zinc-800/60"
+              className="flex flex-col gap-2 min-h-[160px] bg-input/60 rounded-xl p-2 border border-white/10"
             >
               {list.map((p) => {
                 const m = member(p.assignee_id);
                 return (
                   <div key={p.id} draggable={canManage} onDragStart={(e) => e.dataTransfer.setData('cid', p.id)} onClick={() => setOpen(p)}
-                    className="bg-[#262934] hover:bg-[#2c2f3b] border border-zinc-700/60 rounded-lg p-2.5 cursor-pointer transition-colors">
-                    <p className="text-xs text-zinc-100 font-medium leading-snug mb-2">{p.title}</p>
+                    className="bg-kartu hover:bg-kartu-hover border border-white/10 rounded-lg p-2.5 cursor-pointer transition-colors">
+                    <p className="text-xs text-gray-100 font-medium leading-snug mb-2">{p.title}</p>
                     <div className="flex flex-wrap gap-1 mb-2">
                       {(p.platform || []).slice(0, 3).map((pl: string) => (
                         <span key={pl} className={`text-[8px] font-bold text-white px-1.5 py-0.5 rounded ${platformMeta(pl).color}`}>{platformMeta(pl).label}</span>
                       ))}
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] text-zinc-500 flex items-center gap-1"><CalendarDays size={9} />{fmtDate(p.publish_at)}</span>
-                      {m && <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white ${m.color?.startsWith('bg-') ? m.color : 'bg-[#579bfc]'}`}>{m.initials}</span>}
+                      <span className="text-[9px] text-gray-500 flex items-center gap-1"><CalendarDays size={9} />{fmtDate(p.publish_at)}</span>
+                      {m && <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white ${m.color?.startsWith('bg-') ? m.color : 'bg-primer-terang'}`}>{m.initials}</span>}
                     </div>
                   </div>
                 );
               })}
-              {list.length === 0 && <p className="text-[10px] text-zinc-700 text-center py-6">Kosong</p>}
+              {list.length === 0 && <p className="text-[10px] text-gray-700 text-center py-6">Kosong</p>}
             </div>
           </div>
         );
@@ -728,23 +728,23 @@ export default function ContentStudio() {
             { label: 'Total Engagement', val: totalEng.toLocaleString('id-ID'), color: 'text-emerald-400' },
             { label: 'Rata-rata ER', val: `${avgER}%`, color: 'text-amber-400' },
           ].map((s) => (
-            <div key={s.label} className="bg-[#20222b] border border-zinc-800 rounded-xl p-4">
+            <div key={s.label} className="bg-kartu border border-white/10 rounded-xl p-4">
               <div className={`text-xl font-bold ${s.color}`}>{s.val}</div>
-              <div className="text-[10px] text-zinc-500 mt-1 uppercase tracking-wider">{s.label}</div>
+              <div className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider">{s.label}</div>
             </div>
           ))}
         </div>
 
-        <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-2.5">Konten Terbaik (Engagement Rate)</div>
+        <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5">Konten Terbaik (Engagement Rate)</div>
         <div className="flex flex-col gap-1.5">
           {top.map((p, i) => {
             const er = engagementRate(p);
             return (
-              <button key={p.id} onClick={() => setOpen(p)} className="flex items-center gap-3 bg-[#20222b] hover:bg-[#262934] border border-zinc-800 rounded-lg px-4 py-3 text-left transition-colors">
-                <span className="text-sm font-bold text-zinc-600 w-4">{i + 1}</span>
+              <button key={p.id} onClick={() => setOpen(p)} className="flex items-center gap-3 bg-kartu hover:bg-kartu border border-white/10 rounded-lg px-4 py-3 text-left transition-colors">
+                <span className="text-sm font-bold text-gray-600 w-4">{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-zinc-100 font-medium truncate">{p.title}</p>
-                  <div className="flex items-center gap-2 mt-1 text-[10px] text-zinc-500">
+                  <p className="text-xs text-gray-100 font-medium truncate">{p.title}</p>
+                  <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-500">
                     <span className="flex items-center gap-1"><Eye size={9} />{Number(p.reach || 0).toLocaleString('id-ID')}</span>
                     <span className="flex items-center gap-1"><Heart size={9} />{Number(p.likes || 0).toLocaleString('id-ID')}</span>
                     <span>{fmtDate(p.publish_at)}</span>
@@ -754,19 +754,19 @@ export default function ContentStudio() {
               </button>
             );
           })}
-          {top.length === 0 && <p className="text-xs text-zinc-600 py-8 text-center bg-[#20222b] border border-zinc-800 rounded-xl">Belum ada konten berstatus "Tayang" dengan metrik.</p>}
+          {top.length === 0 && <p className="text-xs text-gray-600 py-8 text-center bg-kartu border border-white/10 rounded-xl">Belum ada konten berstatus "Tayang" dengan metrik.</p>}
         </div>
       </div>
     );
   };
 
-  if (!activeBoardId) return <p className="text-sm text-zinc-500 py-16 text-center">Pilih board terlebih dahulu.</p>;
+  if (!activeBoardId) return <p className="text-sm text-gray-500 py-16 text-center">Pilih board terlebih dahulu.</p>;
 
   return (
     <div>
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-        <div className="flex items-center gap-1 bg-[#20222b] border border-zinc-800 rounded-xl p-1">
+        <div className="flex items-center gap-1 bg-kartu border border-white/10 rounded-xl p-1">
           {[
             { id: 'kalender', label: 'Kalender', icon: <CalendarDays size={13} /> },
             { id: 'maintable', label: 'Table', icon: <Table size={13} /> },
@@ -774,7 +774,7 @@ export default function ContentStudio() {
             { id: 'performa', label: 'Performa', icon: <BarChart3 size={13} /> },
           ].map((t) => (
             <button key={t.id} onClick={() => setTab(t.id as any)}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg transition-all ${tab === t.id ? 'bg-[#2b5cd5] text-white shadow-[0_0_14px_rgba(43,92,213,0.35)]' : 'text-zinc-400 hover:text-white'}`}>
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-lg transition-all ${tab === t.id ? 'bg-primer-terang text-white shadow-[0_0_14px_rgba(43,92,213,0.35)]' : 'text-gray-400 hover:text-white'}`}>
               {t.icon} {t.label}
             </button>
           ))}
@@ -783,17 +783,17 @@ export default function ContentStudio() {
 
         <div className="flex items-center gap-2">
           <div className="relative">
-            <button onClick={() => setFPlatOpen((v) => !v)} className="flex items-center gap-2 bg-[#20222b] border border-zinc-800 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none hover:border-zinc-700 min-w-[160px]">
+            <button onClick={() => setFPlatOpen((v) => !v)} className="flex items-center gap-2 bg-kartu border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 outline-none hover:border-white/10 min-w-[160px]">
               {fPlatform
                 ? <><PlatformIcon id={fPlatform} className="w-3.5 h-3.5 shrink-0" /><span className="flex-1 text-left truncate">{platformMeta(fPlatform).label}</span></>
                 : <span className="flex-1 text-left">Semua platform</span>}
-              <ChevronDown size={13} className="shrink-0 text-zinc-500" />
+              <ChevronDown size={13} className="shrink-0 text-gray-500" />
             </button>
             {fPlatOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setFPlatOpen(false)} />
-                <div className="absolute right-0 top-full mt-1.5 z-50 w-52 bg-[#2a2c38] border border-zinc-700 rounded-xl shadow-2xl p-1.5 animate-in fade-in zoom-in-95">
-                  <button onClick={() => { setFPlatform(''); setFPlatOpen(false); }} className={`flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors ${!fPlatform ? 'bg-blue-500/10 text-white' : 'text-zinc-300 hover:bg-zinc-700/60'}`}>
+                <div className="absolute right-0 top-full mt-1.5 z-50 w-52 bg-kartu border border-white/10 rounded-xl shadow-2xl p-1.5 animate-in fade-in zoom-in-95">
+                  <button onClick={() => { setFPlatform(''); setFPlatOpen(false); }} className={`flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors ${!fPlatform ? 'bg-blue-500/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
                     <span className="w-3.5 h-3.5 shrink-0" />
                     <span className="flex-1">Semua platform</span>
                     {!fPlatform && <Check size={13} className="text-blue-400 shrink-0" />}
@@ -801,7 +801,7 @@ export default function ContentStudio() {
                   {PLATFORMS.map((p) => {
                     const on = fPlatform === p.id;
                     return (
-                      <button key={p.id} onClick={() => { setFPlatform(p.id); setFPlatOpen(false); }} className={`flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors ${on ? 'bg-blue-500/10 text-white' : 'text-zinc-300 hover:bg-zinc-700/60'}`}>
+                      <button key={p.id} onClick={() => { setFPlatform(p.id); setFPlatOpen(false); }} className={`flex items-center gap-2.5 w-full px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors ${on ? 'bg-blue-500/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
                         <PlatformIcon id={p.id} className="w-3.5 h-3.5 shrink-0" />
                         <span className="flex-1 truncate">{p.label}</span>
                         {on && <Check size={13} className="text-blue-400 shrink-0" />}
@@ -813,7 +813,7 @@ export default function ContentStudio() {
             )}
           </div>
           {canManage && (
-            <button onClick={() => create()} className="flex items-center gap-1.5 bg-[#2b5cd5] hover:bg-blue-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-[0_0_16px_rgba(43,92,213,0.35)] active:scale-[0.97]">
+            <button onClick={() => create()} className="flex items-center gap-1.5 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-[0_0_16px_rgba(43,92,213,0.35)] active:scale-[0.97]">
               <Plus size={15} /> Buat Brief
             </button>
           )}

@@ -30,24 +30,24 @@ export default function ViewTabs() {
           <div key={v.id}
             onDragOver={e => { if (draggedId) { e.preventDefault(); setDragOverId(v.id); } }}
             onDrop={e => { if (draggedId) { e.preventDefault(); reorderViews(draggedId, v.id); setDraggedId(null); setDragOverId(null); } }}
-            className={`group/tab relative flex items-center gap-1.5 pb-3 pt-1 px-1.5 border-b-2 transition-colors whitespace-nowrap shrink-0 ${active ? 'border-blue-500 text-blue-400' : 'border-transparent text-zinc-400 hover:text-zinc-200'} ${dragOverId === v.id && draggedId && draggedId !== v.id ? 'bg-blue-500/10' : ''} ${draggedId === v.id ? 'opacity-40' : ''}`}>
-            <span draggable onDragStart={e => { setDraggedId(v.id); e.dataTransfer.effectAllowed = 'move'; }} onDragEnd={() => { setDraggedId(null); setDragOverId(null); }} className="cursor-grab text-zinc-600 hover:text-zinc-300 opacity-0 group-hover/tab:opacity-100 transition-opacity shrink-0" title="Tarik untuk urutkan"><GripVertical size={12} /></span>
+            className={`group/tab relative flex items-center gap-1.5 pb-3 pt-1 px-1.5 border-b-2 transition-colors whitespace-nowrap shrink-0 ${active ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'} ${dragOverId === v.id && draggedId && draggedId !== v.id ? 'bg-blue-500/10' : ''} ${draggedId === v.id ? 'opacity-40' : ''}`}>
+            <span draggable onDragStart={e => { setDraggedId(v.id); e.dataTransfer.effectAllowed = 'move'; }} onDragEnd={() => { setDraggedId(null); setDragOverId(null); }} className="cursor-grab text-gray-600 hover:text-gray-300 opacity-0 group-hover/tab:opacity-100 transition-opacity shrink-0" title="Tarik untuk urutkan"><GripVertical size={12} /></span>
             <Icon size={14} className="shrink-0" />
             {editingId === v.id ? (
               <input autoFocus defaultValue={v.name} onClick={e => e.stopPropagation()}
                 onBlur={e => commitRename(v.id, e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') commitRename(v.id, (e.target as HTMLInputElement).value); if (e.key === 'Escape') setEditingId(null); }}
-                className="bg-zinc-950 border border-blue-500 rounded px-1.5 py-0.5 text-[12px] text-white outline-none w-28" />
+                className="bg-latar border border-blue-500 rounded px-1.5 py-0.5 text-[12px] text-white outline-none w-28" />
             ) : (
               <button onClick={() => setActiveViewId(v.id)} onDoubleClick={() => setEditingId(v.id)} className="outline-none">{v.name}</button>
             )}
-            <button onClick={() => setMenuFor(menuFor === v.id ? null : v.id)} className="opacity-0 group-hover/tab:opacity-100 text-zinc-500 hover:text-zinc-200 transition-opacity shrink-0"><MoreHorizontal size={14} /></button>
+            <button onClick={() => setMenuFor(menuFor === v.id ? null : v.id)} className="opacity-0 group-hover/tab:opacity-100 text-gray-500 hover:text-gray-200 transition-opacity shrink-0"><MoreHorizontal size={14} /></button>
             {menuFor === v.id && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setMenuFor(null)}></div>
-                <div className="absolute top-full left-0 mt-1 w-40 bg-[#2a2c38] border border-zinc-700/50 shadow-2xl rounded-lg z-[70] p-1 flex flex-col animate-in fade-in zoom-in-95">
-                  <button onClick={() => { setEditingId(v.id); setMenuFor(null); }} className="text-left text-[12px] px-2.5 py-1.5 hover:bg-zinc-700/50 rounded-md text-zinc-200 transition-colors">Ganti nama</button>
-                  <button onClick={() => { duplicateView(v.id); setMenuFor(null); }} className="flex items-center gap-2 text-left text-[12px] px-2.5 py-1.5 hover:bg-zinc-700/50 rounded-md text-zinc-200 transition-colors"><Copy size={12} /> Duplikat</button>
+                <div className="absolute top-full left-0 mt-1 w-40 bg-kartu border border-white/10 shadow-2xl rounded-lg z-[70] p-1 flex flex-col animate-in fade-in zoom-in-95">
+                  <button onClick={() => { setEditingId(v.id); setMenuFor(null); }} className="text-left text-[12px] px-2.5 py-1.5 hover:bg-white/5 rounded-md text-gray-200 transition-colors">Ganti nama</button>
+                  <button onClick={() => { duplicateView(v.id); setMenuFor(null); }} className="flex items-center gap-2 text-left text-[12px] px-2.5 py-1.5 hover:bg-white/5 rounded-md text-gray-200 transition-colors"><Copy size={12} /> Duplikat</button>
                   {views.length > 1 && <button onClick={() => { deleteView(v.id); setMenuFor(null); }} className="flex items-center gap-2 text-left text-[12px] px-2.5 py-1.5 hover:bg-red-500/10 rounded-md text-red-400 transition-colors"><Trash2 size={12} /> Hapus</button>}
                 </div>
               </>
@@ -58,14 +58,14 @@ export default function ViewTabs() {
 
       {/* Tombol + (popup absolute, menempel di bawah tombol) */}
       <div className="relative shrink-0">
-        <button onClick={() => setPicker(!picker)} className="pb-3 pt-1 px-2 text-zinc-500 hover:text-blue-400 transition-colors" title="Tambah view"><Plus size={16} /></button>
+        <button onClick={() => setPicker(!picker)} className="pb-3 pt-1 px-2 text-gray-500 hover:text-blue-400 transition-colors" title="Tambah view"><Plus size={16} /></button>
         {picker && <ViewPicker onClose={() => setPicker(false)} />}
       </div>
 
-      <div className="mx-2 w-px h-5 bg-zinc-700 shrink-0 self-center mb-3"></div>
+      <div className="mx-2 w-px h-5 bg-kartu-hover shrink-0 self-center mb-3"></div>
 
       {/* My Tasks — global, di luar sistem view per-board */}
-      <button onClick={() => setActiveViewId('mytasks')} className={`flex items-center gap-1.5 pb-3 pt-1 px-1.5 border-b-2 transition-colors whitespace-nowrap shrink-0 ${myTasksActive ? 'border-blue-500 text-blue-400' : 'border-transparent text-zinc-400 hover:text-zinc-200'}`}><ListChecks size={14} /> My Tasks</button>
+      <button onClick={() => setActiveViewId('mytasks')} className={`flex items-center gap-1.5 pb-3 pt-1 px-1.5 border-b-2 transition-colors whitespace-nowrap shrink-0 ${myTasksActive ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'}`}><ListChecks size={14} /> My Tasks</button>
     </div>
   );
 }

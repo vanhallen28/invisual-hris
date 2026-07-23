@@ -27,10 +27,10 @@ export default function TimelineView() {
 
   if (rows.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 mt-4 py-16">
+      <div className="flex-1 flex flex-col items-center justify-center text-gray-500 mt-4 py-16">
         <CalendarDays size={48} className="mb-4 text-blue-500/20" />
-        <h3 className="text-zinc-300 font-bold mb-1">Belum ada data timeline</h3>
-        <p className="text-sm text-zinc-500 max-w-md text-center">Tambahkan kolom <span className="text-zinc-300 font-semibold">Timeline</span> atau <span className="text-zinc-300 font-semibold">Date</span> di Main Table, lalu isi tanggalnya untuk melihat item terjadwal di sini.</p>
+        <h3 className="text-gray-300 font-bold mb-1">Belum ada data timeline</h3>
+        <p className="text-sm text-gray-500 max-w-md text-center">Tambahkan kolom <span className="text-gray-300 font-semibold">Timeline</span> atau <span className="text-gray-300 font-semibold">Date</span> di Main Table, lalu isi tanggalnya untuk melihat item terjadwal di sini.</p>
       </div>
     );
   }
@@ -47,12 +47,12 @@ export default function TimelineView() {
   }));
 
   return (
-    <div className="mt-4 bg-[#1e202a] border border-zinc-800/80 rounded-xl p-5 shadow-lg overflow-x-auto">
+    <div className="mt-4 bg-kartu-hover border border-white/10 rounded-xl p-5 shadow-lg overflow-x-auto">
       <div className="min-w-[680px]">
         {/* SUMBU TANGGAL */}
-        <div className="relative h-6 mb-3 ml-48 border-b border-zinc-800">
+        <div className="relative h-6 mb-3 ml-48 border-b border-white/10">
           {markers.map((m, i) => (
-            <div key={i} className="absolute top-0 text-[10px] font-semibold text-zinc-500 -translate-x-1/2" style={{ left: `${m.left}%` }}>{m.label}</div>
+            <div key={i} className="absolute top-0 text-[10px] font-semibold text-gray-500 -translate-x-1/2" style={{ left: `${m.left}%` }}>{m.label}</div>
           ))}
         </div>
 
@@ -62,13 +62,13 @@ export default function TimelineView() {
             const left = pct(r.start.getTime());
             const width = Math.max(1.5, pct(r.end.getTime()) - left);
             return (
-              <div key={r.id} onClick={() => setDetailItem({ groupId: r.groupId, itemId: r.id })} className="flex items-center h-8 rounded-md hover:bg-zinc-800/40 cursor-pointer transition-colors group/tl">
+              <div key={r.id} onClick={() => setDetailItem({ groupId: r.groupId, itemId: r.id })} className="flex items-center h-8 rounded-md hover:bg-white/5 cursor-pointer transition-colors group/tl">
                 <div className="w-48 shrink-0 pr-3 flex items-center gap-2 min-w-0">
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
-                  <span className="text-xs text-zinc-300 group-hover/tl:text-white truncate transition-colors" title={r.name}>{r.name}</span>
+                  <span className="text-xs text-gray-300 group-hover/tl:text-white truncate transition-colors" title={r.name}>{r.name}</span>
                 </div>
                 <div className="relative flex-1 h-full">
-                  <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[3px] bg-zinc-800/60 rounded-full" />
+                  <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[3px] bg-white/5 rounded-full" />
                   <div
                     className="absolute top-1/2 -translate-y-1/2 h-5 rounded-md flex items-center px-2 shadow-sm overflow-hidden min-w-[10px] group-hover/tl:ring-2 group-hover/tl:ring-white/30 transition-all"
                     style={{ left: `${left}%`, width: `${width}%`, backgroundColor: r.color }}
