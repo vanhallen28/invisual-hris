@@ -45,13 +45,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen bg-[#000000] text-gray-200 flex flex-col md:flex-row font-sans">
 
       {/* HEADER MOBILE (admin) — logo + subtitle, seragam dengan portal karyawan */}
-      <header className={`${isChatPage ? "hidden" : ""} md:hidden w-full bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/5 px-5 py-4 sticky top-0 z-[99] flex items-center justify-between shadow-sm`}>
+      <header className={`${isChatPage ? "hidden" : ""} md:hidden w-full bg-latar/95 backdrop-blur-xl border-b border-white/5 px-5 py-4 sticky top-0 z-[99] flex items-center justify-between shadow-sm`}>
         <div className="flex flex-col items-start justify-center">
           <img src="/invisual-light.svg" alt="Invisual Studio" className="h-[22px] brightness-0 invert opacity-90 object-contain" style={{ width: "auto" }} />
           <p className="text-[7.5px] font-black text-gray-500 uppercase tracking-widest mt-1.5 font-mono leading-none">Human Resource Information System</p>
         </div>
         <div className="flex items-center gap-2.5 shrink-0">
-          <Link href="/admin/pengaturan" title="Pengaturan Akun" className="w-8 h-8 rounded-full bg-[#124bce]/10 text-[#b3c5ff] flex items-center justify-center font-black text-[10px] border border-[#124bce]/20 shadow-inner active:scale-90 transition-transform">HR</Link>
+          <Link href="/admin/pengaturan" title="Pengaturan Akun" className="w-8 h-8 rounded-full bg-primer/10 text-tint flex items-center justify-center font-black text-[10px] border border-primer/20 shadow-inner active:scale-90 transition-transform">HR</Link>
           <button onClick={() => setShowLogoutModal(true)} aria-label="Keluar" className="w-8 h-8 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center active:scale-90 transition-transform cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
           </button>
@@ -59,7 +59,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </header>
 
       {/* SIDEBAR DESKTOP */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-white/10 bg-[#0a0a0a] min-h-screen shrink-0 sticky top-0">
+      <aside className="hidden md:flex flex-col w-64 border-r border-white/10 bg-latar min-h-screen shrink-0 sticky top-0">
         
         {/* PERBAIKAN LOGOTYPE: Tampil Rata Kiri & Subtitle HRIS */}
         <div className="py-8 px-6 border-b border-white/10 flex flex-col items-start justify-center">
@@ -82,7 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         <div className="p-4 border-t border-white/10">
-          <Link href="/admin/pengaturan" title="Pengaturan" className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${pathname === "/admin/pengaturan" ? "bg-[#124bce] text-white" : "text-gray-500 hover:text-white hover:bg-white/5"}`}>
+          <Link href="/admin/pengaturan" title="Pengaturan" className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${pathname === "/admin/pengaturan" ? "bg-primer text-white" : "text-gray-500 hover:text-white hover:bg-white/5"}`}>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
           </Link>
         </div>
@@ -98,13 +98,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </main>
 
       {/* BOTTOM NAVIGATION MOBILE */}
-      <div className={`${isChatPage ? "hidden" : ""} md:hidden fixed bottom-0 left-0 right-0 bg-[#0a0a0a]/90 backdrop-blur-md border-t border-white/10 z-[100] px-2 py-3 pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.5)]`}>
+      <div className={`${isChatPage ? "hidden" : ""} md:hidden fixed bottom-0 left-0 right-0 bg-latar/90 backdrop-blur-md border-t border-white/10 z-[100] px-2 py-3 pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.5)]`}>
         <div className="flex justify-around items-center">
           {navItems.filter((item) => item.href !== "/admin/pengaturan" && item.href !== "/admin/audit" && item.href !== "/admin/corporate" && item.href !== "/admin/daily-task").map((item) => {
             const isActive = pathname === item.href;
             return (
-              <Link key={item.name} href={item.href} className={`relative flex flex-col items-center gap-1 py-1 transition-colors duration-300 ${isActive ? "text-[#124bce]" : "text-gray-500 hover:text-gray-300"}`}>
-                <span className={`flex items-center justify-center w-11 h-9 rounded-2xl transition-all duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] ${isActive ? "bg-[#124bce]/15 -translate-y-1 scale-105" : "translate-y-0 scale-100"}`}>
+              <Link key={item.name} href={item.href} className={`relative flex flex-col items-center gap-1 py-1 transition-colors duration-300 ${isActive ? "text-primer" : "text-gray-500 hover:text-gray-300"}`}>
+                <span className={`flex items-center justify-center w-11 h-9 rounded-2xl transition-all duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] ${isActive ? "bg-primer/15 -translate-y-1 scale-105" : "translate-y-0 scale-100"}`}>
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={isActive ? 2.5 : 2} stroke="currentColor" className="w-6 h-6">{item.icon}</svg>
                 </span>
                 <span className={`text-[9px] font-bold transition-transform duration-300 ${isActive ? "-translate-y-0.5" : "translate-y-0"}`}>{(item as any).short || item.name}</span>
@@ -117,7 +117,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {showLogoutModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="bg-[#0f0f0f] border border-white/10 w-full max-w-xs rounded-2xl p-6 text-center shadow-2xl">
+          <div className="bg-kartu border border-white/10 w-full max-w-xs rounded-2xl p-6 text-center shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-red-500"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
             </div>

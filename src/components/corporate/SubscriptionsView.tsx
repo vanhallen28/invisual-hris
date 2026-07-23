@@ -89,7 +89,7 @@ export function SubscriptionsView() {
         </div>
         <button
           onClick={openAdd}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#124bce] px-3 text-sm font-medium text-white hover:opacity-90"
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primer px-3 text-sm font-medium text-white hover:opacity-90"
         >
           <Plus className="h-4 w-4" /> Tambah Langganan
         </button>
@@ -137,7 +137,7 @@ export function SubscriptionsView() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Cari platform, paket, akun…"
-          className="h-9 w-full rounded-lg border border-white/10 bg-[#1c1c1c] pl-9 pr-3 text-sm text-white placeholder-gray-500 outline-none focus:border-[#124bce]"
+          className="h-9 w-full rounded-lg border border-white/10 bg-input pl-9 pr-3 text-sm text-white placeholder-gray-500 outline-none focus:border-primer"
         />
       </div>
 
@@ -176,7 +176,7 @@ export function SubscriptionsView() {
                   <tr key={s.id} className="hover:bg-white/5">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#124bce]/15 text-[#b3c5ff]">
+                        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-primer/15 text-tint">
                           <CreditCard className="h-3.5 w-3.5" />
                         </span>
                         <span className="font-medium text-gray-100">{s.platform}</span>

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { rapikanNama } from "@/lib/nama";
 
 const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const HARI = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
@@ -19,6 +20,7 @@ function statusColor(s: string) {
 export default function LeaveCalendar() {
   const [leaves, setLeaves] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [daftarBuka, setDaftarBuka] = useState(true);   // dropdown Daftar Cuti/Izin
   const today = new Date();
   const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const [ym, setYm] = useState({ y: today.getFullYear(), m: today.getMonth() });
@@ -59,11 +61,11 @@ export default function LeaveCalendar() {
   const btn = "w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 flex items-center justify-center transition-all active:scale-90";
 
   return (
-    <div className="bg-[#0f0f0f] border border-white/10 rounded-3xl p-5 md:p-6 shadow-xl">
+    <div className="p-5 md:p-6 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-[#124bce]/10 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-[#8ba7ff]"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+          <div className="w-9 h-9 rounded-xl bg-primer/10 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-tint-redup"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
           </div>
           <div>
             <h2 className="text-base md:text-lg font-bold text-white">Kalender Cuti &amp; Izin</h2>
@@ -74,7 +76,7 @@ export default function LeaveCalendar() {
           <button onClick={prev} className={btn} title="Bulan sebelumnya"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg></button>
           <span className="text-sm font-bold text-white min-w-[120px] text-center">{BULAN[ym.m]} {ym.y}</span>
           <button onClick={next} className={btn} title="Bulan berikutnya"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg></button>
-          <button onClick={goToday} className="ml-1 px-3 h-8 rounded-lg bg-[#124bce]/10 hover:bg-[#124bce]/20 text-[#8ba7ff] text-xs font-bold transition-all active:scale-95 border border-[#124bce]/20">Hari Ini</button>
+          <button onClick={goToday} className="ml-1 px-3 h-8 rounded-lg bg-primer/10 hover:bg-primer/20 text-tint-redup text-xs font-bold transition-all active:scale-95 border border-primer/20">Hari Ini</button>
         </div>
       </div>
 
@@ -92,14 +94,14 @@ export default function LeaveCalendar() {
               const list = leavesOn(d);
               const isToday = day === todayISO;
               return (
-                <div key={i} className={`rounded-lg border p-1 md:p-1.5 min-h-[52px] md:min-h-[84px] overflow-hidden ${isToday ? "border-[#124bce] bg-[#124bce]/5" : "border-white/5 bg-[#141414]"}`}>
-                  <div className={`text-[10px] md:text-xs font-bold mb-1 ${isToday ? "text-[#8ba7ff]" : "text-gray-400"}`}>{d}</div>
+                <div key={i} className={`rounded-lg border p-1 md:p-1.5 min-h-[52px] md:min-h-[84px] overflow-hidden ${isToday ? "border-primer bg-primer/5" : "border-white/5 bg-kartu"}`}>
+                  <div className={`text-[10px] md:text-xs font-bold mb-1 ${isToday ? "text-tint-redup" : "text-gray-400"}`}>{d}</div>
                   <div className="space-y-0.5">
                     {list.slice(0, 3).map((l, j) => {
                       const sc = statusColor(l.status);
                       return (
-                        <div key={j} className={`text-[8px] md:text-[9px] font-bold px-1 py-0.5 rounded ${sc.bg} ${sc.t} truncate`} title={`${l.nama} — ${l.jenis} (${l.status})`}>
-                          {l.nama?.split(" ")[0] || "?"}
+                        <div key={j} className={`text-[8px] md:text-[9px] font-bold px-1 py-0.5 rounded ${sc.bg} ${sc.t} truncate`} title={`${rapikanNama(l.nama)} — ${l.jenis} (${l.status})`}>
+                          {rapikanNama(l.nama).split(" ")[0] || "?"}
                         </div>
                       );
                     })}
@@ -116,18 +118,36 @@ export default function LeaveCalendar() {
           </div>
 
           <div className="mt-5 border-t border-white/5 pt-4">
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Daftar Cuti/Izin — {BULAN[ym.m]} {ym.y}</p>
-            {monthLeaves.length === 0 ? (
+            <button
+              onClick={() => setDaftarBuka((v) => !v)}
+              aria-expanded={daftarBuka}
+              className="w-full flex items-center gap-2 mb-3 group/dd cursor-pointer text-left"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                strokeWidth={3} stroke="currentColor"
+                className={`w-3 h-3 text-gray-500 transition-transform duration-200 ${daftarBuka ? "rotate-90" : ""}`}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+              <span className="text-[10px] font-black text-gray-500 group-hover/dd:text-gray-300 uppercase tracking-widest transition-colors">
+                Daftar Cuti/Izin — {BULAN[ym.m]} {ym.y}
+              </span>
+              <span className="ml-auto text-[10px] font-bold text-tint-redup bg-primer/10 border border-primer/20 px-2 py-0.5 rounded-full">
+                {monthLeaves.length}
+              </span>
+            </button>
+            {!daftarBuka ? null : monthLeaves.length === 0 ? (
               <p className="text-xs text-gray-600 py-2">Tak ada pengajuan cuti/izin pada bulan ini.</p>
             ) : (
               <div className="space-y-2">
                 {monthLeaves.map((l, i) => {
                   const sc = statusColor(l.status);
                   return (
-                    <div key={i} className="flex items-center gap-3 bg-[#141414] border border-white/5 rounded-xl p-2.5">
+                    <div key={i} className="flex items-center gap-3 bg-kartu border border-white/10 rounded-xl p-2.5">
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: sc.dot }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-white truncate">{l.nama} <span className="text-[10px] font-normal text-gray-500">· {l.jenis}</span></p>
+                        <p className="text-xs font-bold text-white truncate">{rapikanNama(l.nama)} <span className="text-[10px] font-normal text-gray-500">· {l.jenis}</span></p>
                         <p className="text-[10px] text-gray-500 truncate">{l.tanggal}{l.alasan ? ` — ${l.alasan}` : ""}</p>
                       </div>
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${sc.bg} ${sc.t} shrink-0`}>{l.status}</span>

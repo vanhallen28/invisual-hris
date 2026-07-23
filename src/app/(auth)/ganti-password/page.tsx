@@ -90,7 +90,7 @@ export default function GantiPasswordPage() {
           <p className="text-[8px] font-black text-gray-600 uppercase tracking-widest font-mono">Human Resource Information System</p>
         </div>
 
-        <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-7 shadow-2xl">
+        <div className="bg-latar border border-white/10 rounded-2xl p-7 shadow-2xl">
           <h1 className="text-xl font-bold text-white mb-1.5">
             {wajib ? "Ganti Password Anda" : "Ubah Password"}
           </h1>
@@ -119,7 +119,7 @@ export default function GantiPasswordPage() {
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
                 placeholder="Minimal 8 karakter"
-                className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-3 text-sm text-white focus:border-[#2b5cd5] outline-none transition-colors"
+                className="w-full bg-input border border-white/5 rounded-lg px-4 py-3 text-sm text-white focus:border-primer-terang outline-none transition-colors"
               />
             </div>
 
@@ -130,12 +130,12 @@ export default function GantiPasswordPage() {
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 placeholder="Ulangi password baru"
-                className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-3 text-sm text-white focus:border-[#2b5cd5] outline-none transition-colors"
+                className="w-full bg-input border border-white/5 rounded-lg px-4 py-3 text-sm text-white focus:border-primer-terang outline-none transition-colors"
               />
             </div>
 
             <label className="flex items-center gap-2 text-[11px] text-gray-500 cursor-pointer select-none">
-              <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} className="accent-[#2b5cd5]" />
+              <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} className="accent-primer-terang" />
               Tampilkan password
             </label>
 
@@ -146,7 +146,7 @@ export default function GantiPasswordPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#2b5cd5] hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-bold rounded-lg py-3 transition-all shadow-[0_0_18px_rgba(43,92,213,0.35)] mt-1"
+              className="w-full bg-primer-terang hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-bold rounded-lg py-3 transition-all shadow-[0_0_18px_rgba(43,92,213,0.35)] mt-1"
             >
               {isLoading ? "Menyimpan…" : "Simpan Password Baru"}
             </button>

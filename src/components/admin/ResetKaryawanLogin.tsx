@@ -88,7 +88,7 @@ export default function ResetKaryawanLogin() {
     setBusy(false);
   };
 
-  const inputCls = "w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-3 text-sm text-white focus:border-[#2b5cd5] outline-none transition-colors placeholder-gray-700";
+  const inputCls = "w-full bg-input border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:border-primer-terang outline-none transition-colors placeholder-gray-700";
 
   return (
     <div>
@@ -102,7 +102,7 @@ export default function ResetKaryawanLogin() {
             {filtered.map((e) => (
               <button key={e.idKaryawan} onClick={() => pick(e)}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 text-left transition-colors border border-transparent hover:border-white/10">
-                <div className="w-8 h-8 rounded-full bg-[#2b5cd5]/10 text-[#b3c5ff] flex items-center justify-center font-bold text-xs border border-[#2b5cd5]/20 shrink-0">
+                <div className="w-8 h-8 rounded-full bg-primer-terang/10 text-tint flex items-center justify-center font-bold text-xs border border-primer-terang/20 shrink-0">
                   {(e.nama || "?").charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -118,7 +118,7 @@ export default function ResetKaryawanLogin() {
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-3">
           <div className="flex items-center gap-3 bg-[#1a1c23] border border-white/10 rounded-xl px-4 py-3 mb-1">
-            <div className="w-9 h-9 rounded-full bg-[#2b5cd5]/10 text-[#b3c5ff] flex items-center justify-center font-bold text-sm border border-[#2b5cd5]/20 shrink-0">
+            <div className="w-9 h-9 rounded-full bg-primer-terang/10 text-tint flex items-center justify-center font-bold text-sm border border-primer-terang/20 shrink-0">
               {(selected.nama || "?").charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
@@ -153,7 +153,7 @@ export default function ResetKaryawanLogin() {
           </div>
 
           <label className="flex items-center gap-2 text-[11px] text-gray-500 cursor-pointer select-none">
-            <input type="checkbox" checked={showPass} onChange={(e) => setShowPass(e.target.checked)} className="accent-[#2b5cd5]" />
+            <input type="checkbox" checked={showPass} onChange={(e) => setShowPass(e.target.checked)} className="accent-primer-terang" />
             Tampilkan password
           </label>
 
@@ -161,7 +161,7 @@ export default function ResetKaryawanLogin() {
             <p className={`text-xs px-3.5 py-2.5 rounded-lg leading-relaxed ${msg.t === "ok" ? "text-emerald-300 bg-emerald-500/[0.07] border border-emerald-500/20" : "text-red-400 bg-red-500/[0.06] border border-red-500/20"}`}>{msg.m}</p>
           )}
 
-          <button type="submit" disabled={busy || !selected.user_id} className="self-start bg-[#2b5cd5] hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-bold px-5 py-2.5 rounded-lg transition-all mt-1">
+          <button type="submit" disabled={busy || !selected.user_id} className="self-start bg-primer-terang hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-bold px-5 py-2.5 rounded-lg transition-all mt-1">
             {busy ? "Menyimpan…" : "Simpan Kredensial Baru"}
           </button>
         </form>

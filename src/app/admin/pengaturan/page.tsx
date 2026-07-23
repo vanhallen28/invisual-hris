@@ -10,9 +10,9 @@ import ResetKaryawanLogin from "@/components/admin/ResetKaryawanLogin";
 function Section({ id, open, setOpen, icon, title, subtitle, badge, children }: any) {
   const isOpen = open === id;
   return (
-    <div className={`bg-[#0f0f0f] border rounded-2xl overflow-hidden transition-colors ${isOpen ? "border-[#2b5cd5]/40" : "border-white/10"}`}>
+    <div className={`bg-kartu border rounded-2xl overflow-hidden transition-colors ${isOpen ? "border-primer-terang/40" : "border-white/10"} kartu-glow`}>
       <button onClick={() => setOpen(isOpen ? null : id)} className="w-full flex items-center gap-3.5 px-5 py-4 text-left hover:bg-white/[0.02] transition-colors">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isOpen ? "bg-[#2b5cd5]/15 text-[#8ba7ff]" : "bg-white/5 text-gray-400"}`}>
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isOpen ? "bg-primer-terang/15 text-tint-redup" : "bg-white/5 text-gray-400"}`}>
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" className="w-4.5 h-4.5">{icon}</svg>
         </div>
         <div className="flex-1 min-w-0">
@@ -144,8 +144,8 @@ export default function PengaturanAkunPage() {
     return <div className="flex min-h-[70vh] items-center justify-center"><LoadingLogo size={64} withRing text="Memuat pengaturan" /></div>;
   }
 
-  const inputCls = "w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-3 text-sm text-white focus:border-[#2b5cd5] outline-none transition-colors placeholder-gray-700";
-  const btnCls = "self-start bg-[#2b5cd5] hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-bold px-5 py-2.5 rounded-lg transition-all mt-1";
+  const inputCls = "w-full bg-input border border-white/5 rounded-lg px-4 py-3 text-sm text-white focus:border-primer-terang outline-none transition-colors placeholder-gray-700";
+  const btnCls = "self-start bg-primer-terang hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-bold px-5 py-2.5 rounded-lg transition-all mt-1";
   const Msg = ({ data }: any) => data ? (
     <p className={`text-xs px-3.5 py-2.5 rounded-lg leading-relaxed ${data.t === "ok" ? "text-emerald-300 bg-emerald-500/[0.07] border border-emerald-500/20" : "text-red-400 bg-red-500/[0.06] border border-red-500/20"}`}>{data.m}</p>
   ) : null;
@@ -158,8 +158,8 @@ export default function PengaturanAkunPage() {
       </div>
 
       {/* identitas */}
-      <div className="bg-[#0f0f0f] border border-white/10 rounded-2xl p-5 mb-5 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-full bg-[#2b5cd5]/10 text-[#b3c5ff] flex items-center justify-center font-black text-lg border border-[#2b5cd5]/20 shrink-0">
+      <div className="p-5 mb-5 flex items-center gap-4 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
+        <div className="w-12 h-12 rounded-full bg-primer-terang/10 text-tint flex items-center justify-center font-black text-lg border border-primer-terang/20 shrink-0">
           {(name || user?.email || "A").charAt(0).toUpperCase()}
         </div>
         <div className="min-w-0">
@@ -203,7 +203,7 @@ export default function PengaturanAkunPage() {
               <input type={showPass ? "text" : "password"} value={pass2} onChange={(e) => setPass2(e.target.value)} placeholder="Ulangi password baru" className={inputCls} />
             </div>
             <label className="flex items-center gap-2 text-[11px] text-gray-500 cursor-pointer select-none">
-              <input type="checkbox" checked={showPass} onChange={(e) => setShowPass(e.target.checked)} className="accent-[#2b5cd5]" /> Tampilkan password
+              <input type="checkbox" checked={showPass} onChange={(e) => setShowPass(e.target.checked)} className="accent-primer-terang" /> Tampilkan password
             </label>
             <Msg data={passMsg} />
             <button type="submit" disabled={passBusy} className={btnCls}>{passBusy ? "Menyimpan…" : hasPassword ? "Perbarui Password" : "Buat Password"}</button>

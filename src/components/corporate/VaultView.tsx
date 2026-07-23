@@ -185,7 +185,7 @@ export function VaultView() {
       </div>
 
       {/* Uploader */}
-      <div className="mb-5 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="mb-5 p-4 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Unggah ke kategori:
@@ -193,7 +193,7 @@ export function VaultView() {
           <select
             value={uploadCategory}
             onChange={(e) => setUploadCategory(e.target.value)}
-            className="h-8 rounded-lg border border-white/10 bg-[#1c1c1c] px-2 text-sm text-white outline-none focus:border-[#124bce] [color-scheme:dark]"
+            className="h-8 rounded-lg border border-white/10 bg-input px-2 text-sm text-white outline-none focus:border-primer [color-scheme:dark]"
           >
             <option value="none">Tanpa kategori</option>
             {categories.map((c) => (
@@ -215,13 +215,13 @@ export function VaultView() {
           className={cn(
             "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-6 py-8 text-center transition-colors",
             dragOver
-              ? "border-[#124bce] bg-[#124bce]/5"
+              ? "border-primer bg-primer/5"
               : "border-white/15 hover:border-white/30 hover:bg-white/5",
           )}
         >
           <UploadCloud className="h-8 w-8 text-gray-500" />
           <div className="text-sm font-medium text-gray-200">
-            Tarik &amp; lepas file di sini, atau <span className="text-[#b3c5ff]">pilih file</span>
+            Tarik &amp; lepas file di sini, atau <span className="text-tint">pilih file</span>
           </div>
           <div className="font-mono text-xs text-gray-500">
             PDF, gambar, dokumen — tersimpan aman dengan akses ber-signed URL
@@ -242,7 +242,7 @@ export function VaultView() {
                 key={name}
                 className="flex items-center gap-2 rounded-md bg-white/5 px-3 py-1.5 text-xs text-gray-300"
               >
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#b3c5ff]" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-tint" />
                 <span className="truncate">Mengunggah {name}…</span>
               </div>
             ))}
@@ -258,7 +258,7 @@ export function VaultView() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Cari nama file, tags…"
-            className="h-9 w-full rounded-lg border border-white/10 bg-[#1c1c1c] pl-9 pr-3 text-sm text-white placeholder-gray-500 outline-none focus:border-[#124bce]"
+            className="h-9 w-full rounded-lg border border-white/10 bg-input pl-9 pr-3 text-sm text-white placeholder-gray-500 outline-none focus:border-primer"
           />
         </div>
         <div className="flex overflow-hidden rounded-lg border border-white/10">
@@ -266,7 +266,7 @@ export function VaultView() {
             onClick={() => setView("grid")}
             className={cn(
               "grid h-9 w-9 place-items-center",
-              view === "grid" ? "bg-[#124bce] text-white" : "text-gray-400 hover:bg-white/5",
+              view === "grid" ? "bg-primer text-white" : "text-gray-400 hover:bg-white/5",
             )}
             aria-label="Tampilan grid"
           >
@@ -276,7 +276,7 @@ export function VaultView() {
             onClick={() => setView("list")}
             className={cn(
               "grid h-9 w-9 place-items-center",
-              view === "list" ? "bg-[#124bce] text-white" : "text-gray-400 hover:bg-white/5",
+              view === "list" ? "bg-primer text-white" : "text-gray-400 hover:bg-white/5",
             )}
             aria-label="Tampilan list"
           >
@@ -345,7 +345,7 @@ function Chip({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
         active
-          ? "border-[#124bce] bg-[#124bce]/10 text-[#b3c5ff]"
+          ? "border-primer bg-primer/10 text-tint"
           : "border-white/10 text-gray-400 hover:text-white",
       )}
     >
@@ -394,7 +394,7 @@ function FileCard({
   const kind = fileKind(file.file_type);
   const uploaderName = file.uploader?.name ?? file.uploader?.email ?? null;
   return (
-    <div className="group flex flex-col rounded-xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20">
+    <div className="group flex flex-col p-4 transition-colors hover:border-white/20 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 kartu-glow">
       <div className="flex items-start gap-3">
         <FileGlyph kind={kind} large />
         <div className="min-w-0 flex-1">
@@ -534,7 +534,7 @@ function GridSkeleton() {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <div key={i} className="p-4 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
           <div className="flex gap-3">
             <div className="h-12 w-12 rounded-lg bg-white/5" />
             <div className="flex-1 space-y-2 pt-1">

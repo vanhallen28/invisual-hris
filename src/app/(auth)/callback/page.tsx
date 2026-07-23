@@ -79,13 +79,13 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-center relative overflow-hidden select-none">
+    <div className="min-h-screen bg-latar flex flex-col items-center justify-center relative overflow-hidden select-none">
       {/* Efek pendaran latar belakang */}
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#2b5cd5]/10 rounded-full blur-[100px]"></div>
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-primer-terang/10 rounded-full blur-[100px]"></div>
       
       <div className="relative z-10 flex flex-col items-center text-center animate-in fade-in duration-500">
         {/* Spinner Loading Mewah */}
-        <div className="w-12 h-12 border-4 border-white/10 border-t-[#2b5cd5] rounded-full animate-spin mb-6 shadow-[0_0_20px_rgba(43,92,213,0.2)]"></div>
+        <div className="w-12 h-12 border-4 border-white/10 border-t-primer-terang rounded-full animate-spin mb-6 shadow-[0_0_20px_rgba(43,92,213,0.2)]"></div>
         
         <h2 className="text-white font-black text-xl tracking-tight mb-2">Mengamankan Sesi Portal</h2>
         <p className="text-xs text-gray-500 font-mono tracking-wide uppercase bg-white/5 px-3 py-1 rounded-full border border-white/5">

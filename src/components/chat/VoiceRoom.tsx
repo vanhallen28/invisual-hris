@@ -57,7 +57,7 @@ function MediaTile({ participant, source, isLocal, teamMembers }: any) {
   }, [participant, source, isLocal, isScreen]);
 
   return (
-    <div className={`relative rounded-xl overflow-hidden bg-[#15171c] border-2 transition-colors aspect-video ${isScreen ? 'border-[#124bce] col-span-full lg:col-span-2 row-span-2' : speaking ? 'border-emerald-500' : 'border-zinc-800'}`}>
+    <div className={`relative rounded-xl overflow-hidden bg-kartu border-2 transition-colors aspect-video ${isScreen ? 'border-primer col-span-full lg:col-span-2 row-span-2' : speaking ? 'border-emerald-500' : 'border-zinc-800'}`}>
       <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full ${isScreen ? 'object-contain bg-black' : 'object-cover'} ${hasVideo ? '' : 'hidden'} ${(!isScreen && isLocal) ? 'scale-x-[-1]' : ''}`} />
       {!isScreen && !isLocal && <audio ref={audioRef} autoPlay />}
 
@@ -66,7 +66,7 @@ function MediaTile({ participant, source, isLocal, teamMembers }: any) {
           {!hasVideo && (
             <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs">Memuat layar…</div>
           )}
-          <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-[#124bce]/90 backdrop-blur px-2 py-1 rounded-lg z-10">
+          <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-primer/90 backdrop-blur px-2 py-1 rounded-lg z-10">
             <MonitorUp size={11} className="text-white" />
             <span className="text-[10px] text-white font-semibold truncate max-w-[160px]">Layar · {member?.name?.split(' ')[0] || 'Anggota'}{isLocal ? ' (Anda)' : ''}</span>
           </div>
@@ -234,7 +234,7 @@ export default function VoiceRoom({ channel, onLeave }: any) {
       </div>
 
       {/* bilah kontrol */}
-      <div className="shrink-0 border-t border-zinc-800 bg-[#15171c] px-4 py-3 flex items-center justify-center gap-2.5">
+      <div className="shrink-0 border-t border-zinc-800 bg-kartu px-4 py-3 flex items-center justify-center gap-2.5">
         <button onClick={toggleMic} title={micOn ? 'Matikan mic' : 'Nyalakan mic'}
           className={`w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-90 ${micOn ? 'bg-zinc-700 text-white hover:bg-zinc-600' : 'bg-red-500 text-white'}`}>
           {micOn ? <Mic size={18} /> : <MicOff size={18} />}
@@ -244,7 +244,7 @@ export default function VoiceRoom({ channel, onLeave }: any) {
           {camOn ? <Video size={18} /> : <VideoOff size={18} />}
         </button>
         <button onClick={toggleScreen} title={screenOn ? 'Stop berbagi layar' : 'Bagikan layar'}
-          className={`w-11 h-11 rounded-full items-center justify-center transition-all active:scale-90 hidden sm:flex ${screenOn ? 'bg-[#124bce] text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>
+          className={`w-11 h-11 rounded-full items-center justify-center transition-all active:scale-90 hidden sm:flex ${screenOn ? 'bg-primer text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'}`}>
           {screenOn ? <ScreenShareOff size={18} /> : <ScreenShare size={18} />}
         </button>
         <button onClick={leave} title="Keluar dari voice"

@@ -113,10 +113,10 @@ const navItems = [
 
 
 return (
-  <div className="min-h-screen bg-[#000000] text-gray-200 flex flex-col md:flex-row font-sans selection:bg-[#124bce] selection:text-white">
+  <div className="min-h-screen bg-[#000000] text-gray-200 flex flex-col md:flex-row font-sans selection:bg-primer selection:text-white">
   
     {/* 📱 HEADER MOBILE (MINIMALIST) */}
-    <header className={`${isChatPage ? "hidden" : ""} md:hidden w-full bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/5 px-5 py-4 sticky top-0 z-[99] flex items-center justify-between shadow-sm`}>
+    <header className={`${isChatPage ? "hidden" : ""} md:hidden w-full bg-latar/95 backdrop-blur-xl border-b border-white/5 px-5 py-4 sticky top-0 z-[99] flex items-center justify-between shadow-sm`}>
       <div className="flex flex-col items-start justify-center">
         <img src="/invisual-light.svg" alt="Invisual Studio" className="h-[22px] brightness-0 invert opacity-90 object-contain text-left" style={{ width: "auto" }} />
         <p className="text-[7.5px] font-black text-gray-500 uppercase tracking-widest mt-1.5 font-mono leading-none text-left">
@@ -124,7 +124,7 @@ return (
         </p>
       </div>
       <div className="flex items-center gap-2.5 shrink-0">
-        <Avatar url={userAvatar} name={userName} className="w-8 h-8 rounded-full bg-[#124bce]/10 text-[#b3c5ff] flex items-center justify-center font-black text-[11px] border border-[#124bce]/20 shadow-inner" />
+        <Avatar url={userAvatar} name={userName} className="w-8 h-8 rounded-full bg-primer/10 text-tint flex items-center justify-center font-black text-[11px] border border-primer/20 shadow-inner" />
         <button onClick={openLogoutConfirmation} aria-label="Keluar" className="w-8 h-8 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center active:scale-90 transition-transform cursor-pointer">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
         </button>
@@ -135,7 +135,7 @@ return (
 
 
     {/* 💻 SIDEBAR DESKTOP */}
-    <aside className="hidden md:flex flex-col w-64 border-r border-white/10 bg-[#0a0a0a] min-h-screen shrink-0 sticky top-0 z-50">
+    <aside className="hidden md:flex flex-col w-64 border-r border-white/10 bg-latar min-h-screen shrink-0 sticky top-0 z-50">
       <div className="py-8 px-6 border-b border-white/10 flex flex-col items-start justify-center w-full">
         <img src="/invisual-light.svg" alt="Invisual Studio" className="h-[32px] brightness-0 invert opacity-90 object-contain text-left transition-transform hover:scale-105" style={{ width: "auto" }} />
         <p className="text-[8.5px] font-black text-gray-500 uppercase tracking-widest mt-2 leading-tight font-mono text-left">
@@ -150,7 +150,7 @@ return (
         {navItems.filter((item: any) => !item.hanyaManajer || isManager).map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
-            <Link key={item.name} href={item.href} className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all font-medium text-sm ${isActive ? "bg-[#124bce] text-white shadow-[0_0_15px_rgba(18,75,206,0.4)] border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
+            <Link key={item.name} href={item.href} className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all font-medium text-sm ${isActive ? "bg-primer text-white shadow-[0_0_15px_rgba(18,75,206,0.4)] border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">{item.icon}</svg>
               {item.name}
             </Link>
@@ -162,7 +162,7 @@ return (
 
 
       <div className="p-4 border-t border-white/10">
-        <div className="bg-[#111111] border border-white/5 rounded-xl p-3 flex items-center justify-between shadow-inner">
+        <div className="bg-input border border-white/5 rounded-xl p-3 flex items-center justify-between shadow-inner">
           <div className="overflow-hidden pr-2 flex-1">
             <p className="text-sm font-bold text-white truncate">{userName}</p>
             <p className="text-[10px] text-gray-500 font-mono truncate">{userRole}</p>
@@ -189,13 +189,13 @@ return (
 
 
     {/* 📱 BOTTOM NAV MOBILE */}
-    <div className={`${isChatPage ? "hidden" : ""} md:hidden fixed bottom-0 left-0 right-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-t border-white/5 z-[100] px-3 py-2.5 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.8)]`}>
+    <div className={`${isChatPage ? "hidden" : ""} md:hidden fixed bottom-0 left-0 right-0 bg-latar/95 backdrop-blur-xl border-t border-white/5 z-[100] px-3 py-2.5 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.8)]`}>
       <div className="flex justify-between items-center gap-1">
         {navItems.filter((item: any) => (!item.hanyaManajer || isManager) && !(isManager && item.href === "/user/daily-task")).map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
-            <Link key={item.name} href={item.href} className={`relative flex flex-col items-center flex-1 gap-1 py-1 transition-colors duration-300 ${isActive ? "text-[#124bce]" : "text-gray-500 hover:text-gray-300"}`}>
-              <span className={`flex items-center justify-center w-10 h-9 rounded-2xl transition-all duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] ${isActive ? "bg-[#124bce]/15 -translate-y-1 scale-105" : "translate-y-0 scale-100"}`}>
+            <Link key={item.name} href={item.href} className={`relative flex flex-col items-center flex-1 gap-1 py-1 transition-colors duration-300 ${isActive ? "text-primer" : "text-gray-500 hover:text-gray-300"}`}>
+              <span className={`flex items-center justify-center w-10 h-9 rounded-2xl transition-all duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] ${isActive ? "bg-primer/15 -translate-y-1 scale-105" : "translate-y-0 scale-100"}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={isActive ? 2.5 : 2} stroke="currentColor" className="w-[20px] h-[20px]">{item.icon}</svg>
               </span>
               <span className={`text-[9px] font-bold tracking-wide transition-transform duration-300 ${isActive ? "-translate-y-0.5" : "translate-y-0"}`}>{(item as any).short || item.name}</span>
@@ -211,7 +211,7 @@ return (
     {/* 🔥 MODAL LOGOUT KUSTOM */}
     {showLogoutModal && (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-        <div className="bg-[#111111] border border-white/10 w-full max-w-sm rounded-3xl shadow-2xl p-8 relative flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+        <div className="bg-input border border-white/10 w-full max-w-sm rounded-3xl shadow-2xl p-8 relative flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
           <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-5 border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-7 h-7"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
           </div>

@@ -143,7 +143,7 @@ export default function DetailKaryawanPage() {
   return (
     <div className="max-w-[1400px] w-full flex flex-col gap-6 pb-10 font-sans">
       
-      <div className="flex justify-between items-center bg-[#141414] border border-white/5 p-4 rounded-2xl shadow-lg">
+      <div className="flex justify-between items-center p-4 shadow-lg relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
         <div className="flex items-center gap-4">
           <button onClick={() => router.push('/admin/karyawan')} className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
@@ -159,9 +159,9 @@ export default function DetailKaryawanPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         
         <div className="lg:col-span-1 flex flex-col gap-6">
-          <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 shadow-xl flex flex-col items-center text-center relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#2b5cd5]/10 rounded-full blur-3xl"></div>
-            <div className="w-24 h-24 rounded-full bg-[#2b5cd5] text-white flex items-center justify-center text-3xl font-black shadow-[0_0_20px_rgba(43,92,213,0.4)] mb-4 border-2 border-white/10 relative z-10">
+          <div className="p-6 flex flex-col items-center text-center relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primer-terang/10 rounded-full blur-3xl"></div>
+            <div className="w-24 h-24 rounded-full bg-primer-terang text-white flex items-center justify-center text-3xl font-black shadow-[0_0_20px_rgba(43,92,213,0.4)] mb-4 border-2 border-white/10 relative z-10">
               {employee.nama ? employee.nama.split(' ').map((n:any) => n[0]).join('').substring(0, 2).toUpperCase() : "NN"}
             </div>
             <h2 className="text-lg font-bold text-white relative z-10">{employee.nama}</h2>
@@ -171,12 +171,12 @@ export default function DetailKaryawanPage() {
             </span>
           </div>
 
-          <div className="bg-[#141414] border border-white/5 rounded-3xl p-4 shadow-xl flex flex-col gap-1">
+          <div className="p-4 flex flex-col gap-1 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
             {["Personal", "Kehadiran", "Keuangan", "Karir", "Payroll", "Dokumen"].map((menu) => (
               <button 
                 key={menu} 
                 onClick={() => setActiveSidebar(menu)}
-                className={`w-full text-left px-4 py-3 rounded-xl text-sm font-semibold transition-colors flex items-center gap-3 ${activeSidebar === menu ? "bg-[#2b5cd5]/10 text-[#2b5cd5] border border-[#2b5cd5]/20" : "text-gray-400 hover:bg-white/5 hover:text-white border border-transparent"}`}
+                className={`w-full text-left px-4 py-3 rounded-xl text-sm font-semibold transition-colors flex items-center gap-3 ${activeSidebar === menu ? "bg-primer-terang/10 text-primer-terang border border-primer-terang/20" : "text-gray-400 hover:bg-white/5 hover:text-white border border-transparent"}`}
               >
                 {menu === "Personal" && <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>}
                 {menu === "Kehadiran" && <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
@@ -195,13 +195,13 @@ export default function DetailKaryawanPage() {
           {activeSidebar === "Personal" && (
             <div className="flex flex-col gap-6 animate-in fade-in duration-300">
               <div className="flex gap-2 border-b border-white/5 pb-2">
-                <button onClick={() => setActiveTab("Personal")} className={`px-6 py-2 rounded-t-lg font-bold text-sm transition-colors border-b-2 ${activeTab === "Personal" ? "border-[#2b5cd5] text-[#2b5cd5]" : "border-transparent text-gray-500 hover:text-white"}`}>Personal</button>
-                <button onClick={() => setActiveTab("Kepegawaian")} className={`px-6 py-2 rounded-t-lg font-bold text-sm transition-colors border-b-2 ${activeTab === "Kepegawaian" ? "border-[#2b5cd5] text-[#2b5cd5]" : "border-transparent text-gray-500 hover:text-white"}`}>Kepegawaian</button>
+                <button onClick={() => setActiveTab("Personal")} className={`px-6 py-2 rounded-t-lg font-bold text-sm transition-colors border-b-2 ${activeTab === "Personal" ? "border-primer-terang text-primer-terang" : "border-transparent text-gray-500 hover:text-white"}`}>Personal</button>
+                <button onClick={() => setActiveTab("Kepegawaian")} className={`px-6 py-2 rounded-t-lg font-bold text-sm transition-colors border-b-2 ${activeTab === "Kepegawaian" ? "border-primer-terang text-primer-terang" : "border-transparent text-gray-500 hover:text-white"}`}>Kepegawaian</button>
               </div>
 
               {activeTab === "Personal" ? (
                 <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-                  <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 md:p-8 shadow-xl">
+                  <div className="p-6 md:p-8 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
                     <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4">Data Pribadi</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                       <InfoRow label="ID Karyawan" value={employee.idKaryawan} isMono />
@@ -214,7 +214,7 @@ export default function DetailKaryawanPage() {
                       <InfoRow label="Golongan Darah" value={employee.golonganDarah} />
                     </div>
                   </div>
-                  <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 md:p-8 shadow-xl">
+                  <div className="p-6 md:p-8 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
                     <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4">Data Kontak</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                       <InfoRow label="Nomor Ponsel (WhatsApp)" value={employee.noPonsel || "-"} isMono />
@@ -225,7 +225,7 @@ export default function DetailKaryawanPage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 md:p-8 shadow-xl animate-in fade-in duration-300">
+                <div className="p-6 md:p-8 animate-in fade-in duration-300 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
                   <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4">Informasi Kepegawaian</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                     <InfoRow label="Tanggal Bergabung" value={employee.tanggalBergabung} />
@@ -245,33 +245,33 @@ export default function DetailKaryawanPage() {
           {activeSidebar === "Kehadiran" && (
             <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <div className="bg-[#141414] border border-white/5 rounded-2xl p-5 shadow-lg border-l-4 border-l-green-500">
+                <div className="p-5 shadow-lg border-l-4 border-l-green-500 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
                   <p className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest">Total Hadir</p>
                   <p className="text-2xl font-black text-white">22 <span className="text-sm font-normal text-gray-400">Hari</span></p>
                 </div>
-                <div className="bg-[#141414] border border-white/5 rounded-2xl p-5 shadow-lg border-l-4 border-l-yellow-500">
+                <div className="p-5 shadow-lg border-l-4 border-l-yellow-500 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
                   <p className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest">Terlambat</p>
                   <p className="text-2xl font-black text-white">1 <span className="text-sm font-normal text-gray-400">Hari</span></p>
                 </div>
-                <div className="bg-[#141414] border border-white/5 rounded-2xl p-5 shadow-lg border-l-4 border-l-purple-500">
+                <div className="p-5 shadow-lg border-l-4 border-l-purple-500 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
                   <p className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest">Cuti Terpakai</p>
                   <p className="text-2xl font-black text-white">{12 - (employee.sisaCuti !== undefined ? employee.sisaCuti : 12)} <span className="text-sm font-normal text-gray-400">Hari</span></p>
                 </div>
-                <div className="bg-[#2b5cd5]/10 border border-[#2b5cd5]/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
-                  <div className="absolute -right-4 -top-4 w-16 h-16 bg-[#2b5cd5]/20 rounded-full blur-xl"></div>
-                  <p className="text-xs text-[#b3c5ff] font-bold mb-1 uppercase tracking-wide">Sisa Saldo Cuti</p>
+                <div className="bg-primer-terang/10 border border-primer-terang/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+                  <div className="absolute -right-4 -top-4 w-16 h-16 bg-primer-terang/20 rounded-full blur-xl"></div>
+                  <p className="text-xs text-tint font-bold mb-1 uppercase tracking-wide">Sisa Saldo Cuti</p>
                   <p className="text-2xl font-black text-white tabular-nums relative z-10">{employee.sisaCuti !== undefined ? employee.sisaCuti : 12} <span className="text-sm font-normal text-gray-400">Hari</span></p>
                 </div>
               </div>
               
-              <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 shadow-xl">
+              <div className="p-6 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
                 <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
                   <h3 className="text-lg font-bold text-white">Riwayat Absensi Bulan Ini</h3>
-                  <button className="text-xs font-bold bg-[#2b5cd5] hover:bg-blue-600 px-4 py-2 rounded-lg text-white transition-colors shadow-lg">Unduh Log PDF</button>
+                  <button className="text-xs font-bold bg-primer-terang hover:bg-blue-600 px-4 py-2 rounded-lg text-white transition-colors shadow-lg">Unduh Log PDF</button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm text-gray-300">
-                    <thead className="bg-[#1a1a1a] text-gray-400 text-[11px] uppercase tracking-wider">
+                    <thead className="bg-kartu-hover text-gray-400 text-[11px] uppercase tracking-wider">
                       <tr>
                         <th className="px-4 py-4 rounded-tl-lg font-semibold">Tanggal</th>
                         <th className="px-4 py-4 font-semibold text-center">Clock In</th>
@@ -300,17 +300,17 @@ export default function DetailKaryawanPage() {
           )}
 
           {activeSidebar === "Keuangan" && (
-            <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 md:p-8 shadow-xl animate-in fade-in slide-in-from-right-4 duration-300 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-[#2b5cd5]/10 rounded-full blur-3xl"></div>
+            <div className="p-6 md:p-8 animate-in fade-in slide-in-from-right-4 duration-300 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-primer-terang/10 rounded-full blur-3xl"></div>
               
               <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4 relative z-10">
                 <h3 className="text-lg font-bold text-white">Informasi Rekening Bank</h3>
-                <button onClick={() => setIsEditRekeningOpen(true)} className="text-xs bg-[#2b5cd5] hover:bg-blue-600 px-4 py-2 rounded-lg text-white font-bold transition-colors shadow-[0_0_15px_rgba(43,92,213,0.3)]">Edit Rekening</button>
+                <button onClick={() => setIsEditRekeningOpen(true)} className="text-xs bg-primer-terang hover:bg-blue-600 px-4 py-2 rounded-lg text-white font-bold transition-colors shadow-[0_0_15px_rgba(43,92,213,0.3)]">Edit Rekening</button>
               </div>
               
-              <div className="flex items-center gap-6 p-6 border border-white/10 rounded-2xl bg-gradient-to-br from-[#1c1c1c] to-[#141414] relative z-10">
-                <div className="w-16 h-16 rounded-xl bg-[#2b5cd5]/10 flex items-center justify-center border border-[#2b5cd5]/20">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-[#b3c5ff]"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5h16.5c.621 0 1.125.504 1.125 1.125v12.375c0 .621-.504 1.125-1.125 1.125H3.75a1.125 1.125 0 01-1.125-1.125V5.625C2.625 5.004 3.129 4.5 3.75 4.5z" /></svg>
+              <div className="flex items-center gap-6 p-6 border border-white/10 rounded-2xl bg-gradient-to-br from-input to-kartu relative z-10">
+                <div className="w-16 h-16 rounded-xl bg-primer-terang/10 flex items-center justify-center border border-primer-terang/20">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 text-tint"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5h16.5c.621 0 1.125.504 1.125 1.125v12.375c0 .621-.504 1.125-1.125 1.125H3.75a1.125 1.125 0 01-1.125-1.125V5.625C2.625 5.004 3.129 4.5 3.75 4.5z" /></svg>
                 </div>
                 <div>
                   <p className="text-sm text-gray-400 font-bold mb-1 uppercase tracking-wider">{employee.namaBank || "Belum diatur"}</p>
@@ -322,20 +322,20 @@ export default function DetailKaryawanPage() {
           )}
 
           {activeSidebar === "Karir" && (
-            <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 md:p-8 shadow-xl animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="p-6 md:p-8 animate-in fade-in slide-in-from-right-4 duration-300 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
               <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4">Riwayat Karir & Kontrak</h3>
               <div className="relative border-l border-white/10 ml-3 md:ml-4 space-y-8 pb-4">
                 <div className="relative pl-6">
-                  <div className="absolute left-[-5px] top-1 w-2.5 h-2.5 bg-[#2b5cd5] rounded-full ring-4 ring-[#141414]"></div>
+                  <div className="absolute left-[-5px] top-1 w-2.5 h-2.5 bg-primer-terang rounded-full ring-4 ring-kartu"></div>
                   <h4 className="text-white font-bold text-sm">Posisi Saat Ini</h4>
-                  <p className="text-lg text-[#b3c5ff] font-bold mt-1">{employee.jabatan}</p>
+                  <p className="text-lg text-tint font-bold mt-1">{employee.jabatan}</p>
                   <p className="text-xs text-gray-400 mt-1">{employee.tanggalBergabung} - Sekarang</p>
                   <span className={`inline-block mt-2 px-2 py-1 rounded text-[10px] font-bold tracking-wider ${employee.statusKaryawan === 'PKWT' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
                     {employee.statusKaryawan}
                   </span>
                 </div>
                 <div className="relative pl-6">
-                  <div className="absolute left-[-5px] top-1 w-2.5 h-2.5 bg-gray-600 rounded-full ring-4 ring-[#141414]"></div>
+                  <div className="absolute left-[-5px] top-1 w-2.5 h-2.5 bg-gray-600 rounded-full ring-4 ring-kartu"></div>
                   <h4 className="text-gray-400 font-bold text-sm">Bergabung dengan Invisual Studio</h4>
                   <p className="text-xs text-gray-500 mt-1">Sistem mencatat tanggal orientasi pertama karyawan pada {employee.tanggalBergabung}.</p>
                 </div>
@@ -345,8 +345,8 @@ export default function DetailKaryawanPage() {
 
           {activeSidebar === "Payroll" && (
             <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="bg-[#141414] border border-[#2b5cd5]/20 rounded-3xl p-6 md:p-8 shadow-[0_10px_30px_rgba(43,92,213,0.05)] relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-[#2b5cd5]/5 rounded-full blur-3xl"></div>
+              <div className="border border-primer-terang/20 p-6 md:p-8 shadow-[0_10px_30px_rgba(43,92,213,0.05)] relative overflow-hidden rounded-xl border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-primer-terang/5 rounded-full blur-3xl"></div>
                 <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4 relative z-10">Detail Kompensasi Aktif</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 relative z-10">
                   <InfoRow label="Gaji Pokok" value={`Rp ${employee.gajiPokok?.toLocaleString('id-ID')}`} isMono />
@@ -358,10 +358,10 @@ export default function DetailKaryawanPage() {
                 </div>
               </div>
               
-              <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 shadow-xl">
+              <div className="p-6 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
                 <h3 className="text-sm font-bold text-white mb-4">Riwayat Slip Gaji Terbaru</h3>
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between p-4 border border-white/5 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
+                  <div className="flex items-center justify-between p-4 border border-white/10 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
@@ -371,7 +371,7 @@ export default function DetailKaryawanPage() {
                         <p className="text-xs text-gray-500">Diterbitkan pada 28 Mei 2026</p>
                       </div>
                     </div>
-                    <button className="text-[#2b5cd5] group-hover:text-blue-400 font-bold text-xs transition-colors flex items-center gap-1">
+                    <button className="text-primer-terang group-hover:text-blue-400 font-bold text-xs transition-colors flex items-center gap-1">
                       Unduh PDF
                     </button>
                   </div>
@@ -381,25 +381,25 @@ export default function DetailKaryawanPage() {
           )}
 
           {activeSidebar === "Dokumen" && (
-            <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 md:p-8 shadow-xl animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="p-6 md:p-8 animate-in fade-in slide-in-from-right-4 duration-300 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
               <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
                 <div>
                   <h3 className="text-lg font-bold text-white">Brankas Dokumen (E-Filing)</h3>
                   <p className="text-xs text-gray-400 mt-1">Arsip digital KTP, NPWP, dan Kontrak terenkripsi aman di cloud Supabase.</p>
                 </div>
-                <button onClick={() => setIsUploadModalOpen(true)} className="text-xs bg-[#2b5cd5] hover:bg-blue-600 px-4 py-2.5 rounded-lg text-white font-bold transition-colors shadow-[0_0_15px_rgba(43,92,213,0.3)] flex items-center gap-2">
+                <button onClick={() => setIsUploadModalOpen(true)} className="text-xs bg-primer-terang hover:bg-blue-600 px-4 py-2.5 rounded-lg text-white font-bold transition-colors shadow-[0_0_15px_rgba(43,92,213,0.3)] flex items-center gap-2">
                   Unggah Dokumen
                 </button>
               </div>
 
               {(!employee.dokumen || employee.dokumen.length === 0) ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center bg-[#1a1a1a] border border-white/5 rounded-2xl border-dashed">
+                <div className="flex flex-col items-center justify-center py-12 text-center border-dashed relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
                   <p className="text-gray-400 font-semibold">Belum ada dokumen yang diarsipkan di server Supabase.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {employee.dokumen.map((doc: any) => (
-                    <div key={doc.id} className="bg-[#1c1c1c] border border-white/5 rounded-xl p-4 flex items-center justify-between group hover:border-[#2b5cd5]/30 transition-colors">
+                    <div key={doc.id} className="bg-input border border-white/10 rounded-xl p-4 flex items-center justify-between group hover:border-primer-terang/30 transition-colors">
                       <div className="flex items-center gap-3 overflow-hidden">
                         <div className="w-12 h-12 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 font-bold text-xs">DOC</div>
                         <div className="min-w-0">
@@ -428,12 +428,12 @@ export default function DetailKaryawanPage() {
 
       {isEditRekeningOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
-          <div className="bg-[#141414] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden p-6 animate-in zoom-in-95 duration-200">
+          <div className="bg-kartu border border-white/10 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden p-6 animate-in zoom-in-95 duration-200">
             <h2 className="text-xl font-bold text-white mb-1">Perbarui Rekening Bank</h2>
             <form onSubmit={handleSaveRekening} className="space-y-4 mt-6">
               <div>
                 <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wide">Nama Bank</label>
-                <select value={bankName} onChange={(e) => setBankName(e.target.value)} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#2b5cd5] outline-none">
+                <select value={bankName} onChange={(e) => setBankName(e.target.value)} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primer-terang outline-none">
                   <option value="Bank BCA">Bank BCA</option>
                   <option value="Bank Mandiri">Bank Mandiri</option>
                   <option value="Bank BNI">Bank BNI</option>
@@ -442,12 +442,12 @@ export default function DetailKaryawanPage() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wide">Nomor Rekening</label>
-                <input type="text" required value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#2b5cd5] outline-none font-mono" />
+                <input type="text" required value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primer-terang outline-none font-mono" />
               </div>
               
               <div className="pt-4 flex gap-3 justify-end mt-6">
                 <button type="button" onClick={() => setIsEditRekeningOpen(false)} className="px-5 py-2 text-sm font-bold text-gray-300 border border-white/10 rounded-lg">Batal</button>
-                <button type="submit" className="px-5 py-2 text-sm font-bold text-white bg-[#2b5cd5] rounded-lg shadow-lg">Simpan</button>
+                <button type="submit" className="px-5 py-2 text-sm font-bold text-white bg-primer-terang rounded-lg shadow-lg">Simpan</button>
               </div>
             </form>
           </div>
@@ -457,12 +457,12 @@ export default function DetailKaryawanPage() {
       {/* MODAL UNGGAH DOKUMEN DIGITAL (DENGAN TOMBOL UPLOAD ASLI) */}
       {isUploadModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
-          <div className="bg-[#141414] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden p-6 animate-in zoom-in-95 duration-200">
+          <div className="bg-kartu border border-white/10 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden p-6 animate-in zoom-in-95 duration-200">
             <h2 className="text-xl font-bold text-white mb-1">Unggah Dokumen Baru</h2>
             <form onSubmit={handleUploadDocument} className="space-y-4 mt-6">
               <div>
                 <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wide">Jenis Dokumen</label>
-                <select value={docTitle} onChange={(e) => setDocTitle(e.target.value)} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#2b5cd5] outline-none">
+                <select value={docTitle} onChange={(e) => setDocTitle(e.target.value)} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primer-terang outline-none">
                   <option value="Scan KTP Asli">Scan KTP Asli</option>
                   <option value="Scan NPWP">Scan NPWP</option>
                   <option value="Kontrak Kerja (PKWT)">Kontrak Kerja (PKWT)</option>
@@ -485,11 +485,11 @@ export default function DetailKaryawanPage() {
                   />
                   
                   {/* Ini adalah desain visualnya */}
-                  <div className="w-full bg-[#1c1c1c] border border-white/10 border-dashed hover:border-[#2b5cd5] rounded-lg px-4 py-6 text-center transition-colors relative">
+                  <div className="w-full bg-input border border-white/10 border-dashed hover:border-primer-terang rounded-lg px-4 py-6 text-center transition-colors relative">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mx-auto text-gray-500 mb-2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
                     </svg>
-                    <span className="text-sm font-bold text-[#2b5cd5]">
+                    <span className="text-sm font-bold text-primer-terang">
                       {docFileName ? docFileName : "Klik atau seret berkas ke sini"}
                     </span>
                     {!docFileName && (
@@ -501,7 +501,7 @@ export default function DetailKaryawanPage() {
               
               <div className="pt-4 flex gap-3 justify-end mt-6">
                 <button type="button" onClick={() => {setIsUploadModalOpen(false); setDocFileName("");}} className="px-5 py-2 text-sm font-bold text-gray-300 border border-white/10 rounded-lg">Batal</button>
-                <button type="submit" disabled={!docFileName} className="px-5 py-2 text-sm font-bold text-white bg-[#2b5cd5] rounded-lg shadow-lg disabled:opacity-50">Simpan Arsip</button>
+                <button type="submit" disabled={!docFileName} className="px-5 py-2 text-sm font-bold text-white bg-primer-terang rounded-lg shadow-lg disabled:opacity-50">Simpan Arsip</button>
               </div>
             </form>
           </div>

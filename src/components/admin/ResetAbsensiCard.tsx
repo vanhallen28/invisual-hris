@@ -107,7 +107,7 @@ export function ResetAbsensiCard() {
             const isAll = r.key === "all";
             const activeCls = isAll
               ? "border-red-500/40 bg-red-500/10"
-              : "border-[#124bce] bg-[#124bce]/10";
+              : "border-primer bg-primer/10";
             return (
               <button
                 key={r.key}
@@ -154,7 +154,7 @@ export function ResetAbsensiCard() {
           onClick={() => setModalOpen(false)}
         >
           <div
-            className="w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] shadow-2xl"
+            className="bg-kartu border border-white/10 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
@@ -184,7 +184,7 @@ export function ResetAbsensiCard() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Masukkan password untuk eksekusi"
-                    className="h-9 w-full rounded-lg border border-white/10 bg-[#1c1c1c] pl-9 pr-3 text-sm text-white placeholder-gray-500 outline-none focus:border-[#124bce]"
+                    className="h-9 w-full rounded-lg border border-white/10 bg-input pl-9 pr-3 text-sm text-white placeholder-gray-500 outline-none focus:border-primer"
                   />
                 </div>
               </div>

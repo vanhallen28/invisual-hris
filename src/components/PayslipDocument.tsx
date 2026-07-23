@@ -20,7 +20,7 @@ export default function PayslipDocument({ slip, monthName }: { slip: any; monthN
           <p className="text-[10px] text-gray-400 font-medium">Periode: {monthName}</p>
         </div>
         <div className="text-right">
-          <h1 className="text-xl font-black text-[#2b5cd5] uppercase tracking-widest">Payslip</h1>
+          <h1 className="text-xl font-black text-primer-terang uppercase tracking-widest">Payslip</h1>
           <p className="text-xs text-gray-500 font-mono mt-0.5">DOC-{slip.idKaryawan}</p>
         </div>
       </div>
@@ -88,7 +88,7 @@ export default function PayslipDocument({ slip, monthName }: { slip: any; monthN
       </div>
 
       {/* THP */}
-      <div className="bg-[#2b5cd5] text-white p-4 rounded-xl flex justify-between items-center shadow-md mb-5">
+      <div className="bg-primer-terang text-white p-4 rounded-xl flex justify-between items-center shadow-md mb-5">
         <div>
           <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest">Take Home Pay</p>
           <p className="text-[9px] text-blue-300 mt-0.5">Total bersih ditransfer ke rekening di atas.</p>

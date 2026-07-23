@@ -279,8 +279,8 @@ export default function UserDashboardPage() {
 
       {/* HEADER TANGGAL */}
       <div className="flex justify-end mb-1 md:mb-2">
-        <div className="bg-[#15121A] border border-white/5 px-4 py-2.5 rounded-xl flex items-center gap-3 shadow-lg">
-          <span className="w-2 h-2 bg-[#de236e] rounded-full animate-pulse"></span>
+        <div className="bg-kartu border border-white/5 px-4 py-2.5 rounded-xl flex items-center gap-3 shadow-lg">
+          <span className="w-2 h-2 bg-magenta rounded-full animate-pulse"></span>
           <p className="text-xs font-bold text-white tracking-wide">{todayDate}</p>
         </div>
       </div>
@@ -296,8 +296,8 @@ export default function UserDashboardPage() {
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span> Selesai
               </span>
             ) : todayAttendance?.waktuMasuk ? (
-              <span className="text-[8px] md:text-[10px] bg-blue-500/10 text-[#b3c5ff] px-2 md:px-3 py-1 rounded-full border border-[#124bce]/30 uppercase tracking-widest flex items-center gap-1 shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#124bce] animate-pulse"></span> On Duty
+              <span className="text-[8px] md:text-[10px] bg-blue-500/10 text-tint px-2 md:px-3 py-1 rounded-full border border-primer/30 uppercase tracking-widest flex items-center gap-1 shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-primer animate-pulse"></span> On Duty
               </span>
             ) : (
               <span className="text-[8px] md:text-[10px] bg-yellow-500/10 text-yellow-400 px-2 md:px-3 py-1 rounded-full border border-yellow-500/20 uppercase tracking-widest flex items-center gap-1 shrink-0">
@@ -332,7 +332,7 @@ export default function UserDashboardPage() {
               <>
                 <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover scale-x-[-1] transition-opacity duration-300 ${cameraOn ? "opacity-100" : "opacity-0"}`} />
                 {!cameraOn && !capturedPhoto && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 bg-[#050404]">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 bg-latar">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 md:w-10 md:h-10 text-gray-600 mb-2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /><path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" /></svg>
                     <p className="text-gray-500 text-[10px] md:text-xs font-bold">Kamera Nonaktif</p>
                     <p className="text-gray-700 text-[8px] md:text-[10px] mt-0.5">{isAttendanceComplete ? "Absensi hari ini sudah selesai" : `Tekan ${!todayAttendance ? "Clock In" : "Clock Out"} untuk mulai absen`}</p>
@@ -369,7 +369,7 @@ export default function UserDashboardPage() {
                 <button
                   onClick={captureMode === "in" ? handleClockIn : handleClockOut}
                   disabled={isActionLoading || !cameraOn}
-                  className={`flex-1 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 disabled:opacity-50 text-xs md:text-sm ${captureMode === "in" ? "bg-[#124bce] hover:bg-blue-600" : "bg-[#de236e] hover:bg-[#c51f60]"}`}
+                  className={`flex-1 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 disabled:opacity-50 text-xs md:text-sm ${captureMode === "in" ? "bg-primer hover:bg-blue-600" : "bg-magenta hover:bg-magenta"}`}
                 >
                   {isActionLoading ? (<><LoadingLogo size={20} withRing={false} /> Menyimpan Wajah...</>) : (<>📸 Absen Sekarang</>)}
                 </button>
@@ -378,11 +378,11 @@ export default function UserDashboardPage() {
                 </button>
               </div>
             ) : !todayAttendance ? (
-              <button onClick={() => startCapture("in")} className="w-full bg-[#124bce] hover:bg-blue-600 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
+              <button onClick={() => startCapture("in")} className="w-full bg-primer hover:bg-blue-600 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
                 📸 CLOCK IN SEKARANG
               </button>
             ) : (
-              <button onClick={() => startCapture("out")} className="w-full bg-[#de236e]/10 hover:bg-[#de236e] text-[#e85a92] hover:text-white border border-[#de236e]/30 font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
+              <button onClick={() => startCapture("out")} className="w-full bg-magenta/10 hover:bg-magenta text-magenta hover:text-white border border-magenta/30 font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
                 📸 CLOCK OUT (PULANG)
               </button>
             )}
@@ -396,7 +396,7 @@ export default function UserDashboardPage() {
             <h3 className="text-[10px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-widest truncate">Catatan Hari Ini</h3>
             <div className="grid grid-cols-2 gap-3 md:gap-4">
               <div className="bg-white/[0.04] p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5 relative overflow-hidden mo-lift">
-                <div className="absolute right-0 top-0 w-8 h-8 md:w-12 md:h-12 bg-[#124bce]/10 rounded-bl-full"></div>
+                <div className="absolute right-0 top-0 w-8 h-8 md:w-12 md:h-12 bg-primer/10 rounded-bl-full"></div>
                 <p className="text-[9px] md:text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-wider md:tracking-widest relative z-10 truncate">Masuk</p>
                 <p className="text-lg md:text-2xl font-mono font-bold text-white relative z-10 truncate">{todayAttendance?.waktuMasuk || "--:--"}</p>
                 {todayAttendance?.status && (
@@ -406,7 +406,7 @@ export default function UserDashboardPage() {
                 )}
               </div>
               <div className="bg-white/[0.04] p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5 relative overflow-hidden mo-lift">
-                <div className="absolute right-0 top-0 w-8 h-8 md:w-12 md:h-12 bg-[#de236e]/10 rounded-bl-full"></div>
+                <div className="absolute right-0 top-0 w-8 h-8 md:w-12 md:h-12 bg-magenta/10 rounded-bl-full"></div>
                 <p className="text-[9px] md:text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-wider md:tracking-widest relative z-10 truncate">Pulang</p>
                 <p className="text-lg md:text-2xl font-mono font-bold text-white relative z-10 truncate">{todayAttendance?.waktuKeluar || "--:--"}</p>
               </div>
@@ -417,7 +417,7 @@ export default function UserDashboardPage() {
           <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} col-span-2 lg:col-start-3 lg:row-start-2 p-4 md:p-5 flex flex-col`}>
             <h3 className="text-[10px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-widest flex justify-between items-center gap-2">
               <span>Tugas Saya</span>
-              <a href="/user/daily-task" className="text-[9px] md:text-[10px] font-bold text-[#b3c5ff] hover:text-white bg-[#124bce]/15 hover:bg-[#124bce] border border-[#124bce]/30 px-2.5 py-1 rounded-lg transition-colors normal-case tracking-normal">Buka Daily Task</a>
+              <a href="/user/daily-task" className="text-[9px] md:text-[10px] font-bold text-tint hover:text-white bg-primer/15 hover:bg-primer border border-primer/30 px-2.5 py-1 rounded-lg transition-colors normal-case tracking-normal">Buka Daily Task</a>
             </h3>
             <div className="flex-1 space-y-2.5 md:space-y-3 overflow-y-auto max-h-40 custom-scrollbar pr-1">
               {myTasks.length === 0 ? (
@@ -431,7 +431,7 @@ export default function UserDashboardPage() {
                         {t.publish_at ? new Date(t.publish_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "Belum dijadwalkan"}
                       </p>
                     </div>
-                    <span className="shrink-0 text-[7px] md:text-[9px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase bg-[#124bce]/15 text-[#b3c5ff] border border-[#124bce]/25">
+                    <span className="shrink-0 text-[7px] md:text-[9px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase bg-primer/15 text-tint border border-primer/25">
                       {t.status || "Brief"}
                     </span>
                   </div>

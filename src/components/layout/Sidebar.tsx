@@ -17,7 +17,7 @@ export default function Sidebar() {
 
   return (
     // Sidebar dengan warna latar gelap solid dan garis batas halus
-    <aside className="w-64 bg-[#141414] border-r border-white/5 p-6 flex flex-col hidden md:flex">
+    <aside className="w-64 bg-kartu border-r border-white/5 p-6 flex flex-col hidden md:flex">
       <nav className="flex flex-col gap-2">
         {menuItems.map((item) => {
           const isActive = pathname === item.path;
@@ -27,7 +27,7 @@ export default function Sidebar() {
               href={item.path}
               className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 ${
                 isActive
-                  ? "bg-[#2b5cd5] text-white shadow-[0_0_15px_rgba(43,92,213,0.2)] font-semibold"
+                  ? "bg-primer-terang text-white shadow-[0_0_15px_rgba(43,92,213,0.2)] font-semibold"
                   : "text-gray-400 hover:text-white hover:bg-white/5 font-medium"
               }`}
             >

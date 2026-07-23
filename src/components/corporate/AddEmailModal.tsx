@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import type { EmailAccount } from "@/lib/corporate/types";
 
 const inputCls =
-  "h-9 w-full rounded-lg border border-white/10 bg-[#1c1c1c] px-3 text-sm text-white placeholder-gray-500 outline-none focus:border-[#124bce]";
+  "h-9 w-full rounded-lg border border-white/10 bg-input px-3 text-sm text-white placeholder-gray-500 outline-none focus:border-primer";
 
 /**
  * Form tambah/edit AKUN EMAIL (alamat email + password). Untuk brankas
@@ -87,7 +87,7 @@ export function AddEmailModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] shadow-2xl"
+        className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-kartu shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-white/10 px-5 py-3.5">
@@ -179,7 +179,7 @@ export function AddEmailModal({
             <button
               type="submit"
               disabled={saving}
-              className="flex h-9 items-center gap-2 rounded-lg bg-[#124bce] px-4 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+              className="flex h-9 items-center gap-2 rounded-lg bg-primer px-4 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
             >
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {isEdit ? "Simpan perubahan" : "Simpan"}

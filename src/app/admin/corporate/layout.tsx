@@ -51,7 +51,7 @@ export default function CorporateLayout({ children }: { children: React.ReactNod
               className={cn(
                 "inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors",
                 active
-                  ? "bg-[#124bce] text-white"
+                  ? "bg-primer text-white"
                   : "text-gray-400 hover:bg-white/5 hover:text-white",
               )}
             >

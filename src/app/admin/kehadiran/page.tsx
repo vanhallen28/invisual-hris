@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import LeaveCalendar from "@/components/LeaveCalendar";
+import { rapikanNama, namaResmi } from "@/lib/nama";
 import { supabase } from "@/lib/supabase";
 import { excludeOwners } from "@/lib/owners";
 
@@ -107,7 +108,7 @@ export default function AdminKehadiranPage() {
         dataHarian.push(iso < todayISO ? "Alpa" : "-");                           // hari depan dibiarkan kosong
       }
 
-      return { id: emp.idKaryawan, nama: emp.nama, divisi: emp.jabatan || emp.organisasi || "-", dataHarian };
+      return { id: emp.idKaryawan, nama: rapikanNama(emp.nama), divisi: emp.jabatan || emp.organisasi || "-", dataHarian };
     });
   }, [employees, attendance, leaves, year, monthIdx, daysInMonth, todayISO]);
 
@@ -139,7 +140,7 @@ export default function AdminKehadiranPage() {
     const count: Record<string, number> = {};
     attendance.forEach((a) => { if (a.status === "Terlambat") count[a.idKaryawan] = (count[a.idKaryawan] || 0) + 1; });
     return employees
-      .map((e) => ({ nama: e.nama, totalTelat: count[e.idKaryawan] || 0 }))
+      .map((e) => ({ nama: rapikanNama(e.nama), totalTelat: count[e.idKaryawan] || 0 }))
       .filter((x) => x.totalTelat > 0)
       .sort((a, b) => b.totalTelat - a.totalTelat)
       .slice(0, 5);
@@ -153,7 +154,7 @@ export default function AdminKehadiranPage() {
       else hadir[a.idKaryawan] = (hadir[a.idKaryawan] || 0) + 1;
     });
     return employees
-      .map((e) => ({ nama: e.nama, hadir: hadir[e.idKaryawan] || 0, telat: telat[e.idKaryawan] || 0 }))
+      .map((e) => ({ nama: rapikanNama(e.nama), hadir: hadir[e.idKaryawan] || 0, telat: telat[e.idKaryawan] || 0 }))
       .filter((x) => x.telat === 0 && x.hadir > 0)
       .sort((a, b) => b.hadir - a.hadir)
       .slice(0, 5);
@@ -203,7 +204,7 @@ export default function AdminKehadiranPage() {
         <select
           value={selectedYM}
           onChange={(e) => setSelectedYM(e.target.value)}
-          className="bg-[#1c1c1c] border border-white/10 rounded-xl px-5 py-3 text-sm text-white focus:outline-none focus:border-[#2b5cd5] font-bold shadow-lg cursor-pointer"
+          className="bg-input border border-white/10 rounded-xl px-5 py-3 text-sm text-white focus:outline-none focus:border-primer-terang font-bold shadow-lg cursor-pointer"
         >
           {monthOptions.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
@@ -217,7 +218,7 @@ export default function AdminKehadiranPage() {
           { label: "Izin / Cuti / WFH", value: summary.izin, color: "text-purple-400", bar: "bg-purple-500" },
           { label: "Alpa", value: summary.alpa, color: "text-red-400", bar: "bg-red-500" },
         ].map((s) => (
-          <div key={s.label} className="bg-[#141414] border border-white/5 rounded-2xl p-5 relative overflow-hidden">
+          <div key={s.label} className="p-5 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
             <div className={`absolute left-0 top-0 h-full w-1 ${s.bar}`} />
             <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">{s.label}</p>
             <p className={`text-2xl font-black ${s.color}`}>{isLoading ? "–" : s.value}<span className="text-xs text-gray-600 font-bold ml-1">hari</span></p>
@@ -225,12 +226,10 @@ export default function AdminKehadiranPage() {
         ))}
       </div>
 
-      <LeaveCalendar />
-
       {/* SMART ANOMALY CENTER — data nyata */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 shadow-xl relative overflow-hidden group hover:border-yellow-500/30 transition-all">
+        <div className="p-6 relative overflow-hidden group hover:border-yellow-500/30 transition-all rounded-xl border border-white/10 bg-white/[0.03] duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
           <div className="absolute -right-10 -top-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl"></div>
           <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4 relative z-10">
             <div className="w-10 h-10 rounded-full bg-yellow-500/10 text-yellow-500 flex items-center justify-center">
@@ -244,7 +243,7 @@ export default function AdminKehadiranPage() {
             ) : seringTelat.length === 0 ? (
               <p className="text-xs text-gray-600">Tidak ada keterlambatan bulan ini. 🎉</p>
             ) : seringTelat.map((emp: any, idx: number) => (
-              <div key={idx} className="flex justify-between items-center bg-[#1a1a1a] p-3 rounded-xl border border-white/5">
+              <div key={idx} className="flex justify-between items-center bg-kartu-hover p-3 rounded-xl border border-white/10">
                 <span className="text-sm font-semibold text-gray-200 truncate mr-2">{emp.nama}</span>
                 <span className="bg-yellow-500/20 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-500/20 shrink-0">{emp.totalTelat}x Telat</span>
               </div>
@@ -252,7 +251,7 @@ export default function AdminKehadiranPage() {
           </div>
         </div>
 
-        <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 shadow-xl relative overflow-hidden group hover:border-red-500/30 transition-all">
+        <div className="p-6 relative overflow-hidden group hover:border-red-500/30 transition-all rounded-xl border border-white/10 bg-white/[0.03] duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
           <div className="absolute -right-10 -top-10 w-32 h-32 bg-red-500/10 rounded-full blur-3xl"></div>
           <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4 relative z-10">
             <div className="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center">
@@ -268,15 +267,15 @@ export default function AdminKehadiranPage() {
             ) : lupaClockOut.map((row: any, idx: number) => {
               const key = row.id || `${row.idKaryawan}|${row.tanggal}`;
               return (
-                <div key={idx} className="flex justify-between items-center bg-[#1a1a1a] p-3 rounded-xl border border-white/5 gap-2">
+                <div key={idx} className="flex justify-between items-center bg-kartu-hover p-3 rounded-xl border border-white/10 gap-2">
                   <div className="min-w-0">
-                    <span className="text-sm font-semibold text-gray-200 block truncate">{row.nama}</span>
+                    <span className="text-sm font-semibold text-gray-200 block truncate">{namaResmi(row.idKaryawan, employees, row.nama)}</span>
                     <span className="text-[10px] text-gray-500">{row.tanggal} · Masuk {row.waktuMasuk || "-"}</span>
                   </div>
                   <button
                     onClick={() => closeSession(row)}
                     disabled={closingId === key}
-                    className="text-[10px] font-bold text-[#2b5cd5] hover:text-white bg-[#2b5cd5]/10 hover:bg-[#2b5cd5] px-3 py-1.5 rounded transition-colors shrink-0 disabled:opacity-40"
+                    className="text-[10px] font-bold text-primer-terang hover:text-white bg-primer-terang/10 hover:bg-primer-terang px-3 py-1.5 rounded transition-colors shrink-0 disabled:opacity-40"
                   >
                     {closingId === key ? "…" : "Tutup Sesi"}
                   </button>
@@ -286,7 +285,7 @@ export default function AdminKehadiranPage() {
           </div>
         </div>
 
-        <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 shadow-xl relative overflow-hidden group hover:border-green-500/30 transition-all">
+        <div className="p-6 relative overflow-hidden group hover:border-green-500/30 transition-all rounded-xl border border-white/10 bg-white/[0.03] duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
           <div className="absolute -right-10 -top-10 w-32 h-32 bg-green-500/10 rounded-full blur-3xl"></div>
           <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4 relative z-10">
             <div className="w-10 h-10 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center">
@@ -300,7 +299,7 @@ export default function AdminKehadiranPage() {
             ) : palingDisiplin.length === 0 ? (
               <p className="text-xs text-gray-600">Belum ada data absensi bulan ini.</p>
             ) : palingDisiplin.map((emp: any, idx: number) => (
-              <div key={idx} className="flex justify-between items-center bg-[#1a1a1a] p-3 rounded-xl border border-white/5 gap-2">
+              <div key={idx} className="flex justify-between items-center bg-kartu-hover p-3 rounded-xl border border-white/10 gap-2">
                 <span className="text-sm font-semibold text-gray-200 truncate">{emp.nama}</span>
                 <span className="bg-green-500/20 text-green-400 text-xs font-bold px-2 py-1 rounded border border-green-500/20 shrink-0">{emp.hadir} hari tepat waktu</span>
               </div>
@@ -310,11 +309,13 @@ export default function AdminKehadiranPage() {
 
       </div>
 
+      <LeaveCalendar />
+
       {/* TIMESHEET HEATMAP — data nyata */}
-      <div className="bg-[#141414] border border-white/5 rounded-3xl shadow-2xl flex flex-col overflow-hidden relative">
-        <div className="p-6 border-b border-white/5 bg-[#1a1a1a] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col overflow-hidden relative rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
+        <div className="p-6 border-b border-white/5 bg-kartu-hover flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div><h2 className="font-bold text-white text-lg">Timesheet Heatmap</h2><p className="text-xs text-gray-400 mt-1">Matriks kehadiran harian — {monthLabel}.</p></div>
-          <div className="flex flex-wrap gap-3 md:gap-4 bg-[#0a0a0a] p-3 rounded-xl border border-white/5">
+          <div className="flex flex-wrap gap-3 md:gap-4 bg-latar p-3 rounded-xl border border-white/10">
             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-green-500"></div><span className="text-[10px] text-gray-400 font-bold uppercase">Hadir</span></div>
             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-yellow-500"></div><span className="text-[10px] text-gray-400 font-bold uppercase">Telat</span></div>
             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-blue-500"></div><span className="text-[10px] text-gray-400 font-bold uppercase">WFH/WFC</span></div>
@@ -325,9 +326,9 @@ export default function AdminKehadiranPage() {
 
         <div className="overflow-x-auto custom-scrollbar pb-4">
           <table className="w-full text-left border-collapse min-w-[1000px]">
-            <thead className="bg-[#0f0f0f] border-b border-white/5">
+            <thead className="bg-latar border-b border-white/5">
               <tr>
-                <th className="px-6 py-4 font-semibold text-xs text-gray-400 uppercase tracking-widest sticky left-0 bg-[#0f0f0f] z-20 shadow-[5px_0_10px_rgba(0,0,0,0.3)] w-64 border-r border-white/5">Karyawan</th>
+                <th className="px-6 py-4 font-semibold text-xs text-gray-400 uppercase tracking-widest sticky left-0 bg-latar z-20 shadow-[5px_0_10px_rgba(0,0,0,0.3)] w-64 border-r border-white/5">Karyawan</th>
                 {Array.from({ length: daysInMonth }).map((_, i) => (
                   <th key={i} className="px-2 py-4 font-semibold text-[10px] text-gray-500 text-center border-l border-white/5">{i + 1}</th>
                 ))}
@@ -341,7 +342,7 @@ export default function AdminKehadiranPage() {
               ) : (
                 heatmapData.map((emp) => (
                   <tr key={emp.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="px-6 py-4 sticky left-0 bg-[#141414] z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5">
+                    <td className="px-6 py-4 sticky left-0 bg-kartu z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5">
                       <p className="font-bold text-white text-sm truncate max-w-[200px]">{emp.nama}</p>
                       <p className="text-[10px] text-gray-500">{emp.divisi}</p>
                     </td>

@@ -52,7 +52,7 @@ export function FilePreviewModal({
     >
       {/* Header */}
       <div
-        className="flex shrink-0 items-center gap-3 border-b border-white/10 bg-[#0f0f0f] px-4 py-3"
+        className="flex shrink-0 items-center gap-3 border-b border-white/10 bg-latar px-4 py-3"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="min-w-0 flex-1">
@@ -70,7 +70,7 @@ export function FilePreviewModal({
           <a
             href={url}
             download={file.file_name}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#124bce] px-3 py-1.5 text-xs font-bold text-white hover:opacity-90"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primer px-3 py-1.5 text-xs font-bold text-white hover:opacity-90"
           >
             <Download className="h-3.5 w-3.5" /> Unduh
           </a>
@@ -116,7 +116,7 @@ export function FilePreviewModal({
 
 function FallbackNote({ text }: { text: string }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl bg-[#0f0f0f] border border-white/10 px-8 py-10 text-center">
+    <div className="flex flex-col items-center gap-3 rounded-xl bg-latar border border-white/10 px-8 py-10 text-center">
       <FileWarning className="h-10 w-10 text-gray-500" />
       <p className="max-w-xs text-sm text-gray-400">{text}</p>
     </div>

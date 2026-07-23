@@ -19,7 +19,7 @@ function Stars({ value, onChange, readOnly }: any) {
           type="button"
           disabled={readOnly}
           onClick={() => onChange?.(n)}
-          className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold transition-all ${n <= value ? "bg-[#124bce] text-white" : "bg-white/5 text-gray-600"} ${readOnly ? "cursor-default" : "hover:scale-110 active:scale-90"}`}
+          className={`w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold transition-all ${n <= value ? "bg-primer text-white" : "bg-white/5 text-gray-600"} ${readOnly ? "cursor-default" : "hover:scale-110 active:scale-90"}`}
         >
           {n}
         </button>
@@ -31,9 +31,9 @@ function Stars({ value, onChange, readOnly }: any) {
 // Warna & label berdasarkan skor (0-100)
 function grade(rate: number) {
   if (rate >= 95) return { label: "Sangat Baik", color: "#4ADE80", bg: "bg-green-500/10" };
-  if (rate >= 85) return { label: "Baik", color: "#8ba7ff", bg: "bg-[#124bce]/10" };
+  if (rate >= 85) return { label: "Baik", color: "#8ba7ff", bg: "bg-primer/10" };
   if (rate >= 70) return { label: "Cukup", color: "#F5A623", bg: "bg-yellow-500/10" };
-  return { label: "Perlu Perhatian", color: "#f480b0", bg: "bg-[#de236e]/10" };
+  return { label: "Perlu Perhatian", color: "#f480b0", bg: "bg-magenta/10" };
 }
 
 export default function PerformancePanel({ idKaryawan, editable = false }: any) {
@@ -112,10 +112,10 @@ export default function PerformancePanel({ idKaryawan, editable = false }: any) 
   const g = perf ? grade(perf.rate) : null;
 
   return (
-    <div className="bg-[#15121A] border border-white/5 rounded-3xl p-5 md:p-6 shadow-xl">
+    <div className="p-5 md:p-6 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
       <div className="flex items-center gap-2 mb-5">
-        <div className="w-8 h-8 rounded-lg bg-[#124bce]/10 flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-[#8ba7ff]"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
+        <div className="w-8 h-8 rounded-lg bg-primer/10 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-tint-redup"><path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" /></svg>
         </div>
         <h2 className="text-base md:text-lg font-bold text-white tracking-wide">Performa &amp; Penilaian Kinerja</h2>
       </div>
@@ -128,16 +128,16 @@ export default function PerformancePanel({ idKaryawan, editable = false }: any) 
           <div>
             <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Performa 30 Hari Terakhir</p>
             <div className="grid grid-cols-3 gap-2.5 mb-3">
-              <div className="bg-[#1C1823] rounded-xl p-3 text-center">
+              <div className="bg-kartu rounded-xl p-3 text-center">
                 <p className="text-xl font-bold text-white">{perf?.hadir ?? 0}</p>
                 <p className="text-[9px] text-gray-500 mt-0.5 uppercase">Hadir</p>
               </div>
-              <div className="bg-[#1C1823] rounded-xl p-3 text-center">
+              <div className="bg-kartu rounded-xl p-3 text-center">
                 <p className="text-xl font-bold text-green-400">{perf?.tepat ?? 0}</p>
                 <p className="text-[9px] text-gray-500 mt-0.5 uppercase">Tepat Waktu</p>
               </div>
-              <div className="bg-[#1C1823] rounded-xl p-3 text-center">
-                <p className="text-xl font-bold text-[#e85a92]">{perf?.terlambat ?? 0}</p>
+              <div className="bg-kartu rounded-xl p-3 text-center">
+                <p className="text-xl font-bold text-magenta">{perf?.terlambat ?? 0}</p>
                 <p className="text-[9px] text-gray-500 mt-0.5 uppercase">Terlambat</p>
               </div>
             </div>
@@ -160,7 +160,7 @@ export default function PerformancePanel({ idKaryawan, editable = false }: any) 
           <div className="border-t border-white/5 pt-5">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Penilaian Kualitatif</p>
-              {avg !== null && <span className="text-xs font-bold text-[#8ba7ff]">Rata-rata {avg.toFixed(1)}/5</span>}
+              {avg !== null && <span className="text-xs font-bold text-tint-redup">Rata-rata {avg.toFixed(1)}/5</span>}
             </div>
             {review ? (
               <div className="space-y-2.5">
@@ -171,7 +171,7 @@ export default function PerformancePanel({ idKaryawan, editable = false }: any) 
                   </div>
                 ))}
                 {review.catatan && (
-                  <div className="bg-[#1C1823] rounded-xl p-3 mt-3">
+                  <div className="bg-kartu rounded-xl p-3 mt-3">
                     <p className="text-[10px] text-gray-500 uppercase mb-1">Catatan</p>
                     <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap">{review.catatan}</p>
                   </div>
@@ -186,7 +186,7 @@ export default function PerformancePanel({ idKaryawan, editable = false }: any) 
           {/* FORM PENILAIAN (admin) */}
           {editable && (
             <div className="border-t border-white/5 pt-5">
-              <p className="text-[10px] font-black text-[#8ba7ff] uppercase tracking-widest mb-3">Beri / Perbarui Penilaian</p>
+              <p className="text-[10px] font-black text-tint-redup uppercase tracking-widest mb-3">Beri / Perbarui Penilaian</p>
               <div className="space-y-3">
                 {ASPEK.map((a) => (
                   <div key={a.key} className="flex items-center justify-between">
@@ -194,9 +194,9 @@ export default function PerformancePanel({ idKaryawan, editable = false }: any) 
                     <Stars value={form[a.key]} onChange={(n: number) => setForm({ ...form, [a.key]: n })} />
                   </div>
                 ))}
-                <textarea rows={3} placeholder="Catatan / umpan balik (opsional)..." value={form.catatan} onChange={(e) => setForm({ ...form, catatan: e.target.value })} className="w-full bg-[#1C1823] border border-white/5 rounded-xl p-3 text-xs text-white focus:border-[#124bce] outline-none resize-none placeholder-gray-600 transition-colors" />
+                <textarea rows={3} placeholder="Catatan / umpan balik (opsional)..." value={form.catatan} onChange={(e) => setForm({ ...form, catatan: e.target.value })} className="w-full bg-kartu border border-white/10 rounded-xl p-3 text-xs text-white focus:border-primer outline-none resize-none placeholder-gray-600 transition-colors" />
                 {msg && <p className={`text-xs px-3 py-2 rounded-lg ${msg.t === "ok" ? "text-emerald-300 bg-emerald-500/[0.07] border border-emerald-500/20" : "text-red-400 bg-red-500/[0.06] border border-red-500/20"}`}>{msg.m}</p>}
-                <button onClick={save} disabled={saving} className="w-full bg-[#124bce] hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-bold py-2.5 rounded-lg transition-all active:scale-95">{saving ? "Menyimpan…" : "Simpan Penilaian"}</button>
+                <button onClick={save} disabled={saving} className="w-full bg-primer hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-bold py-2.5 rounded-lg transition-all active:scale-95">{saving ? "Menyimpan…" : "Simpan Penilaian"}</button>
               </div>
             </div>
           )}

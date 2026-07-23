@@ -148,7 +148,7 @@ export default function AdminPayrollPage() {
     return (
       <div className="w-full flex flex-col items-center justify-center min-h-[75vh] animate-in fade-in zoom-in-95 duration-500">
         <div className="relative flex items-center justify-center">
-          <div className="absolute inset-0 bg-[#2b5cd5]/20 rounded-full blur-2xl animate-pulse"></div>
+          <div className="absolute inset-0 bg-primer-terang/20 rounded-full blur-2xl animate-pulse"></div>
           <img 
             src="/logo.png" 
             alt="Mengkalkulasi Payroll..." 
@@ -167,25 +167,25 @@ export default function AdminPayrollPage() {
     <div className="w-full flex flex-col gap-6 pb-10 font-sans text-gray-300 animate-in fade-in duration-500">
       
       {/* HEADER PAYROLL */}
-      <div className="bg-[#141414] border border-white/5 rounded-2xl p-6 shadow-lg flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 relative overflow-hidden print:hidden">
+      <div className="p-6 shadow-lg flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 relative overflow-hidden print:hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
         <div className="absolute -right-10 -top-10 w-40 h-40 bg-green-500/10 rounded-full blur-3xl"></div>
         <div className="relative z-10">
           <h1 className="text-2xl font-bold text-white tracking-tight">Kalkulator Payroll Interaktif</h1>
           <p className="text-sm text-gray-400 mt-1">Sesuaikan Gaji Pokok, input Tunjangan Bonus, Kasbon, dan cetak slip secara dinamis.</p>
         </div>
-        <div className="relative z-10 bg-[#1a1a1a] border border-white/10 px-5 py-2.5 rounded-xl text-sm font-bold text-[#b3c5ff]">
+        <div className="relative z-10 bg-kartu-hover border border-white/10 px-5 py-2.5 rounded-xl text-sm font-bold text-tint">
           Periode: {currentMonthName}
         </div>
       </div>
 
       {/* TABEL REKAP PAYROLL */}
-      <div className="bg-[#141414] border border-white/5 rounded-3xl p-6 shadow-xl overflow-hidden print:hidden">
+      <div className="p-6 overflow-hidden print:hidden relative rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
         {payrollData.length === 0 ? (
           <div className="text-center py-20 text-gray-500">Belum ada data karyawan aktif.</div>
         ) : (
           <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left text-sm text-gray-300 min-w-[1100px]">
-              <thead className="bg-[#1a1a1a] text-gray-400 text-xs uppercase tracking-wider">
+            <table className="w-full text-left text-sm text-gray-300 min-w-[1100px] tabel-baris-rapi">
+              <thead className="bg-kartu-hover text-gray-400 text-xs uppercase tracking-wider">
                 <tr>
                   <th className="px-4 py-4 rounded-tl-xl font-semibold">Karyawan</th>
                   <th className="px-4 py-4 font-semibold text-center">Kehadiran</th>
@@ -196,9 +196,9 @@ export default function AdminPayrollPage() {
                   <th className="px-4 py-4 rounded-tr-xl font-semibold text-center">Aksi Manajemen</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody>
                 {payrollData.map((emp, index) => (
-                  <tr key={emp.idKaryawan || `emp-${index}`} className="hover:bg-white/5 transition-colors">
+                  <tr key={emp.idKaryawan || `emp-${index}`} className="">
                     <td className="px-4 py-4">
                       <p className="font-bold text-white">{emp.nama}</p>
                       <p className="text-[10px] text-gray-500 font-mono mt-0.5">{emp.idKaryawan} • {emp.jabatan}</p>
@@ -233,7 +233,7 @@ export default function AdminPayrollPage() {
                         </button>
                         <button 
                           onClick={() => setSelectedSlip(emp)}
-                          className="bg-[#2b5cd5] hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-md"
+                          className="bg-primer-terang hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-md"
                         >
                           Lihat Slip
                         </button>
@@ -250,11 +250,11 @@ export default function AdminPayrollPage() {
       {/* MODAL 1: EDIT INPUT KOMPONEN GAJI */}
       {editingEmp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 print:hidden">
-          <div className="bg-[#141414] border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-5 border-b border-white/5 bg-[#1a1a1a] flex justify-between items-center">
+          <div className="bg-kartu border border-white/10 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-white/5 bg-kartu-hover flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-bold text-white">Sesuaikan Gaji Staf</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Mengubah data finansial untuk <span className="text-[#b3c5ff] font-bold">{editingEmp.nama}</span></p>
+                <p className="text-xs text-gray-400 mt-0.5">Mengubah data finansial untuk <span className="text-tint font-bold">{editingEmp.nama}</span></p>
               </div>
               <button onClick={() => setEditingEmp(null)} className="text-gray-500 hover:text-white p-1">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -264,15 +264,15 @@ export default function AdminPayrollPage() {
             <form onSubmit={handleSaveFinance} className="p-6 space-y-4">
               <div>
                 <label className="block text-[11px] font-bold text-gray-400 mb-1 uppercase tracking-wider">Gaji Pokok Utama (Rp)</label>
-                <input type="number" placeholder="0" value={financeForm.gajiPokok} onChange={(e) => setFinanceForm({...financeForm, gajiPokok: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:border-[#2b5cd5] outline-none placeholder-gray-600" />
+                <input type="number" placeholder="0" value={financeForm.gajiPokok} onChange={(e) => setFinanceForm({...financeForm, gajiPokok: e.target.value})} className="w-full bg-input border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-primer-terang outline-none placeholder-gray-600" />
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-green-400 mb-1 uppercase tracking-wider">Bonus / Insentif Tambahan (Rp)</label>
-                <input type="number" placeholder="0" value={financeForm.bonus} onChange={(e) => setFinanceForm({...financeForm, bonus: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:border-green-500 outline-none placeholder-gray-600" />
+                <input type="number" placeholder="0" value={financeForm.bonus} onChange={(e) => setFinanceForm({...financeForm, bonus: e.target.value})} className="w-full bg-input border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-green-500 outline-none placeholder-gray-600" />
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-red-400 mb-1 uppercase tracking-wider">Potongan Manual / Kasbon (Rp)</label>
-                <input type="number" placeholder="0" value={financeForm.potongan} onChange={(e) => setFinanceForm({...financeForm, potongan: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-xl px-4 py-2.5 text-sm text-white focus:border-red-500 outline-none placeholder-gray-600" />
+                <input type="number" placeholder="0" value={financeForm.potongan} onChange={(e) => setFinanceForm({...financeForm, potongan: e.target.value})} className="w-full bg-input border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-red-500 outline-none placeholder-gray-600" />
               </div>
 
               <div className="pt-4 flex gap-3 border-t border-white/5 mt-2">
@@ -305,7 +305,7 @@ export default function AdminPayrollPage() {
                   <p className="text-[10px] text-gray-400 font-medium">Periode: {currentMonthName}</p>
                 </div>
                 <div className="text-right">
-                  <h1 className="text-xl font-black text-[#2b5cd5] uppercase tracking-widest">Payslip</h1>
+                  <h1 className="text-xl font-black text-primer-terang uppercase tracking-widest">Payslip</h1>
                   <p className="text-xs text-gray-500 font-mono mt-0.5">DOC-{selectedSlip.idKaryawan}</p>
                 </div>
               </div>
@@ -373,7 +373,7 @@ export default function AdminPayrollPage() {
               </div>
 
               {/* THP */}
-              <div className="bg-[#2b5cd5] text-white p-4 rounded-xl flex justify-between items-center shadow-md mb-5">
+              <div className="bg-primer-terang text-white p-4 rounded-xl flex justify-between items-center shadow-md mb-5">
                 <div>
                   <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest">Take Home Pay</p>
                   <p className="text-[9px] text-blue-300 mt-0.5">Total bersih ditransfer ke rekening di atas.</p>
@@ -407,7 +407,7 @@ export default function AdminPayrollPage() {
             {/* AREA STICKY TOMBOL AKSI (Aman, paten & tidak akan tertutup lagi) */}
             <div className="p-4 bg-gray-50 flex justify-end gap-3 print:hidden border-t border-gray-200 bg-gray-100 shrink-0">
               <button onClick={() => setSelectedSlip(null)} className="px-5 py-2 text-sm font-bold text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">Tutup</button>
-              <button onClick={() => window.print()} className="px-5 py-2 text-sm font-bold text-white bg-[#2b5cd5] hover:bg-blue-600 rounded-lg flex items-center gap-2 shadow-md transition-colors">
+              <button onClick={() => window.print()} className="px-5 py-2 text-sm font-bold text-white bg-primer-terang hover:bg-blue-600 rounded-lg flex items-center gap-2 shadow-md transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.724.092m6.524-4.659A15.455 15.455 0 0112.532 2.25H8.25m4.282 7.02v.002m0 0H21m-2.81 8.51c-.145.52-.36 1.018-.632 1.487M12 21.75c-2.676 0-5.216-.584-7.499-1.632M15.75 21.75c2.676 0 5.216-.584 7.499-1.632M4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75z" /></svg>
                 Print / Simpan PDF
               </button>

@@ -294,7 +294,7 @@ export default function AdminKaryawanPage() {
     return (
       <div className="w-full flex flex-col items-center justify-center min-h-[75vh] animate-in fade-in zoom-in-95 duration-500">
         <div className="relative flex items-center justify-center">
-          <div className="absolute inset-0 bg-[#2b5cd5]/20 rounded-full blur-2xl animate-pulse"></div>
+          <div className="absolute inset-0 bg-primer-terang/20 rounded-full blur-2xl animate-pulse"></div>
           <img 
             src="/logo.png" 
             alt="Memuat Invisual..." 
@@ -314,7 +314,7 @@ export default function AdminKaryawanPage() {
       
       {/* SISTEM TOAST NOTIFIKASI ELEGAN */}
       {/* HEADER UTAMA */}
-      <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 relative overflow-hidden">
+      <div className="p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Database Karyawan</h1>
           <p className="text-xs text-gray-400 mt-1 flex items-center gap-2">
@@ -338,10 +338,10 @@ export default function AdminKaryawanPage() {
       {/* FILTER & PENCARIAN */}
       <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="w-full md:flex-1 relative">
-          <input type="text" placeholder="Cari nama atau ID karyawan..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-[#0a0a0a] border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 transition-colors shadow-sm" />
+          <input type="text" placeholder="Cari nama atau ID karyawan..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-latar border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 transition-colors shadow-sm" />
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 absolute left-4 top-3.5 text-gray-500"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
         </div>
-        <select value={selectedStatusFilter} onChange={(e) => setSelectedStatusFilter(e.target.value)} className="w-full md:w-56 bg-[#0a0a0a] border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 shadow-sm">
+        <select value={selectedStatusFilter} onChange={(e) => setSelectedStatusFilter(e.target.value)} className="w-full md:w-56 bg-latar border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 shadow-sm">
           <option value="Semua">Semua Status Kontrak</option>
           <option value="PKWT (Kontrak)">PKWT (Kontrak)</option>
           <option value="Tetap">Tetap</option>
@@ -351,13 +351,13 @@ export default function AdminKaryawanPage() {
       </div>
 
       {/* TABEL DATA KARYAWAN */}
-      <div className="bg-[#0a0a0a] border border-white/10 rounded-3xl p-4 md:p-6 shadow-2xl overflow-hidden">
+      <div className="p-4 md:p-6 overflow-hidden relative rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
         {filteredEmployees.length === 0 ? (
            <div className="text-center py-20 text-gray-500">Tidak ada data karyawan yang cocok dengan pencarian Anda.</div>
         ) : (
           <>
           <div className="overflow-x-auto custom-scrollbar hidden md:block">
-            <table className="w-full text-left text-sm text-gray-300 min-w-[900px]">
+            <table className="w-full text-left text-sm text-gray-300 min-w-[900px] tabel-baris-rapi">
               <thead className="border-b border-white/10 text-gray-500 text-[10px] md:text-xs uppercase tracking-wider">
                 <tr>
                   <th className="px-6 py-4 font-bold">Nama Staf (Klik Profil)</th>
@@ -367,9 +367,9 @@ export default function AdminKaryawanPage() {
                   <th className="px-6 py-4 font-bold text-right">Tindakan</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody>
                 {filteredEmployees.map((emp, index) => (
-                  <tr key={emp.idKaryawan || `emp-${index}`} className="hover:bg-[#111111] transition-colors group">
+                  <tr key={emp.idKaryawan || `emp-${index}`} className="group">
                     
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
@@ -396,14 +396,14 @@ export default function AdminKaryawanPage() {
                       </span>
                       <span className="text-xs text-gray-400 font-medium">{emp.jabatan || emp.departemen || "Belum ada jabatan"}</span>
                       {emp.user_id && (
-                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider block w-max mt-1.5 ${roleMap[emp.user_id] === 'manager' ? 'bg-[#2b5cd5]/15 text-[#8ba7ff] border border-[#2b5cd5]/25' : 'bg-white/5 text-gray-400 border border-white/10'}`}>
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider block w-max mt-1.5 ${roleMap[emp.user_id] === 'manager' ? 'bg-primer-terang/15 text-tint-redup border border-primer-terang/25' : 'bg-white/5 text-gray-400 border border-white/10'}`}>
                           {roleMap[emp.user_id] === 'manager' ? '★ Manager' : 'Member'}
                         </span>
                       )}
                     </td>
 
                     <td className="px-6 py-5 text-center">
-                      <span className="inline-block px-3 py-1.5 bg-[#111111] border border-white/5 text-gray-300 font-mono font-medium rounded-lg">
+                      <span className="inline-block px-3 py-1.5 bg-input border border-white/10 text-gray-300 font-mono font-medium rounded-lg">
                         {emp.sisaCuti} Hari
                       </span>
                     </td>
@@ -427,7 +427,7 @@ export default function AdminKaryawanPage() {
           {/* TAMPILAN KARTU — KHUSUS MOBILE */}
           <div className="md:hidden space-y-3">
             {filteredEmployees.map((emp, index) => (
-              <div key={emp.idKaryawan || `m-${index}`} className="bg-[#111111] border border-white/10 rounded-2xl p-4 mo-fade-up">
+              <div key={emp.idKaryawan || `m-${index}`} className="bg-input border border-white/10 rounded-2xl p-4 mo-fade-up">
                 <div className="flex items-start gap-3">
                   <Avatar url={emp.avatarUrl} name={emp.nama} className="w-11 h-11 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-base shrink-0" />
                   <div className="flex-1 min-w-0" onClick={() => setSelectedProfile(emp)}>
@@ -436,7 +436,7 @@ export default function AdminKaryawanPage() {
                     <p className="text-[11px] text-gray-400 mt-1 truncate">{emp.email}</p>
                   </div>
                   {emp.user_id && (
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase shrink-0 ${roleMap[emp.user_id] === 'manager' ? 'bg-[#124bce]/15 text-[#8ba7ff] border border-[#124bce]/25' : 'bg-white/5 text-gray-400 border border-white/10'}`}>
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase shrink-0 ${roleMap[emp.user_id] === 'manager' ? 'bg-primer/15 text-tint-redup border border-primer/25' : 'bg-white/5 text-gray-400 border border-white/10'}`}>
                       {roleMap[emp.user_id] === 'manager' ? '★ Mgr' : 'Member'}
                     </span>
                   )}
@@ -447,7 +447,7 @@ export default function AdminKaryawanPage() {
                   <span className="text-[11px] text-gray-500 ml-auto whitespace-nowrap">Cuti: {emp.sisaCuti} hari</span>
                 </div>
                 <div className="flex gap-2 mt-3 pt-3 border-t border-white/5">
-                  <button onClick={() => openEditModal(emp)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-[#124bce]/10 hover:bg-[#124bce]/20 active:scale-95 text-[#8ba7ff] rounded-lg text-xs font-bold border border-[#124bce]/20 transition-all">
+                  <button onClick={() => openEditModal(emp)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-primer/10 hover:bg-primer/20 active:scale-95 text-tint-redup rounded-lg text-xs font-bold border border-primer/20 transition-all">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.89.112l-2.848.316.316-2.848a4.5 4.5 0 011.112-1.89l12.48-12.48z" /></svg>
                     Edit Data
                   </button>
@@ -465,7 +465,7 @@ export default function AdminKaryawanPage() {
       {/* MODAL KONFIRMASI HAPUS CUSTOM */}
       {deleteConfirm?.show && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-[#111111] border border-white/10 w-full max-w-sm rounded-2xl shadow-2xl p-8 relative flex flex-col items-center text-center animate-in zoom-in-95">
+          <div className="bg-input border border-white/10 w-full max-w-sm rounded-2xl shadow-2xl p-8 relative flex flex-col items-center text-center animate-in zoom-in-95">
             <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-5 border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
             </div>
@@ -484,9 +484,9 @@ export default function AdminKaryawanPage() {
       {/* WINDOW MODAL PROFIL DETAIL KARYAWAN */}
       {selectedProfile && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-[#0f0f0f] border border-white/10 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-kartu border border-white/10 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             
-            <div className="p-6 border-b border-white/5 bg-[#141414] flex justify-between items-center">
+            <div className="p-6 border-b border-white/5 bg-kartu flex justify-between items-center">
               <div className="flex items-center gap-4">
                 <Avatar url={selectedProfile.avatarUrl} name={selectedProfile.nama} className="w-14 h-14 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center font-black text-2xl shadow-inner" />
                 <div>
@@ -494,14 +494,14 @@ export default function AdminKaryawanPage() {
                   <p className="text-xs font-mono text-gray-400 font-medium mt-0.5">{selectedProfile.idKaryawan} • {selectedProfile.jabatan || selectedProfile.departemen || "Belum ada jabatan"}</p>
                 </div>
               </div>
-              <button onClick={() => setSelectedProfile(null)} className="text-gray-500 hover:text-white p-2 bg-white/5 rounded-xl transition-colors border border-white/5">
+              <button onClick={() => setSelectedProfile(null)} className="text-gray-500 hover:text-white p-2 bg-white/5 rounded-xl transition-colors border border-white/10">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
-            <div className="p-6 space-y-6 overflow-y-auto max-h-[65vh] custom-scrollbar text-sm bg-[#0a0a0a]">
+            <div className="p-6 space-y-6 overflow-y-auto max-h-[65vh] custom-scrollbar text-sm bg-latar">
               
-              <div className="bg-[#111111] p-5 rounded-2xl border border-white/5 space-y-4">
+              <div className="bg-input p-5 rounded-2xl border border-white/10 space-y-4">
                 <h4 className="text-[10px] font-bold text-gray-500 tracking-widest uppercase font-mono">A. Identitas & Kontak Personal</h4>
                 <div className="grid grid-cols-2 gap-y-4 gap-x-4">
                   <div>
@@ -514,12 +514,12 @@ export default function AdminKaryawanPage() {
                   </div>
                   <div className="col-span-2">
                     <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">Alamat Domisili Tetap</p>
-                    <p className="text-gray-200 font-medium leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5">📍 {selectedProfile.alamatDomisili || "— Belum diisi —"}</p>
+                    <p className="text-gray-200 font-medium leading-relaxed bg-white/5 p-3 rounded-lg border border-white/10">📍 {selectedProfile.alamatDomisili || "— Belum diisi —"}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-[#111111] p-5 rounded-2xl border border-white/5 space-y-4">
+              <div className="bg-input p-5 rounded-2xl border border-white/10 space-y-4">
                 <h4 className="text-[10px] font-bold text-gray-500 tracking-widest uppercase font-mono">B. Kontrak Kepegawaian Invisual</h4>
                 <div className="grid grid-cols-2 gap-y-4 gap-x-4">
                   <div>
@@ -541,7 +541,7 @@ export default function AdminKaryawanPage() {
                 </div>
               </div>
 
-              <div className="bg-[#111111] p-5 rounded-2xl border border-white/5 space-y-4">
+              <div className="bg-input p-5 rounded-2xl border border-white/10 space-y-4">
                 <h4 className="text-[10px] font-bold text-gray-500 tracking-widest uppercase font-mono">C. Informasi Finansial & Payroll</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-4">
                   <div className="md:col-span-2">
@@ -562,9 +562,9 @@ export default function AdminKaryawanPage() {
               <PerformancePanel idKaryawan={selectedProfile.idKaryawan} editable />
             </div>
 
-            <div className="p-4 border-t border-white/5 bg-[#141414] flex gap-3">
+            <div className="p-4 border-t border-white/5 bg-kartu flex gap-3">
               <button onClick={() => { setSelectedProfile(null); openEditModal(selectedProfile); }} className="w-1/2 py-3 bg-white text-black hover:bg-gray-200 font-bold rounded-xl text-sm transition-all shadow-lg">⚙️ Edit Seluruh Data</button>
-              <button onClick={() => setSelectedProfile(null)} className="w-1/2 py-3 bg-[#1a1a1a] hover:bg-[#222222] border border-white/10 text-white font-bold rounded-xl text-sm transition-colors">Tutup Profil</button>
+              <button onClick={() => setSelectedProfile(null)} className="w-1/2 py-3 bg-kartu-hover hover:bg-white/5 border border-white/10 text-white font-bold rounded-xl text-sm transition-colors">Tutup Profil</button>
             </div>
           </div>
         </div>
@@ -573,23 +573,23 @@ export default function AdminKaryawanPage() {
       {/* FORM MODAL FORMULIR (TAMBAH / EDIT KARYAWAN) */}
       {showModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#111111] border border-white/10 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-white/5 bg-[#141414] flex justify-between items-center">
+          <div className="bg-input border border-white/10 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 border-b border-white/5 bg-kartu flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-bold text-white tracking-tight">{isEditMode ? "Ubah Data Staf" : "Registrasi Karyawan Baru"}</h2>
               </div>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg border border-white/5"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg border border-white/10"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             
-            <form onSubmit={handleSaveData} className="p-6 overflow-y-auto max-h-[70vh] custom-scrollbar space-y-6 bg-[#0a0a0a]">
+            <form onSubmit={handleSaveData} className="p-6 overflow-y-auto max-h-[70vh] custom-scrollbar space-y-6 bg-latar">
 
-              <div className="bg-[#111111] p-5 rounded-xl border border-white/5 flex items-center gap-5">
-                <Avatar url={formData.avatarUrl} name={formData.nama} className="w-20 h-20 rounded-full bg-[#124bce]/10 border-2 border-[#124bce]/20 text-[#8ba7ff] flex items-center justify-center font-black text-3xl shrink-0" />
+              <div className="bg-input p-5 rounded-xl border border-white/10 flex items-center gap-5">
+                <Avatar url={formData.avatarUrl} name={formData.nama} className="w-20 h-20 rounded-full bg-primer/10 border-2 border-primer/20 text-tint-redup flex items-center justify-center font-black text-3xl shrink-0" />
                 <div className="flex-1 min-w-0">
                   <h3 className="text-xs font-bold text-gray-400 uppercase mb-1 font-mono">Foto / Avatar</h3>
                   <p className="text-[11px] text-gray-500 mb-3">Gambar persegi, maks 3MB. Kosongkan untuk pakai inisial nama.</p>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <label className={`inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-[#8ba7ff] bg-[#124bce]/10 hover:bg-[#124bce]/20 border border-[#124bce]/20 px-3 py-2 rounded-lg transition-all ${uploadingAvatar ? "opacity-50 pointer-events-none" : ""}`}>
+                    <label className={`inline-flex items-center gap-2 cursor-pointer text-xs font-bold text-tint-redup bg-primer/10 hover:bg-primer/20 border border-primer/20 px-3 py-2 rounded-lg transition-all ${uploadingAvatar ? "opacity-50 pointer-events-none" : ""}`}>
                       {uploadingAvatar ? "Mengunggah…" : (formData.avatarUrl ? "Ganti Foto" : "Unggah Foto")}
                       <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
                     </label>
@@ -601,7 +601,7 @@ export default function AdminKaryawanPage() {
               </div>
 
               {isEditMode && (
-                <div className={`p-5 rounded-xl border flex items-center justify-between gap-4 ${formData.isAktif ? "bg-[#111111] border-white/5" : "bg-amber-500/[0.04] border-amber-500/25"}`}>
+                <div className={`p-5 rounded-xl border flex items-center justify-between gap-4 ${formData.isAktif ? "bg-input border-white/5" : "bg-amber-500/[0.04] border-amber-500/25"}`}>
                   <div className="pr-3">
                     <h3 className="text-xs font-bold text-gray-400 uppercase mb-1 font-mono">Status Karyawan</h3>
                     <p className="text-[11px] text-gray-500">
@@ -614,55 +614,55 @@ export default function AdminKaryawanPage() {
                     <span className={`text-xs font-bold ${formData.isAktif ? "text-green-400" : "text-amber-400"}`}>
                       {formData.isAktif ? "Aktif" : "Arsip"}
                     </span>
-                    <input type="checkbox" checked={formData.isAktif} onChange={(e) => setFormData({ ...formData, isAktif: e.target.checked })} className="accent-[#124bce] w-4 h-4" />
+                    <input type="checkbox" checked={formData.isAktif} onChange={(e) => setFormData({ ...formData, isAktif: e.target.checked })} className="accent-primer w-4 h-4" />
                   </label>
                 </div>
               )}
 
-              <div className="bg-[#111111] p-5 rounded-xl border border-white/5">
+              <div className="bg-input p-5 rounded-xl border border-white/10">
                 <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 font-mono">A. Identitas Primer Karyawan</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">ID Karyawan</label>
-                    <input required type="text" disabled={isEditMode} value={formData.idKaryawan} onChange={(e) => setFormData({...formData, idKaryawan: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none disabled:opacity-50" />
+                    <input required type="text" disabled={isEditMode} value={formData.idKaryawan} onChange={(e) => setFormData({...formData, idKaryawan: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none disabled:opacity-50" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Nama Lengkap</label>
-                    <input required type="text" value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                    <input required type="text" value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Nama Panggilan</label>
-                    <input type="text" value={formData.panggilan} onChange={(e) => setFormData({...formData, panggilan: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none placeholder-gray-600" placeholder="Dipakai di chip PIC — kosongkan untuk memakai nama lengkap" />
+                    <input type="text" value={formData.panggilan} onChange={(e) => setFormData({...formData, panggilan: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none placeholder-gray-600" placeholder="Dipakai di chip PIC — kosongkan untuk memakai nama lengkap" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Email Pribadi / Kantor</label>
-                    <input required type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                    <input required type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">No. Handphone</label>
-                    <input type="text" value={formData.noPonsel} onChange={(e) => setFormData({...formData, noPonsel: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none placeholder-gray-600" placeholder="08xxxxxxxx" />
+                    <input type="text" value={formData.noPonsel} onChange={(e) => setFormData({...formData, noPonsel: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none placeholder-gray-600" placeholder="08xxxxxxxx" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Nomor KTP (NIK)</label>
-                    <input type="text" placeholder="16 Digit..." value={formData.nikKtp} onChange={(e) => setFormData({...formData, nikKtp: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none font-mono" />
+                    <input type="text" placeholder="16 Digit..." value={formData.nikKtp} onChange={(e) => setFormData({...formData, nikKtp: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none font-mono" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Alamat Domisili</label>
-                    <input type="text" placeholder="Alamat lengkap..." value={formData.alamatDomisili} onChange={(e) => setFormData({...formData, alamatDomisili: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                    <input type="text" placeholder="Alamat lengkap..." value={formData.alamatDomisili} onChange={(e) => setFormData({...formData, alamatDomisili: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
                   </div>
                 </div>
               </div>
 
-              <div className="bg-[#111111] p-5 rounded-xl border border-white/5">
+              <div className="bg-input p-5 rounded-xl border border-white/10">
                 <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 font-mono">B. Kontrak & Kepegawaian</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Departemen / Jabatan</label>
-                    <input type="text" value={formData.jabatan} onChange={(e) => setFormData({...formData, jabatan: e.target.value})} placeholder="Contoh: UI/UX Designer" className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                    <input type="text" value={formData.jabatan} onChange={(e) => setFormData({...formData, jabatan: e.target.value})} placeholder="Contoh: UI/UX Designer" className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Status</label>
-                    <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none">
+                    <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none">
                       <option value="PKWT (Kontrak)">PKWT (Kontrak)</option>
                       <option value="Tetap">Tetap</option>
                       <option value="Tetap Percobaan (Probation)">Tetap Percobaan (Probation)</option>
@@ -671,36 +671,36 @@ export default function AdminKaryawanPage() {
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Sisa Cuti</label>
-                    <input type="number" min="0" value={formData.sisaCuti} onChange={(e) => setFormData({...formData, sisaCuti: parseInt(e.target.value) || 0})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                    <input type="number" min="0" value={formData.sisaCuti} onChange={(e) => setFormData({...formData, sisaCuti: parseInt(e.target.value) || 0})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
                   </div>
                   <div className="md:col-span-3">
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Tanggal Resmi Bergabung</label>
-                    <input type="date" value={formData.tanggalBergabung} onChange={(e) => setFormData({...formData, tanggalBergabung: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none [color-scheme:dark]" />
+                    <input type="date" value={formData.tanggalBergabung} onChange={(e) => setFormData({...formData, tanggalBergabung: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none [color-scheme:dark]" />
                   </div>
 
-                  <div className="md:col-span-3 grid grid-cols-2 gap-4 bg-[#124bce]/[0.04] border border-[#124bce]/20 rounded-xl p-4">
+                  <div className="md:col-span-3 grid grid-cols-2 gap-4 bg-primer/[0.04] border border-primer/20 rounded-xl p-4">
                     <div className="col-span-2 -mb-1">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-[11px] font-bold text-[#8ba7ff] uppercase">Jam Kerja Standar</p>
+                          <p className="text-[11px] font-bold text-tint-redup uppercase">Jam Kerja Standar</p>
                           <p className="text-[10px] text-gray-500 mt-0.5">Dipakai untuk menentukan status "Terlambat". Tim dengan jam berbeda bisa diatur di sini.</p>
                         </div>
                         <label className="inline-flex items-center gap-2 cursor-pointer shrink-0 pt-0.5">
-                          <span className={`text-[11px] font-bold ${formData.fleksibel ? "text-[#b3c5ff]" : "text-gray-500"}`}>Fleksibel</span>
-                          <input type="checkbox" checked={!!formData.fleksibel} onChange={(e) => setFormData({ ...formData, fleksibel: e.target.checked })} className="accent-[#124bce] w-4 h-4" />
+                          <span className={`text-[11px] font-bold ${formData.fleksibel ? "text-tint" : "text-gray-500"}`}>Fleksibel</span>
+                          <input type="checkbox" checked={!!formData.fleksibel} onChange={(e) => setFormData({ ...formData, fleksibel: e.target.checked })} className="accent-primer w-4 h-4" />
                         </label>
                       </div>
                       {formData.fleksibel && (
-                        <p className="text-[10px] text-[#8ba7ff] mt-2 bg-[#124bce]/10 border border-[#124bce]/20 rounded-lg px-2.5 py-1.5">Jam kerja fleksibel aktif — karyawan ini <span className="font-bold">tidak pernah dihitung terlambat</span> saat absen.</p>
+                        <p className="text-[10px] text-tint-redup mt-2 bg-primer/10 border border-primer/20 rounded-lg px-2.5 py-1.5">Jam kerja fleksibel aktif — karyawan ini <span className="font-bold">tidak pernah dihitung terlambat</span> saat absen.</p>
                       )}
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase">Jam Masuk</label>
-                      <input type="time" disabled={formData.fleksibel} value={formData.jamMasuk} onChange={(e) => setFormData({...formData, jamMasuk: e.target.value})} className={`w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#124bce] outline-none [color-scheme:dark] ${formData.fleksibel ? "opacity-40 cursor-not-allowed" : ""}`} />
+                      <input type="time" disabled={formData.fleksibel} value={formData.jamMasuk} onChange={(e) => setFormData({...formData, jamMasuk: e.target.value})} className={`w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primer outline-none [color-scheme:dark] ${formData.fleksibel ? "opacity-40 cursor-not-allowed" : ""}`} />
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase">Jam Keluar</label>
-                      <input type="time" disabled={formData.fleksibel} value={formData.jamKeluar} onChange={(e) => setFormData({...formData, jamKeluar: e.target.value})} className={`w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#124bce] outline-none [color-scheme:dark] ${formData.fleksibel ? "opacity-40 cursor-not-allowed" : ""}`} />
+                      <input type="time" disabled={formData.fleksibel} value={formData.jamKeluar} onChange={(e) => setFormData({...formData, jamKeluar: e.target.value})} className={`w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primer outline-none [color-scheme:dark] ${formData.fleksibel ? "opacity-40 cursor-not-allowed" : ""}`} />
                     </div>
                   </div>
 
@@ -712,17 +712,17 @@ export default function AdminKaryawanPage() {
                       </div>
                       <div>
                         <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Institusi / Kampus Asal</label>
-                        <input type="text" value={formData.institusiMagang} onChange={(e) => setFormData({...formData, institusiMagang: e.target.value})} placeholder="Universitas / SMK..." className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-cyan-500/50 outline-none" />
+                        <input type="text" value={formData.institusiMagang} onChange={(e) => setFormData({...formData, institusiMagang: e.target.value})} placeholder="Universitas / SMK..." className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-cyan-500/50 outline-none" />
                       </div>
                       <div>
                         <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Tanggal Selesai Magang</label>
-                        <input type="date" value={formData.tanggalSelesaiMagang} onChange={(e) => setFormData({...formData, tanggalSelesaiMagang: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-cyan-500/50 outline-none [color-scheme:dark]" />
+                        <input type="date" value={formData.tanggalSelesaiMagang} onChange={(e) => setFormData({...formData, tanggalSelesaiMagang: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-cyan-500/50 outline-none [color-scheme:dark]" />
                       </div>
                     </div>
                   )}
                   <div className="md:col-span-3">
-                    <label className="block text-[11px] font-bold text-[#8ba7ff] mb-1.5 uppercase">Role Akses · Daily Task Tracker</label>
-                    <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full bg-[#1c1c1c] border border-[#2b5cd5]/30 rounded-lg px-4 py-2.5 text-sm text-white focus:border-[#2b5cd5] outline-none">
+                    <label className="block text-[11px] font-bold text-tint-redup mb-1.5 uppercase">Role Akses · Daily Task Tracker</label>
+                    <select value={formData.role} onChange={(e) => setFormData({...formData, role: e.target.value})} className="w-full bg-input border border-primer-terang/30 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primer-terang outline-none">
                       <option value="member">Member — hanya melihat &amp; mengerjakan tugasnya sendiri (My Tasks)</option>
                       <option value="manager">Manager — mengelola seluruh board (buat, assign, atur semua tugas)</option>
                     </select>
@@ -731,8 +731,8 @@ export default function AdminKaryawanPage() {
 
                   {formData.role === "manager" && (
                     <div className="md:col-span-3 space-y-3">
-                      <div className="bg-[#124bce]/5 border border-[#124bce]/20 rounded-lg p-4">
-                        <label className="block text-[11px] font-bold text-[#8ba7ff] mb-1 uppercase">Board yang boleh diakses</label>
+                      <div className="bg-primer/5 border border-primer/20 rounded-lg p-4">
+                        <label className="block text-[11px] font-bold text-tint-redup mb-1 uppercase">Board yang boleh diakses</label>
                         <p className="text-[10px] text-gray-500 mb-3">Kosongkan = akses SEMUA board. Centang untuk membatasi ke board tertentu saja.</p>
                         <div className="flex flex-wrap gap-2">
                           {allBoards.length === 0 ? (
@@ -746,7 +746,7 @@ export default function AdminKaryawanPage() {
                                   type="button"
                                   key={b}
                                   onClick={() => setFormData({ ...formData, boardAccess: on ? formData.boardAccess.filter((x) => x !== key) : [...formData.boardAccess, key] })}
-                                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${on ? "bg-[#124bce] text-white border-[#124bce]" : "bg-white/5 text-gray-400 border-white/10 hover:border-white/25"}`}
+                                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${on ? "bg-primer text-white border-primer" : "bg-white/5 text-gray-400 border-white/10 hover:border-white/25"}`}
                                 >
                                   {on ? "✓ " : ""}{b}
                                 </button>
@@ -754,49 +754,49 @@ export default function AdminKaryawanPage() {
                             })
                           )}
                         </div>
-                        <p className={`text-[10px] mt-3 ${formData.boardAccess.length ? "text-[#e85a92]" : "text-gray-600"}`}>
+                        <p className={`text-[10px] mt-3 ${formData.boardAccess.length ? "text-magenta" : "text-gray-600"}`}>
                           {formData.boardAccess.length ? `Dibatasi ke ${formData.boardAccess.length} board — board lain tersembunyi otomatis.` : "Saat ini: akses semua board."}
                         </p>
                       </div>
-                      <label className="flex items-center justify-between bg-[#1c1c1c] border border-white/10 rounded-lg px-4 py-3 cursor-pointer">
+                      <label className="flex items-center justify-between bg-input border border-white/10 rounded-lg px-4 py-3 cursor-pointer">
                         <div className="pr-3">
                           <span className="text-sm font-bold text-white">Akses Content Hub</span>
                           <p className="text-[10px] text-gray-500 mt-0.5">Izinkan melihat &amp; mengelola Content Hub (marketing &amp; sosmed).</p>
                         </div>
-                        <input type="checkbox" checked={formData.contentHub} onChange={(e) => setFormData({ ...formData, contentHub: e.target.checked })} className="accent-[#124bce] w-4 h-4 shrink-0" />
+                        <input type="checkbox" checked={formData.contentHub} onChange={(e) => setFormData({ ...formData, contentHub: e.target.checked })} className="accent-primer w-4 h-4 shrink-0" />
                       </label>
-                      <label className="flex items-center justify-between bg-[#1c1c1c] border border-white/10 rounded-lg px-4 py-3 cursor-pointer">
+                      <label className="flex items-center justify-between bg-input border border-white/10 rounded-lg px-4 py-3 cursor-pointer">
                         <div className="pr-3">
                           <span className="text-sm font-bold text-white">Akses Corporate Vault</span>
                           <p className="text-[10px] text-gray-500 mt-0.5">Izinkan membuka Corporate Vault (dokumen, email, langganan).</p>
                         </div>
-                        <input type="checkbox" checked={formData.corporateAccess} onChange={(e) => setFormData({ ...formData, corporateAccess: e.target.checked })} className="accent-[#124bce] w-4 h-4 shrink-0" />
+                        <input type="checkbox" checked={formData.corporateAccess} onChange={(e) => setFormData({ ...formData, corporateAccess: e.target.checked })} className="accent-primer w-4 h-4 shrink-0" />
                       </label>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="bg-[#111111] p-5 rounded-xl border border-white/5">
+              <div className="bg-input p-5 rounded-xl border border-white/10">
                 <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 font-mono">C. Rekening Bank & Finansial</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Gaji Pokok bulanan (Rp)</label>
-                    <input type="number" value={formData.gajiPokok} onChange={(e) => setFormData({...formData, gajiPokok: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                    <input type="number" value={formData.gajiPokok} onChange={(e) => setFormData({...formData, gajiPokok: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Nama Bank Penerima</label>
-                    <input type="text" placeholder="Contoh: BCA..." value={formData.namaBank} onChange={(e) => setFormData({...formData, namaBank: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                    <input type="text" placeholder="Contoh: BCA..." value={formData.namaBank} onChange={(e) => setFormData({...formData, namaBank: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
                   </div>
                   <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Nomor Rekening Bank</label>
-                    <input type="text" placeholder="Masukan No Rekening..." value={formData.noRekening} onChange={(e) => setFormData({...formData, noRekening: e.target.value})} className="w-full bg-[#1c1c1c] border border-white/5 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none font-mono" />
+                    <input type="text" placeholder="Masukan No Rekening..." value={formData.noRekening} onChange={(e) => setFormData({...formData, noRekening: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none font-mono" />
                   </div>
                 </div>
               </div>
 
               <div className="pt-2 flex gap-3 mt-4">
-                <button type="button" onClick={() => setShowModal(false)} className="w-1/3 py-3 text-sm font-bold text-gray-300 border border-white/10 rounded-xl hover:bg-[#1a1a1a] transition-all">Batal</button>
+                <button type="button" onClick={() => setShowModal(false)} className="w-1/3 py-3 text-sm font-bold text-gray-300 border border-white/10 rounded-xl hover:bg-white/5 transition-all">Batal</button>
                 <button type="submit" disabled={isSubmitting} className="w-2/3 py-3 text-sm font-bold text-black bg-white hover:bg-gray-200 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
                   {/* === EFEK LOGO BERPUTAR SAAT MENYIMPAN DATA (Loading Button) === */}
                   {isSubmitting && <img src="/logo.png" className="w-4 h-4 animate-spin object-contain" style={{ animationDuration: "3s" }} alt="Loading" />}

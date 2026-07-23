@@ -8,6 +8,7 @@ import PwaSplash from "@/components/PwaSplash";
 import ChatToaster from "@/components/ChatToaster";
 import { ToastProvider } from "@/components/Toast";
 import GlobalSearch from "@/components/GlobalSearch";
+import GlowLayer from "@/components/GlowLayer";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -50,9 +51,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className={`${archaManic.variable} ${pasteur.variable}`}>
-      <body className={`${inter.className} bg-[#0a0a0a] text-white antialiased`} suppressHydrationWarning>
+      <body className={`${inter.className} bg-latar text-white antialiased`} suppressHydrationWarning>
         <PwaSetup />
         <PwaSplash />
+        <GlowLayer />
         <ToastProvider>
           {children}
           <ChatToaster />

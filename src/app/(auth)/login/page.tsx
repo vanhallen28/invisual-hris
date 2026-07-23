@@ -88,14 +88,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={`min-h-screen flex relative overflow-hidden text-gray-300 select-none transition-colors duration-[900ms] ${lampOn ? "bg-[#0d0f14]" : "bg-[#030407]"}`}>
+    <div className={`min-h-screen flex relative overflow-hidden text-gray-300 select-none transition-colors duration-[900ms] ${lampOn ? "bg-latar" : "bg-latar"}`}>
 
       {/* Aksen latar — ikut meredup saat lampu mati */}
-      <div className={`absolute top-[-15%] right-[-10%] w-96 h-96 bg-[#2b5cd5]/10 rounded-full blur-[100px] transition-opacity duration-[900ms] ${lampOn ? "opacity-100 animate-pulse" : "opacity-0"}`} />
+      <div className={`absolute top-[-15%] right-[-10%] w-96 h-96 bg-primer-terang/10 rounded-full blur-[100px] transition-opacity duration-[900ms] ${lampOn ? "opacity-100 animate-pulse" : "opacity-0"}`} />
       <div className={`absolute bottom-[-15%] left-[-10%] w-96 h-96 bg-purple-500/5 rounded-full blur-[120px] transition-opacity duration-[900ms] ${lampOn ? "opacity-100" : "opacity-0"}`} />
 
       {/* ══ PANEL KIRI (desktop) — hero, ikut gelap saat lampu mati ══ */}
-      <div className={`hidden lg:flex w-1/2 relative border-r items-center justify-center overflow-hidden z-10 transition-all duration-[900ms] ${lampOn ? "bg-[#0d0f14] border-white/[0.03] opacity-100" : "bg-[#030407] border-white/[0.01] opacity-[0.14]"}`}>
+      <div className={`hidden lg:flex w-1/2 relative border-r items-center justify-center overflow-hidden z-10 transition-all duration-[900ms] ${lampOn ? "bg-latar border-white/[0.03] opacity-100" : "bg-latar border-white/[0.01] opacity-[0.14]"}`}>
         <div className="relative z-10 p-16 xl:p-24 text-center flex flex-col items-center">
           <img src="/invisual-light.svg" alt="Invisual Studio" className="h-12 xl:h-14 mb-8 brightness-0 invert opacity-90" style={{ width: "auto" }} />
           <h1 className="text-4xl xl:text-5xl font-black text-white mb-4 tracking-tight leading-tight">Human Resource <br />Information System</h1>
@@ -149,7 +149,7 @@ export default function LoginPage() {
               <input
                 required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@domain.com"
-                className="w-full bg-[#111217] border border-white/[0.05] focus:border-[#2b5cd5] rounded-2xl px-5 py-4 text-sm text-white focus:ring-1 focus:ring-[#2b5cd5]/30 outline-none transition-all placeholder-gray-700 shadow-inner"
+                className="w-full bg-input border border-white/[0.05] focus:border-primer-terang rounded-2xl px-5 py-4 text-sm text-white focus:ring-1 focus:ring-primer-terang/30 outline-none transition-all placeholder-gray-700 shadow-inner"
               />
             </div>
 
@@ -158,13 +158,13 @@ export default function LoginPage() {
               <input
                 required type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                 placeholder="Kata sandi (ID Karyawan)..."
-                className="w-full bg-[#111217] border border-white/[0.05] focus:border-[#2b5cd5] rounded-2xl px-5 py-4 text-sm text-white focus:ring-1 focus:ring-[#2b5cd5]/30 outline-none transition-all placeholder-gray-700 shadow-inner"
+                className="w-full bg-input border border-white/[0.05] focus:border-primer-terang rounded-2xl px-5 py-4 text-sm text-white focus:ring-1 focus:ring-primer-terang/30 outline-none transition-all placeholder-gray-700 shadow-inner"
               />
             </div>
 
             <button
               type="submit" disabled={isLoading}
-              className="w-full py-4 mt-2 bg-[#2b5cd5] hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-bold rounded-2xl transition-all border border-blue-400/20 flex items-center justify-center gap-2 active:scale-[0.98] shadow-[0_0_24px_rgba(43,92,213,0.28)]"
+              className="w-full py-4 mt-2 bg-primer-terang hover:bg-blue-600 disabled:opacity-50 text-white text-sm font-bold rounded-2xl transition-all border border-blue-400/20 flex items-center justify-center gap-2 active:scale-[0.98] shadow-[0_0_24px_rgba(43,92,213,0.28)]"
             >
               {isLoading ? (
                 <><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Memvalidasi…</>

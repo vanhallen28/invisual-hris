@@ -26,7 +26,7 @@ export default function LoadingLogo({
         {/* Ring glow berputar di sekeliling logo (opsional) */}
         {withRing && (
           <div
-            className="absolute inset-[-8px] rounded-full border-2 border-transparent border-t-[#2b5cd5] border-r-[#2b5cd5]/40 animate-spin"
+            className="absolute inset-[-8px] rounded-full border-2 border-transparent border-t-primer-terang border-r-primer-terang/40 animate-spin"
             style={{ animationDuration: "1.2s" }}
           />
         )}

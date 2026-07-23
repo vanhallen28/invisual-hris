@@ -9,10 +9,113 @@
   --font-accent: var(--font-pasteur), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* ═══════════════════════════════════════════════════════
+   PALET STUDIO NOIR — satu sumber kebenaran warna.
+   Dipakai sebagai utilitas biasa: bg-kartu, text-tint,
+   border-garis, hover:bg-kartu-hover, dst.
+
+   ADITIF: hex lama (bg-[#141414]) tetap jalan, jadi
+   migrasi bisa bertahap tanpa merusak halaman mana pun.
+
+   Mau ubah rupa seluruh aplikasi? Ganti nilainya DI SINI
+   saja — semua halaman ikut otomatis.
+   ═══════════════════════════════════════════════════════ */
+@theme {
+  /* Permukaan (gelap → terang) */
+  --color-latar:       #0a0a0a;  /* latar halaman */
+  --color-input:       #111111;  /* isian form */
+  --color-kartu:       #141414;  /* panel & kartu */
+  --color-kartu-hover: #1a1a1a;  /* kartu saat disorot */
+
+  /* Aksen merek */
+  --color-primer:        #124bce;  /* tombol utama */
+  --color-primer-terang: #2b5cd5;  /* primer saat disorot */
+  --color-magenta:       #de236e;  /* aksen sekunder */
+
+  /* Teks aksen biru */
+  --color-tint:       #b3c5ff;  /* tautan & label menonjol */
+  --color-tint-redup: #8ba7ff;  /* label sekunder */
+}
+
 /* Pengaturan Dasar Body (Dark Mode) */
 body {
   background-color: #0a0a0a;
   color: #ffffff;
+}
+
+/* ═══════════════════════════════════════════════════════
+   KARTU — hanya CAHAYA MENGIKUTI KURSOR.
+
+   Sudut, garis, dan warna kartu TETAP memakai kelas
+   Tailwind biasa di masing-masing kartu (rounded-xl,
+   border border-white/10, bg-white/[0.03]) supaya pasti
+   tampil dan gampang dilihat saat membaca kode.
+
+   Kelas ini hanya menambah lapisan cahaya biru.
+   Posisi kursor diisi komponen GlowLayer di app/layout.tsx.
+   ═══════════════════════════════════════════════════════ */
+.kartu-glow {
+  position: relative;
+  isolation: isolate;
+}
+
+.kartu-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  background: radial-gradient(
+    340px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(43, 92, 213, 0.2),
+    transparent 62%
+  );
+}
+
+.kartu-glow:hover::before {
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════════════════════
+   TABEL — sorotan baris MEMBULAT saat disorot.
+
+   Sudut membulat pada baris hanya bisa jika tabel memakai
+   border-separate. Karena mode itu membuat garis pada <tr>
+   tak tampil, garis pemisah dipindah ke sel (<td>).
+
+   Cara pakai: beri kelas `tabel-baris-rapi` pada <table>,
+   lalu HAPUS `divide-y divide-white/5` dari <tbody> dan
+   `hover:bg-*` dari <tr> — semuanya sudah diurus di sini.
+   ═══════════════════════════════════════════════════════ */
+.tabel-baris-rapi {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.tabel-baris-rapi tbody td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tabel-baris-rapi tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.tabel-baris-rapi tbody tr:hover td {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tabel-baris-rapi tbody tr:hover td:first-child {
+  border-top-left-radius: 0.75rem;
+  border-bottom-left-radius: 0.75rem;
+}
+
+.tabel-baris-rapi tbody tr:hover td:last-child {
+  border-top-right-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
 }
 
 /* Glassmorphism utility class (Untuk Kartu/Panel) */

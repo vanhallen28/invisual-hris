@@ -67,7 +67,7 @@ function AnggotaModal({ anggotaIds, onClose, onChanged }: any) {
             const on = anggotaIds.includes(m.id);
             return (
               <button key={m.id} onClick={() => toggle(m)} disabled={busy === m.id}
-                className={`flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors disabled:opacity-50 ${on ? 'bg-[#124bce]/10' : 'hover:bg-zinc-700/50'}`}>
+                className={`flex items-center gap-2.5 px-2 py-2 rounded-lg text-left transition-colors disabled:opacity-50 ${on ? 'bg-primer/10' : 'hover:bg-zinc-700/50'}`}>
                 <Avatar url={m.avatarUrl} name={m.name} initials={m.initials}
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${mColor(m)}`} />
                 <span className={`text-[11px] flex-1 truncate ${on ? 'text-white font-semibold' : 'text-zinc-400'}`} title={m.name}>{namaPendek(m)}</span>
@@ -367,7 +367,7 @@ const postsOf = useCallback(
           </p>
           {isManager && (
             <button onClick={() => setKelola(true)}
-              className="mt-1 flex items-center gap-2 bg-[#124bce] hover:bg-blue-600 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all">
+              className="mt-1 flex items-center gap-2 bg-primer hover:bg-blue-600 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all">
               <Plus size={14} /> Tambah Anggota
             </button>
           )}
@@ -404,7 +404,7 @@ const postsOf = useCallback(
                   const kolom = batch.length === 4 ? 'grid-cols-2' : 'grid-cols-3';
                   return (
                     <div key={p0.id} className={`group flex flex-col gap-1 max-w-[85%] ${punyaSaya ? 'self-end items-end' : 'self-start items-start'}`}>
-                      <div className={`rounded-2xl overflow-hidden border p-1 ${punyaSaya ? 'border-[#124bce]/40 bg-[#124bce]/10' : 'border-zinc-800 bg-[#15171c]'}`}>
+                      <div className={`rounded-2xl overflow-hidden border p-1 ${punyaSaya ? 'border-primer/40 bg-primer/10' : 'border-zinc-800 bg-kartu'}`}>
                         <div className={`grid ${kolom} gap-1`}>
                           {batch.map((p) => (
                             <button key={p.id} onClick={() => setLightbox(p.image_url)} className="block aspect-square overflow-hidden rounded-lg">
@@ -438,7 +438,7 @@ const postsOf = useCallback(
                   const mine = p.user_id === currentUserId;
                   return (
                     <div key={p.id} className={`group flex flex-col gap-1 max-w-[85%] ${mine ? 'self-end items-end' : 'self-start items-start'}`}>
-                      <div className={`rounded-2xl overflow-hidden border ${mine ? 'border-[#124bce]/40 bg-[#124bce]/10' : 'border-zinc-800 bg-[#15171c]'}`}>
+                      <div className={`rounded-2xl overflow-hidden border ${mine ? 'border-primer/40 bg-primer/10' : 'border-zinc-800 bg-kartu'}`}>
                         {p.image_url && (
                           <button onClick={() => setLightbox(p.image_url)} className="block">
                             <img src={p.image_url} alt={`Setoran ${tglPendek(p.created_at)}`} loading="lazy"
@@ -498,7 +498,7 @@ const postsOf = useCallback(
                   className="w-9 h-9 rounded-lg object-cover border border-zinc-700 shrink-0" />
               )}
               {b.belum > 0 && (
-                <span className="text-[10px] font-bold bg-[#124bce] text-white min-w-[22px] text-center px-1.5 py-0.5 rounded-full shrink-0"
+                <span className="text-[10px] font-bold bg-primer text-white min-w-[22px] text-center px-1.5 py-0.5 rounded-full shrink-0"
                   title={`${b.belum} setoran belum dicek`}>
                   {b.belum}
                 </span>
@@ -518,7 +518,7 @@ const postsOf = useCallback(
             </span>
             {isManager && (
               <button onClick={tambahSaya}
-                className="text-[11px] font-bold text-white bg-[#124bce] hover:bg-blue-600 px-3 py-1.5 rounded-lg transition-colors shrink-0">
+                className="text-[11px] font-bold text-white bg-primer hover:bg-blue-600 px-3 py-1.5 rounded-lg transition-colors shrink-0">
                 Tambahkan saya
               </button>
             )}
@@ -526,7 +526,7 @@ const postsOf = useCallback(
         ) : (
           <>
             {pending.length > 0 && (
-              <div className="flex items-center gap-2 mb-2 bg-[#15171c] border border-zinc-800 rounded-xl p-2 overflow-x-auto">
+              <div className="flex items-center gap-2 mb-2 bg-kartu border border-zinc-800 rounded-xl p-2 overflow-x-auto">
                 {pending.map((f, i) => (
                   <div key={`${f.name}-${i}`} className="relative shrink-0">
                     <img src={pendingUrls[i] || ''} alt={f.name}
@@ -558,11 +558,11 @@ const postsOf = useCallback(
                 onChange={(e) => setCaption(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!uploading) kirim(); } }}
                 placeholder="Tulis pesan…"
-                className="flex-1 min-w-0 bg-[#15171c] border border-zinc-700 focus:border-[#124bce]/60 rounded-xl px-3 py-2.5 text-xs text-zinc-100 outline-none transition-colors" />
+                className="flex-1 min-w-0 bg-kartu border border-zinc-700 focus:border-primer/60 rounded-xl px-3 py-2.5 text-xs text-zinc-100 outline-none transition-colors" />
 
               <button onClick={kirim} disabled={uploading || (!pending.length && !caption.trim())}
                 title="Kirim"
-                className="flex items-center gap-1.5 bg-[#124bce] hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shrink-0">
+                className="flex items-center gap-1.5 bg-primer hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shrink-0">
                 <Send size={14} /> {uploading ? 'Mengirim…' : 'Kirim'}
               </button>
             </div>

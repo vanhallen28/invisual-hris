@@ -33,7 +33,7 @@ function coversToday(tanggalStr: string, todayISO: string) {
 const isRemote = (j: string) => /WFH|WFC|Work From/i.test(String(j || ""));
 
 type Absen = { id?: any; idKaryawan?: string; nama?: string; waktuMasuk?: string; status?: string; mode_kerja?: string };
-type Izin = { id?: any; nama?: string; jenis?: string; tanggal?: string; status?: string };
+type Izin = { id?: any; idKaryawan?: string; nama?: string; jenis?: string; tanggal?: string; status?: string };
 
 export default function DashboardTimPage() {
   const router = useRouter();
@@ -114,19 +114,29 @@ export default function DashboardTimPage() {
     );
   }
 
+  // Peta idKaryawan → nama resmi dari tabel employees. Dipakai agar nama yang
+  // tampil selalu versi master, bukan tulisan bebas dari approvals (mis. kapital).
+  const namaResmi = new Map<string, string>();
+  employees.forEach((e) => { if (e.idKaryawan) namaResmi.set(e.idKaryawan, e.nama); });
+  const namaMaster = (l: Izin) => (l.idKaryawan && namaResmi.get(l.idKaryawan)) || l.nama;
+
   const onTime = absensi.filter((a) => a.status === "Tepat Waktu");
   const late = absensi.filter((a) => a.status === "Terlambat");
   const hadirTotal = onTime.length + late.length;
   const belumAbsen = Math.max(0, employees.length - hadirTotal - approvedLeaves.length - remoteToday.length);
   const persen = employees.length ? Math.round((hadirTotal / employees.length) * 100) : 0;
 
-  // Nama yang belum absen: karyawan aktif dikurangi yang sudah absen,
-  // yang izin/sakit, dan yang WFH/WFC.
-  const namaSudahAbsen = new Set(absensi.map((a) => a.nama));
-  const namaIzin = new Set(approvedLeaves.map((l) => l.nama));
-  const namaRemote = new Set(remoteToday.map((l) => l.nama));
+  // Cocokkan orang lewat idKaryawan — BUKAN nama. Nama bisa ditulis beda
+  // (kapital vs biasa) di approvals dan employees, sehingga membandingkan
+  // string nama membuat satu orang muncul di dua kategori sekaligus.
+  const idSudahAbsen = new Set(absensi.map((a) => a.idKaryawan).filter(Boolean));
+  const idIzin = new Set(approvedLeaves.map((l) => l.idKaryawan).filter(Boolean));
+  const idRemote = new Set(remoteToday.map((l) => l.idKaryawan).filter(Boolean));
   const belumAbsenNama = employees
-    .filter((e) => !namaSudahAbsen.has(e.nama) && !namaIzin.has(e.nama) && !namaRemote.has(e.nama))
+    .filter((e) => {
+      const id = e.idKaryawan;
+      return !idSudahAbsen.has(id) && !idIzin.has(id) && !idRemote.has(id);
+    })
     .map((e) => e.nama);
 
   return (
@@ -148,7 +158,7 @@ export default function DashboardTimPage() {
             <Kartu label="Hadir" nilai={hadirTotal} warna="text-white" sub={`${persen}% dari ${employees.length}`} />
             <Kartu label="Tepat waktu" nilai={onTime.length} warna="text-green-400" />
             <Kartu label="Terlambat" nilai={late.length} warna="text-yellow-400" />
-            <Kartu label="WFH / WFC" nilai={remoteToday.length} warna="text-[#8ba7ff]" />
+            <Kartu label="WFH / WFC" nilai={remoteToday.length} warna="text-tint-redup" />
             <Kartu label="Sakit / cuti" nilai={approvedLeaves.length} warna="text-red-400" />
           </div>
 
@@ -168,16 +178,16 @@ export default function DashboardTimPage() {
               {late.length === 0 && <Kosong />}
             </Daftar>
 
-            <Daftar judul="WFH / WFC" warna="bg-[#124bce]" jumlah={remoteToday.length}>
+            <Daftar judul="WFH / WFC" warna="bg-primer" jumlah={remoteToday.length}>
               {remoteToday.map((l, i) => (
-                <BarisNama key={l.id || `rm-${i}`} nama={l.nama} kanan={String(l.jenis || "").includes("WFC") ? "WFC" : "WFH"} warnaKanan="text-[#8ba7ff]" />
+                <BarisNama key={l.id || `rm-${i}`} nama={namaMaster(l)} kanan={String(l.jenis || "").includes("WFC") ? "WFC" : "WFH"} warnaKanan="text-tint-redup" />
               ))}
               {remoteToday.length === 0 && <Kosong />}
             </Daftar>
 
             <Daftar judul="Sakit / cuti" warna="bg-red-500" jumlah={approvedLeaves.length}>
               {approvedLeaves.map((l, i) => (
-                <BarisNama key={l.id || `lv-${i}`} nama={l.nama} kanan={l.jenis} warnaKanan="text-red-400" />
+                <BarisNama key={l.id || `lv-${i}`} nama={namaMaster(l)} kanan={l.jenis} warnaKanan="text-red-400" />
               ))}
               {approvedLeaves.length === 0 && <Kosong />}
             </Daftar>
@@ -199,7 +209,7 @@ export default function DashboardTimPage() {
 
 function Kartu({ label, nilai, warna, sub }: { label: string; nilai: number; warna: string; sub?: string }) {
   return (
-    <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-4">
+    <div className="bg-latar border border-white/10 rounded-xl p-4">
       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</p>
       <p className={`font-display mt-2 text-3xl font-black ${warna}`}>{nilai}</p>
       {sub && <p className="text-[10px] text-gray-500 mt-1">{sub}</p>}
@@ -209,7 +219,7 @@ function Kartu({ label, nilai, warna, sub }: { label: string; nilai: number; war
 
 function Daftar({ judul, warna, jumlah, children }: { judul: string; warna: string; jumlah: number; children: React.ReactNode }) {
   return (
-    <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-4">
+    <div className="bg-latar border border-white/10 rounded-xl p-4">
       <div className="flex items-center gap-2.5 mb-3 pb-3 border-b border-white/5">
         <span className={`w-2.5 h-2.5 rounded-sm ${warna}`} />
         <span className="text-sm font-bold text-white">{judul}</span>
@@ -222,7 +232,7 @@ function Daftar({ judul, warna, jumlah, children }: { judul: string; warna: stri
 
 function BarisNama({ nama, kanan, warnaKanan }: { nama?: string; kanan?: string; warnaKanan?: string }) {
   return (
-    <div className="flex justify-between items-center px-3 py-2 bg-[#111111] rounded-lg border border-white/5">
+    <div className="flex justify-between items-center px-3 py-2 bg-input rounded-lg border border-white/5">
       <span className="text-sm text-white truncate">{nama || "—"}</span>
       {kanan && <span className={`text-[11px] font-mono shrink-0 ml-2 ${warnaKanan || "text-gray-400"}`}>{kanan}</span>}
     </div>

@@ -45,7 +45,7 @@ export function CorporateSummaryCard() {
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-9 w-9 place-items-center rounded-xl border border-[#124bce]/20 bg-[#124bce]/15 text-[#b3c5ff]">
+          <span className="grid h-9 w-9 place-items-center rounded-xl border border-primer/20 bg-primer/15 text-tint">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-5 w-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
             </svg>
@@ -57,7 +57,7 @@ export function CorporateSummaryCard() {
         </div>
         <Link
           href="/admin/corporate"
-          className="shrink-0 text-xs font-medium text-[#b3c5ff] hover:underline"
+          className="shrink-0 text-xs font-medium text-tint hover:underline"
         >
           Buka →
         </Link>

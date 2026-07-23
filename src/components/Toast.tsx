@@ -74,9 +74,9 @@ const GAYA: Record<Jenis, { garis: string; kotak: string; label: string; teks: s
     teks: "Gagal",
   },
   info: {
-    garis: "bg-[#124bce]",
-    kotak: "bg-[#124bce]/15 text-[#8ba7ff]",
-    label: "text-[#8ba7ff]",
+    garis: "bg-primer",
+    kotak: "bg-primer/15 text-tint-redup",
+    label: "text-tint-redup",
     teks: "Info",
   },
 };
@@ -133,7 +133,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           return (
             <div
               key={t.id}
-              className="relative flex items-center gap-3.5 bg-[#15121A] border border-white/10 rounded-2xl shadow-2xl px-4 py-3.5 overflow-hidden animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-auto"
+              className="relative flex items-center gap-3.5 bg-kartu border border-white/10 rounded-2xl shadow-2xl px-4 py-3.5 overflow-hidden animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-auto"
             >
               <span className={`absolute left-0 top-0 bottom-0 w-1 ${g.garis}`} />
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${g.kotak}`}>
@@ -153,7 +153,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         <>
           <div className="fixed inset-0 bg-black/70 z-[10001]" onClick={() => tutupKonfirmasi(false)} />
           <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 pointer-events-none">
-            <div className="w-full max-w-sm bg-[#15121A] border border-white/10 rounded-2xl shadow-2xl p-5 pointer-events-auto animate-in zoom-in-95 fade-in duration-200">
+            <div className="w-full max-w-sm bg-kartu border border-white/10 rounded-2xl shadow-2xl p-5 pointer-events-auto animate-in zoom-in-95 fade-in duration-200">
               <p className="text-sm text-white leading-relaxed mb-5">{konfirmasi.pesan}</p>
               <div className="flex gap-2.5">
                 <button
@@ -164,7 +164,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 </button>
                 <button
                   onClick={() => tutupKonfirmasi(true)}
-                  className="flex-1 h-10 rounded-xl bg-[#2b5cd5] hover:bg-[#124bce] text-sm font-semibold text-white transition-colors active:scale-[0.99]"
+                  className="flex-1 h-10 rounded-xl bg-primer-terang hover:bg-primer text-sm font-semibold text-white transition-colors active:scale-[0.99]"
                 >
                   {konfirmasi.labelYa}
                 </button>
