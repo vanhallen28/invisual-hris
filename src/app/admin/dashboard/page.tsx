@@ -191,7 +191,7 @@ export default function AdminDashboardPage() {
         if (issues.length > 0) detectedAnomalies.push({ idKaryawan: emp.idKaryawan, nama: emp.nama, issues: issues });
       });
 
-      const lateRecords = saringTerlambat(uniqueAttendances, empData || []);
+      const lateRecords = saringTerlambat(uniqueAttendances, empData || []).filter((a: any) => !a.anomali_disetujui);
       lateRecords.forEach(late => {
         detectedAnomalies.push({ idKaryawan: late.idKaryawan, nama: late.nama, issues: [`Terlambat Presensi Masuk (${late.waktuMasuk} WIB)`], type: 'late', attendanceId: late.id });
       });

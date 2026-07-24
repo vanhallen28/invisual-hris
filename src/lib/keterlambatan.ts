@@ -11,6 +11,10 @@
  * Selalu dicocokkan dulu dengan data karyawan (sumber kebenaran).
  *
  * Aditif: tidak mengubah data di Supabase, hanya cara membacanya.
+ *
+ * CATATAN: pengecualian "anomali sudah disetujui admin" TIDAK diurus di sini.
+ * Itu aturan berbeda dan hanya berlaku di sebagian tempat, jadi tetap ditulis
+ * eksplisit di pemanggilnya agar tak diam-diam mengubah angka kartu lain.
  */
 
 /** Karyawan dengan jam fleksibel tidak pernah dihitung terlambat. */
@@ -28,7 +32,6 @@ export function fleksibelIds(employees: any[] | undefined): Set<string> {
  */
 export function terlambat(absen: any, fleks: Set<string>): boolean {
   if (!absen || absen.status !== "Terlambat") return false;
-  if (absen.anomali_disetujui) return false;               // sudah dimaafkan admin
   return !fleks.has(String(absen.idKaryawan ?? ""));       // fleksibel → tidak telat
 }
 
