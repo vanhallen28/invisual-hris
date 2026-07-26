@@ -21,13 +21,22 @@ export default function PwaSetup() {
       try { (navigator as any).clearAppBadge?.(); } catch { /* abaikan */ }
       try { navigator.serviceWorker?.controller?.postMessage({ type: "reset-badge" }); } catch { /* abaikan */ }
     };
+
+    // Dulu pendengar visibilitychange dipasang sebagai fungsi anonim, jadi
+    // TIDAK PERNAH bisa dilepas — pembersihannya hanya melepas 'focus'.
+    // Diberi nama supaya benar-benar terlepas saat komponen dilepas.
+    const saatTerlihat = () => {
+      if (document.visibilityState === "visible") clear();
+    };
+
     clear();
     window.addEventListener("focus", clear);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") clear();
-    });
+    document.addEventListener("visibilitychange", saatTerlihat);
 
-    return () => window.removeEventListener("focus", clear);
+    return () => {
+      window.removeEventListener("focus", clear);
+      document.removeEventListener("visibilitychange", saatTerlihat);
+    };
   }, []);
 
   return null;

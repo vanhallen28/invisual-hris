@@ -14,6 +14,7 @@ import {
   tandaiSetoranDilihat, SETORAN_HARI,
 } from '@/lib/tracker/setoran';
 import { namaPendek } from '@/lib/tracker/nama';
+import { guliranStabil, kePenanda } from '@/lib/tracker/gulir';
 
 const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-primer-terang');
 const hariISO = (d: any) => new Date(d).toISOString().slice(0, 10);
@@ -150,6 +151,22 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
   // Lepaskan pratinjau lokal agar tidak membebani memori.
   // Simpan URL pratinjau di ref agar bisa dibersihkan saat komponen ditutup.
   const ujungRef = useRef<HTMLDivElement>(null);   // penanda dasar daftar
+  const wadahRef = useRef<HTMLDivElement>(null);   // area yang digulir
+  const penandaRef = useRef<HTMLDivElement>(null); // batas 'belum dilihat'
+  // Waktu kunjungan TERAKHIR ke aliran seseorang. Direkam sebelum
+  // `tandaiDilihat` menimpanya, supaya batasnya masih yang lama.
+  const [batasBaru, setBatasBaru] = useState<string | null>(() => {
+    // Saat halaman dimuat ulang, aliran yang terakhir dibuka dipulihkan
+    // tanpa lewat bukaOrang(). Batasnya diambil langsung dari peta lokal.
+    if (typeof window === 'undefined') return null;
+    try {
+      const uid = localStorage.getItem('invisual_setoran_buka');
+      if (!uid) return null;
+      const peta = JSON.parse(localStorage.getItem(DILIHAT_KEY) || '{}');
+      return peta[uid] || null;
+    } catch { return null; }
+  });
+  const sudahGulirRef = useRef<string>('');
   const urlRef = useRef<string[]>([]);
   useEffect(() => { urlRef.current = pendingUrls; }, [pendingUrls]);
   useEffect(() => () => { urlRef.current.forEach((u) => URL.revokeObjectURL(u)); }, []);
@@ -341,6 +358,9 @@ const postsOf = useCallback(
   // Membuka aliran seseorang → tandai dilihat di perangkat ini. Sederhana,
   // seketika, tanpa database — jadi tak ada jeda jaringan maupun kedip.
   const bukaOrang = (uid: string) => {
+    // Direkam DULU: tandaiDilihat() di baris berikutnya menimpa nilainya.
+    setBatasBaru(dilihatMap[uid] || null);
+    sudahGulirRef.current = '';
     setBuka(uid);
     tandaiDilihat(uid);
     try { localStorage.setItem('invisual_setoran_buka', uid); } catch { /* diamkan */ }
@@ -379,10 +399,33 @@ const postsOf = useCallback(
 
   const sudah = barisAnggota.filter((b) => b.sudahHariIni).length;
   const dibuka = buka ? barisAnggota.find((b) => b.uid === buka) : null;
-  // Turun ke pesan terbaru saat membuka orang atau saat ada kiriman baru.
+
+  // Setoran pertama yang datang SETELAH kunjungan terakhir ke aliran ini.
+  // null berarti semuanya sudah pernah dilihat → berhenti di paling bawah.
+  const idPenandaBaru = useMemo(() => {
+    if (!dibuka || !batasBaru) return null;
+    const urut = [...postsOf(dibuka.uid)].reverse();   // lama → baru
+    // Dibandingkan sebagai ANGKA, bukan teks: `dilihatMap` ditulis browser
+    // ("...Z") sedangkan created_at datang dari Postgres ("...+00:00").
+    // Perbandingan teks antar dua format itu memberi hasil salah.
+    const batasMs = new Date(batasBaru).getTime();
+    return urut.find((x) => new Date(x.created_at).getTime() > batasMs)?.id || null;
+  }, [dibuka, batasBaru, postsOf]);
+  // Berhenti di setoran pertama yang belum dilihat; kalau semua sudah
+  // dilihat, di paling bawah. Sekali per orang — kiriman yang datang
+  // kemudian tidak menyeret layar balik ke atas.
+  //
+  // Isi Setoran Daily GAMBAR SEMUA, dan tingginya masih nol saat data
+  // datang. `scrollIntoView` sekali tembak (cara lama) hampir tak pernah
+  // benar-benar sampai. `guliranStabil` memasang ulang posisinya tiap kali
+  // ada gambar selesai termuat.
   useEffect(() => {
     if (!dibuka) return;
-    ujungRef.current?.scrollIntoView({ block: 'end' });
+    if (sudahGulirRef.current === dibuka.uid) return;
+    sudahGulirRef.current = dibuka.uid;
+    const el = wadahRef.current;
+    if (!el) return;
+    return guliranStabil(el, (w) => kePenanda(w, penandaRef.current));
   }, [dibuka, posts.length]);
 
 
@@ -461,7 +504,7 @@ const postsOf = useCallback(
         </div>
       ) : dibuka ? (
         /* ── Galeri satu orang ── */
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <div ref={wadahRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <div className="sticky top-0 z-10 flex items-center gap-2.5 px-4 py-3 bg-kartu-hover border-b border-white/10">
             <button onClick={() => { setBuka(null); try { localStorage.removeItem('invisual_setoran_buka'); } catch { /* diamkan */ } }} className="p-1 text-gray-400 hover:text-white shrink-0">
               <ChevronLeft size={18} />
@@ -484,13 +527,25 @@ const postsOf = useCallback(
                 const punyaSaya = p0.user_id === currentUserId;
                 const bolehHapus = punyaSaya || isManager;
                 const captionBatch = batch.find((x) => x.caption)?.caption;
+                // Batas 'belum dilihat' dipasang di batch yang memuat
+                // setoran pertama yang lebih baru dari kunjungan terakhir.
+                const tandaiDiSini = !!idPenandaBaru && batch.some((x) => x.id === idPenandaBaru);
+                const garisBaru = tandaiDiSini ? (
+                  <div ref={penandaRef} className="flex items-center gap-3 my-3 w-full">
+                    <div className="flex-1 h-px bg-magenta/40" />
+                    <span className="text-[10px] font-bold text-magenta uppercase tracking-wider">Setoran baru</span>
+                    <div className="flex-1 h-px bg-magenta/40" />
+                  </div>
+                ) : null;
 
                 // Batch 4+ gambar → grid album seperti WhatsApp/Telegram.
                 const album = batch.length >= MIN_ALBUM && batch.every((x) => x.image_url);
                 if (album) {
                   const kolom = batch.length === 4 ? 'grid-cols-2' : 'grid-cols-3';
                   return (
-                    <div key={p0.id} className={`group flex flex-col gap-1 max-w-[85%] ${punyaSaya ? 'self-end items-end' : 'self-start items-start'}`}>
+                    <React.Fragment key={p0.id}>
+                    {garisBaru}
+                    <div className={`group flex flex-col gap-1 max-w-[85%] ${punyaSaya ? 'self-end items-end' : 'self-start items-start'}`}>
                       <div className={`rounded-2xl overflow-hidden border p-1 ${punyaSaya ? 'border-primer/40 bg-primer/10' : 'border-white/10 bg-kartu'}`}>
                         <div className={`grid ${kolom} gap-1`}>
                           {batch.map((p) => (
@@ -516,11 +571,15 @@ const postsOf = useCallback(
                         )}
                       </div>
                     </div>
+                    </React.Fragment>
                   );
                 }
 
                 // Selain itu: gelembung satuan seperti biasa.
-                return batch.map((p) => {
+                return (
+                  <React.Fragment key={p0.id}>
+                  {garisBaru}
+                  {batch.map((p) => {
                   const hapusIni = p.user_id === currentUserId || isManager;
                   const mine = p.user_id === currentUserId;
                   return (
@@ -549,7 +608,9 @@ const postsOf = useCallback(
                       </div>
                     </div>
                   );
-                });
+                  })}
+                  </React.Fragment>
+                );
               })}
               <div ref={ujungRef} />
             </div>

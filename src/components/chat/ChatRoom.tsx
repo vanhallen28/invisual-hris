@@ -9,8 +9,9 @@ import LoadingLogo from '@/components/LoadingLogo';
 import Avatar from '@/components/Avatar';
 import {
   EMOJIS, loadMessages, sendMessage, editMessage, deleteMessage, setPinned, setTaskRef,
-  loadReactions, toggleReaction, markRead, uploadChatFile, findTask, searchTasks, taskMeta,
+  loadReactions, toggleReaction, markRead, terakhirDibaca, uploadChatFile, findTask, searchTasks, taskMeta,
 } from '@/lib/tracker/chat';
+import { guliranStabil, kePenanda } from '@/lib/tracker/gulir';
 import { dbAddItem, dbSetCellValue, newId } from '@/lib/tracker/sync';
 import { EMOJI_GROUPS, BUILTIN_STICKERS, isOnlyEmoji, loadStickers, addSticker, deleteSticker } from '@/lib/tracker/emoji';
 import { pushNotify } from '@/lib/push';
@@ -224,6 +225,10 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
   const stickerFileRef = useRef<HTMLInputElement>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Pesan pertama yang belum dibaca — jadi tempat berhenti saat ruang dibuka.
+  const [belumDibacaId, setBelumDibacaId] = useState<string | null>(null);
+  const penandaRef = useRef<HTMLDivElement>(null);
+  const sudahGulirRef = useRef<string>('');
   const fileRef = useRef<HTMLInputElement>(null);
   const typingCh = useRef<any>(null);
   const me = teamMembers.find((m: any) => m.id === currentUserId);
@@ -237,16 +242,48 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
     if (!supabase || !channel?.id) return;
     setLoading(true);
     try {
+      // Penanda "terakhir dibaca" HARUS diambil sebelum markRead, karena
+      // markRead langsung menimpanya dengan waktu sekarang.
+      const batas = await terakhirDibaca(supabase, channel.id, currentUserId);
+
       const list = await loadMessages(supabase, channel.id);
       setMsgs(list);
       setRx(await loadReactions(supabase, list.map((m: any) => m.id)));
-      await markRead(supabase, channel.id, currentUserId);
-      toBottom();
+
+      // Pesan pertama dari orang lain yang datang setelah kunjungan terakhir.
+      // Dibandingkan sebagai ANGKA, bukan teks — format waktu bisa berbeda
+      // ("...Z" vs "...+00:00") dan perbandingan teks jadi meleset.
+      const batasMs = batas ? new Date(batas).getTime() : 0;
+      const pertama = batasMs
+        ? list.find((m: any) => m.author_id !== currentUserId
+            && new Date(m.created_at).getTime() > batasMs)
+        : null;
+      setBelumDibacaId(pertama?.id || null);
+
+      // verifikasi=true: sekali saat ruang dibuka, memastikan penandanya
+      // benar-benar bisa dibaca kembali (lihat markRead).
+      await markRead(supabase, channel.id, currentUserId, true);
+      // Guliran ditangani effect di bawah — menunggu penandanya benar-benar
+      // tergambar, dan tahan terhadap gambar yang termuat belakangan.
     } catch (e: any) { toast('Gagal memuat pesan: ' + (e?.message || e)); }
     setLoading(false);
   }, [supabase, channel?.id, currentUserId, toast]);
 
   useEffect(() => { load(); setReplyTo(null); setEditing(null); setText(''); setAttachTask(null); }, [load]);
+
+  /* Berhenti di pesan pertama yang belum dibaca (kalau ada), selain itu di
+     dasar. Dijalankan sekali per channel — ditandai `sudahGulirRef` supaya
+     pesan yang masuk kemudian tidak menyeret layar balik ke atas. */
+  useEffect(() => {
+    if (loading || !msgs.length) return;
+    const id = channel?.id || '';
+    if (sudahGulirRef.current === id) return;
+    sudahGulirRef.current = id;
+
+    const wadah = scrollRef.current;
+    if (!wadah) return;
+    return guliranStabil(wadah, (w) => kePenanda(w, penandaRef.current));
+  }, [loading, msgs.length, channel?.id]);
   useEffect(() => { if (supabase) loadStickers(supabase).then(setStickers).catch(() => {}); }, [supabase]);
 
   /* realtime pesan + reaction */
@@ -257,8 +294,17 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${channel.id}` }, (p: any) => {
         if (p.eventType === 'INSERT') {
           setMsgs((m) => (m.some((x) => x.id === p.new.id) ? m : [...m, p.new]));
-          markRead(supabase, channel.id, currentUserId);
-          toBottom(true);
+          // Kegagalan di sini dulu hilang tanpa jejak (tanpa await, tanpa
+          // catch) — padahal markRead melempar. Sekarang dilaporkan.
+          markRead(supabase, channel.id, currentUserId)
+            .catch((e: any) => toast('Gagal menandai terbaca: ' + (e?.message || e)));
+          // Hanya ikut turun kalau pembaca MEMANG sedang di dekat dasar.
+          // Sejak ruang berhenti di garis "Pesan belum dibaca", menurunkan
+          // layar tanpa syarat akan menyeret orang dari pesan yang sedang
+          // dibacanya begitu ada pesan baru masuk.
+          const kotak = scrollRef.current;
+          const diDasar = !kotak || kotak.scrollHeight - kotak.scrollTop - kotak.clientHeight < 120;
+          if (diDasar) toBottom(true);
         }
         if (p.eventType === 'UPDATE') setMsgs((m) => m.map((x) => (x.id === p.new.id ? p.new : x)));
         if (p.eventType === 'DELETE') setMsgs((m) => m.filter((x) => x.id !== p.old.id));
@@ -374,6 +420,18 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
       });
       setMsgs((m) => (m.some((x) => x.id === row.id) ? m : [...m, row]));
       setReplyTo(null); toBottom(true);
+
+      // 🔔 Notifikasi push — dulu TIDAK ada di sini, padahal teks, stiker,
+      // dan emoji besar semuanya memberitahu. Akibatnya mengirim gambar
+      // tidak pernah memunculkan notifikasi di HP siapa pun. Makin terasa
+      // sejak seret-lepas dipasang, karena gambar jadi jalur yang sering.
+      pushNotify(supabase, {
+        memberIds: recipients,
+        title: `#${channel.name} • ${me?.name || 'Pesan baru'}`,
+        body: (file.type || '').startsWith('image/') ? 'Mengirim gambar 🖼️' : `Mengirim berkas: ${file.name}`,
+        url: window.location.pathname,
+        tag: `chat-${channel.id}`,
+      });
     } catch (e: any) { toast('Gagal unggah: ' + (e?.message || e)); }
     setUploading(false);
   };
@@ -624,6 +682,15 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
 
           return (
             <div key={m.id}>
+              {belumDibacaId === m.id && (
+                <div ref={penandaRef} className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px bg-magenta/40" />
+                  <span className="text-[10px] font-bold text-magenta uppercase tracking-wider">
+                    Pesan belum dibaca
+                  </span>
+                  <div className="flex-1 h-px bg-magenta/40" />
+                </div>
+              )}
               {newDay && (
                 <div className="flex items-center gap-3 my-4">
                   <div className="flex-1 h-px bg-white/10" />

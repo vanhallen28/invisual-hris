@@ -24,6 +24,7 @@ export default function ChatToaster() {
 
   const myIdRef = useRef<string | null>(null);
   const channelsRef = useRef<Record<string, string>>({}); // channel_id -> name
+  const petaSiapRef = useRef(false);                       // peta channel berhasil dimuat?
   const audioRef = useRef<HTMLAudioElement | null>(null); // nada notifikasi
   const pathRef = useRef(pathname);
   pathRef.current = pathname;
@@ -45,8 +46,13 @@ export default function ChatToaster() {
           if (c?.id) map[c.id] = c.name || "chat";
         });
         channelsRef.current = map;
+        petaSiapRef.current = true;
       } catch {
-        /* abaikan — tanpa peta channel, filter channel dilewati */
+        // Peta channel gagal dimuat. JANGAN melanjutkan tanpa penyaring:
+        // dulu filternya dilewati saat peta kosong, sehingga isi pesan dari
+        // channel privat yang tak boleh dilihat pun bisa muncul di toast.
+        // Lebih baik diam daripada bocor.
+        petaSiapRef.current = false;
       }
 
       sub = supabase
@@ -63,7 +69,10 @@ export default function ChatToaster() {
             // Lewati bila sedang di halaman chat (lihat langsung),
             // channel tak terlihat, atau pesan sendiri.
             if (pathRef.current.includes("/chat")) return;
-            if (Object.keys(map).length > 0 && channelId && !map[channelId]) return;
+            // Tanpa peta channel yang sah, tidak ada yang ditampilkan —
+            // gagal-tertutup, bukan gagal-terbuka.
+            if (!petaSiapRef.current) return;
+            if (channelId && !map[channelId]) return;
             if (senderId && senderId === myIdRef.current) return;
 
             const channelName = map[channelId] || "chat";

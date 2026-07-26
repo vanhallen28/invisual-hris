@@ -83,7 +83,19 @@ export async function pushNotify(
   }
 }
 
-/** Hapus badge angka di ikon PWA */
+/**
+ * Hapus badge angka di ikon PWA.
+ *
+ * PENTING: menghapus badge sistem saja TIDAK cukup. Service worker menyimpan
+ * hitungannya sendiri di Cache Storage (`invisual-badge-count`), dan kalau
+ * hitungan itu tidak ikut dinolkan, notifikasi berikutnya melanjutkan dari
+ * angka lama — badge terlihat "kembali ke angka awal". Dulu hanya PwaSetup
+ * yang mengirim reset ini, dan itu cuma berjalan saat jendela di-fokus ulang;
+ * berpindah ke halaman Chat di dalam aplikasi tidak memicu apa pun.
+ */
 export const clearBadge = () => {
   try { (navigator as any).clearAppBadge?.(); } catch { /* abaikan */ }
+  try {
+    navigator.serviceWorker?.controller?.postMessage({ type: 'reset-badge' });
+  } catch { /* abaikan */ }
 };

@@ -6,9 +6,10 @@ import { supabase } from "@/lib/supabase";
 import { unreadByChannel } from "@/lib/tracker/chat";
 
 /**
- * Notifikasi pesan chat belum dibaca di Dasbor admin. Memakai RPC
- * `chat_unread_by_channel` yang sudah ada (via unreadByChannel) lalu
- * menjumlahkannya. Kembali null bila tak ada pesan baru. Disegarkan tiap 30 dtk.
+ * Notifikasi pesan chat belum dibaca di Dasbor admin. Menjumlahkan hasil
+ * `unreadByChannel`, yang kini dihitung di sisi aplikasi (bukan lagi lewat
+ * RPC `chat_unread_by_channel` yang terbukti mengabaikan penanda dibaca).
+ * Kembali null bila tak ada pesan baru. Disegarkan tiap 30 dtk.
  */
 export function ChatNotifCard() {
   const [total, setTotal] = useState(0);
@@ -18,7 +19,12 @@ export function ChatNotifCard() {
     let alive = true;
     const fetchUnread = async () => {
       try {
-        const map = await unreadByChannel(supabase);
+        // unreadByChannel sekarang butuh id anggota, dan mengembalikan
+        // { map, galat } — bukan lagi peta polos.
+        const { data: { session } } = await supabase.auth.getSession();
+        const uid = session?.user?.id;
+        if (!uid) return;
+        const { map } = await unreadByChannel(supabase, uid);
         if (!alive) return;
         const sum = Object.values(map).reduce((a: number, b) => a + (Number(b) || 0), 0);
         setTotal(sum);

@@ -18,7 +18,7 @@ import {
   loadChannels, loadChannelMembers, createChannel, updateChannel, deleteChannel,
   setChannelMembers, unreadByChannel,
 } from '@/lib/tracker/chat';
-import { countSetoranBaru } from '@/lib/tracker/setoran';
+import { countSetoranBaru, SETORAN_SEEN_KEY } from '@/lib/tracker/setoran';
 import { namaPendek } from '@/lib/tracker/nama';
 
 const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-primer-terang');
@@ -221,13 +221,16 @@ export default function ChatApp() {
     setChLoading(true);
     try {
       const [cs, cm, un] = await Promise.all([
-        loadChannels(supabase), loadChannelMembers(supabase), unreadByChannel(supabase),
+        loadChannels(supabase), loadChannelMembers(supabase), unreadByChannel(supabase, currentUserId),
       ]);
-      setChannels(cs); setChMembers(cm); setUnread(un);
+      setChannels(cs); setChMembers(cm); setUnread(un.map);
+      // Kegagalan menghitung belum-dibaca dulu ditelan diam-diam, jadi
+      // lencana yang salah tak pernah ketahuan sebabnya.
+      if (un.galat) toast('Lencana belum-dibaca tidak bisa dihitung: ' + un.galat);
       setActive((a: any) => (a ? cs.find((c: any) => c.id === a.id) || cs[0] || null : cs[0] || null));
     } catch (e: any) { toast('Gagal memuat channel: ' + (e?.message || e)); }
     setChLoading(false);
-  }, [supabase, toast]);
+  }, [supabase, toast, currentUserId]);
 
   useEffect(() => { if (isLoaded) refresh(); }, [isLoaded, refresh]);
 
@@ -241,7 +244,19 @@ export default function ChatApp() {
   const activeIdRef = useRef(active?.id);
   useEffect(() => { channelsRef.current = channels; }, [channels]);
   useEffect(() => { meRef.current = me; }, [me]);
-  useEffect(() => { activeIdRef.current = active?.id; }, [active?.id]);
+
+  /* Channel yang BENAR-BENAR sedang tampil di layar.
+     Dulu dipakai `active?.id` mentah. Masalahnya `active` tetap menunjuk
+     sebuah channel walau layar sedang menampilkan Setoran Daily atau ruang
+     suara — ChatRoom-nya sudah dilepas. Akibatnya pesan yang masuk ke
+     channel itu dianggap "sedang dilihat": lencana tidak naik, dan markRead
+     juga tak jalan karena ruangnya tak terpasang. Pesannya hilang dari
+     hitungan sampai halaman dimuat ulang. */
+  const channelTampil =
+    setoranOpen || (voiceCh && voiceCh.id === active?.id) || active?.is_voice
+      ? null
+      : active?.id;
+  useEffect(() => { activeIdRef.current = channelTampil; }, [channelTampil]);
 
   useEffect(() => {
     if (!supabase || !currentUserId) return;
@@ -279,7 +294,10 @@ export default function ChatApp() {
   }, [supabase, currentUserId]);
 
   /* lencana Setoran Daily — hitung setoran orang lain sejak terakhir dibuka */
-  const setoranSeenKey = 'invisual_setoran_seen';
+  // Memakai konstanta BERSAMA dari lib/tracker/setoran. Dulu nilainya
+  // ditulis ulang sebagai teks di sini; kalau salah satunya diubah,
+  // lencana dan penandanya diam-diam memakai kunci berbeda.
+  const setoranSeenKey = SETORAN_SEEN_KEY;
 
   useEffect(() => {
     if (!supabase || !currentUserId) return;
@@ -301,18 +319,25 @@ export default function ChatApp() {
     return () => window.removeEventListener('setoran-dilihat', onDilihat);
   }, []);
 
+  // `setoranOpen` dibaca lewat ref, BUKAN dependensi. Sebagai dependensi,
+  // setiap kali Setoran dibuka/ditutup langganan realtime dibongkar-pasang
+  // — websocket tersambung ulang tanpa perlu. Pola yang sama sudah dipakai
+  // di langganan `chat-global` di atas.
+  const setoranOpenRef = useRef(setoranOpen);
+  useEffect(() => { setoranOpenRef.current = setoranOpen; }, [setoranOpen]);
+
   useEffect(() => {
     if (!supabase || !currentUserId) return;
     const ch = supabase
       .channel('setoran-global')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'setoran_posts' }, (p: any) => {
         if (p.new?.user_id === currentUserId) return;
-        if (setoranOpen) return;
+        if (setoranOpenRef.current) return;
         setSetoranUnread((u) => u + 1);
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [supabase, currentUserId, setoranOpen]);
+  }, [supabase, currentUserId]);
 
   const bukaSetoran = () => {
     setSetoranOpen(true);
