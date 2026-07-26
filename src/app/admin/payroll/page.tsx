@@ -68,7 +68,11 @@ export default function AdminPayrollPage() {
     const bonusManual = emp.bonus ? Number(emp.bonus) : 0;
     const potonganManual = emp.potongan ? Number(emp.potongan) : 0;
 
-    const tunjanganKehadiran = totalHadir * 50000;
+    // Tunjangan kehadiran DIHAPUS atas permintaan. Dulu `totalHadir * 50000`
+    // — otomatis menambah gaji setiap hari masuk. Sekarang gaji ditentukan
+    // sepenuhnya lewat isian manual: Gaji Pokok + Bonus − Potongan.
+    // Nilainya tetap dikembalikan (0) supaya slip lama tidak pecah.
+    const tunjanganKehadiran = 0;
     const dendaTerlambat = 0; 
     
     const totalPendapatan = gajiPokok + tunjanganKehadiran + bonusManual;
@@ -333,10 +337,8 @@ export default function AdminPayrollPage() {
                       <span className="text-gray-600">Gaji Pokok</span>
                       <span className="font-bold text-gray-800">{formatRupiah(selectedSlip.gajiPokok)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Tunj. Hadir ({selectedSlip.totalHadir} Hari)</span>
-                      <span className="font-bold text-gray-800">{formatRupiah(selectedSlip.tunjanganKehadiran)}</span>
-                    </div>
+                    {/* Baris "Tunj. Hadir" DIHAPUS — tunjangan kehadiran
+                        otomatis sudah ditiadakan (lihat calculatePayroll). */}
                     {selectedSlip.bonusManual > 0 && (
                       <div className="flex justify-between text-green-600 font-semibold">
                         <span>Bonus Tambahan</span>

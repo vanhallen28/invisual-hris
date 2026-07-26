@@ -48,10 +48,8 @@ export default function PayslipDocument({ slip, monthName }: { slip: any; monthN
               <span className="text-gray-600">Gaji Pokok</span>
               <span className="font-bold text-gray-800">{formatRupiah(slip.gajiPokok)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Tunj. Hadir ({slip.totalHadir} Hari)</span>
-              <span className="font-bold text-gray-800">{formatRupiah(slip.tunjanganKehadiran)}</span>
-            </div>
+            {/* Baris "Tunj. Hadir" DIHAPUS — tunjangan kehadiran otomatis
+                sudah ditiadakan di calculatePayroll (payroll/page.tsx). */}
             {slip.bonusManual > 0 && (
               <div className="flex justify-between text-green-600 font-semibold">
                 <span>Bonus Tambahan</span>

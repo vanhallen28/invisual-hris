@@ -101,7 +101,11 @@ export default function UserProfilePage() {
     const gajiPokok = gajiPokokRaw ? Number(gajiPokokRaw) : 0;
     const bonusManual = profile.bonus ? Number(profile.bonus) : 0;
     const potonganManual = profile.potongan ? Number(profile.potongan) : 0;
-    const tunjanganKehadiran = totalHadir * 50000;
+    // Tunjangan kehadiran DIHAPUS — disamakan dengan admin/payroll. Kalau
+    // hanya payroll yang diubah, angka di profil karyawan akan LEBIH BESAR
+    // daripada slip yang dikeluarkan admin. Nilainya tetap dikembalikan (0)
+    // supaya bentuk objek slip tidak berubah.
+    const tunjanganKehadiran = 0;
     const totalPendapatan = gajiPokok + tunjanganKehadiran + bonusManual;
     const totalPotongan = potonganManual;
     const gajiBersih = totalPendapatan - totalPotongan;

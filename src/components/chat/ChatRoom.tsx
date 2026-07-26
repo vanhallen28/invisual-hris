@@ -378,6 +378,65 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
     setUploading(false);
   };
 
+  /* ══ Seret-lepas gambar ══════════════════════════════════════════════
+
+     Dipasang di elemen AKAR ruang, bukan hanya daftar pesan, supaya
+     menjatuhkan berkas di mana saja dalam ruang ini tetap bekerja —
+     termasuk di atas kepala channel dan kolom ketik.
+
+     `dragenter`/`dragleave` juga menyala saat kursor berpindah antar
+     elemen ANAK. Tanpa penghitung, lapisan "Lepas untuk mengirim" akan
+     berkedip setiap kali kursor melewati satu gelembung pesan. */
+  const seretHitung = useRef(0);
+  const [seret, setSeret] = useState(false);
+
+  const seretBerkas = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer?.types || []).includes('Files');
+
+  const onSeretMasuk = (e: React.DragEvent) => {
+    if (!seretBerkas(e)) return;
+    e.preventDefault();
+    seretHitung.current += 1;
+    setSeret(true);
+  };
+
+  const onSeretAtas = (e: React.DragEvent) => {
+    if (!seretBerkas(e)) return;
+    // Tanpa preventDefault, browser membuka gambarnya sebagai halaman baru.
+    e.preventDefault();
+    e.dataTransfer.dropEffect = canPost ? 'copy' : 'none';
+  };
+
+  const onSeretKeluar = (e: React.DragEvent) => {
+    if (!seretBerkas(e)) return;
+    seretHitung.current -= 1;
+    if (seretHitung.current <= 0) { seretHitung.current = 0; setSeret(false); }
+  };
+
+  const onLepas = (e: React.DragEvent) => {
+    if (!seretBerkas(e)) return;
+    e.preventDefault();
+    seretHitung.current = 0;
+    setSeret(false);
+
+    // Menolak diam-diam membuat orang mengira aplikasinya rusak. Setiap
+    // penolakan diberi tahu alasannya.
+    if (!canPost) { toast('Hanya manajer yang dapat mengirim di channel ini.'); return; }
+    if (uploading) { toast('Masih mengunggah — tunggu sebentar, lalu coba lagi.'); return; }
+
+    const semua = Array.from(e.dataTransfer.files || []);
+    if (!semua.length) return; // seretan teks/tautan, bukan berkas
+
+    const gambarSeret = semua.filter((f) => f.type.startsWith('image/'));
+    const ditolak = semua.length - gambarSeret.length;
+    if (!gambarSeret.length) { toast('Hanya gambar yang bisa dikirim ke channel.'); return; }
+    if (ditolak > 0) toast(`${ditolak} berkas bukan gambar, dilewati.`);
+
+    // Berurutan, sama seperti perilaku tempel (Ctrl+V) di bawah: satu
+    // gambar = satu pesan, urutannya terjaga.
+    (async () => { for (const f of gambarSeret) await upload(f); })();
+  };
+
   /* Tempel tangkapan layar dari papan klip (Ctrl+V / ⌘V).
 
      Pendengarnya dipasang di window, bukan di elemen. Peristiwa tempel
@@ -477,7 +536,35 @@ export default function ChatRoom({ channel, onBack, recipients = [] }: any) {
   const pins = msgs.filter((m) => m.pinned);
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-kartu-hover">
+    <div
+      className="flex-1 flex flex-col min-w-0 min-h-0 bg-kartu-hover relative"
+      onDragEnter={onSeretMasuk}
+      onDragOver={onSeretAtas}
+      onDragLeave={onSeretKeluar}
+      onDrop={onLepas}
+    >
+      {/* lapisan seret-lepas — pointer-events-none supaya peristiwa tetap
+          sampai ke elemen akar dan penghitung dragleave tidak kacau */}
+      {seret && (
+        <div className="absolute inset-0 z-30 pointer-events-none flex items-center justify-center bg-latar/80 backdrop-blur-sm">
+          <div className={`rounded-xl border-2 border-dashed px-6 py-5 text-center bg-kartu ${canPost ? 'border-primer-terang' : 'border-red-400/60'}`}>
+            {canPost ? (
+              <>
+                <Paperclip size={22} className="text-tint mx-auto mb-2" />
+                <p className="text-sm font-bold text-white">Lepas untuk mengirim</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Gambar akan dikirim ke #{channel.name}</p>
+              </>
+            ) : (
+              <>
+                <Lock size={22} className="text-red-400 mx-auto mb-2" />
+                <p className="text-sm font-bold text-white">Tidak bisa mengirim di sini</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Hanya manajer yang dapat mengirim di channel ini.</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* header channel */}
       <div className="h-12 border-b border-white/10 flex items-center gap-2 px-4 shrink-0">
         {onBack && (
