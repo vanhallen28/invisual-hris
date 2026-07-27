@@ -123,6 +123,25 @@ export default function SetoranRoom({ onBack }: { onBack?: () => void }) {
     if (typeof window === 'undefined') return {};
     try { return JSON.parse(localStorage.getItem(DILIHAT_KEY) || '{}'); } catch { return {}; }
   });
+  /**
+   * Tandai SEMUA anggota sudah dilihat sekaligus.
+   *
+   * Kenapa perlu: `tandaiDilihat` hanya dipanggil dari `bukaOrang`, jadi
+   * lencana biru seseorang baru hilang kalau aliran orang itu dibuka satu
+   * per satu. Dengan 27 anggota, lencananya praktis hanya bertambah dan
+   * tak pernah bersih — inilah yang terasa "menumpuk terus".
+   */
+  const tandaiSemuaDilihat = (ids: string[]) => {
+    if (!ids.length) return;
+    setDilihatMap((lama) => {
+      const now = new Date().toISOString();
+      const baru = { ...lama };
+      for (const id of ids) baru[id] = now;
+      try { localStorage.setItem(DILIHAT_KEY, JSON.stringify(baru)); } catch { /* diamkan */ }
+      return baru;
+    });
+  };
+
   const tandaiDilihat = (uid: string) => {
     setDilihatMap((lama) => {
       const baru = { ...lama, [uid]: new Date().toISOString() };
@@ -398,6 +417,7 @@ const postsOf = useCallback(
   }, [anggotaIds, teamMembers, postsOf, hariIni, dilihatMap]);
 
   const sudah = barisAnggota.filter((b) => b.sudahHariIni).length;
+  const totalBelum = barisAnggota.reduce((a, b) => a + (b.belum || 0), 0);
   const dibuka = buka ? barisAnggota.find((b) => b.uid === buka) : null;
 
   // Setoran pertama yang datang SETELAH kunjungan terakhir ke aliran ini.
@@ -473,6 +493,14 @@ const postsOf = useCallback(
             {anggotaIds.length} anggota · {sudah} sudah setor hari ini
           </p>
         </div>
+        {totalBelum > 0 && (
+          <button onClick={() => tandaiSemuaDilihat(anggotaIds)}
+            title="Tandai semua setoran sudah dilihat"
+            className="flex items-center gap-1.5 text-[11px] font-bold text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-1.5 rounded-lg transition-colors shrink-0">
+            <Check size={13} /> <span className="hidden sm:inline">Tandai semua</span>
+            <span className="sm:hidden">{totalBelum > 99 ? '99+' : totalBelum}</span>
+          </button>
+        )}
         {isManager && (
           <button onClick={() => setKelola(true)} title="Kelola anggota"
             className="flex items-center gap-1.5 text-[11px] font-bold text-gray-300 hover:text-white bg-kartu-hover hover:bg-kartu-hover px-2.5 py-1.5 rounded-lg transition-colors shrink-0">
@@ -504,7 +532,7 @@ const postsOf = useCallback(
         </div>
       ) : dibuka ? (
         /* ── Galeri satu orang ── */
-        <div ref={wadahRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <div key={`aliran-${dibuka.uid}`} ref={wadahRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain mo-fade">
           <div className="sticky top-0 z-10 flex items-center gap-2.5 px-4 py-3 bg-kartu-hover border-b border-white/10">
             <button onClick={() => { setBuka(null); try { localStorage.removeItem('invisual_setoran_buka'); } catch { /* diamkan */ } }} className="p-1 text-gray-400 hover:text-white shrink-0">
               <ChevronLeft size={18} />
@@ -618,7 +646,10 @@ const postsOf = useCallback(
         </div>
       ) : (
         /* ── Daftar anggota ── */
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        /* key + mo-fade: memakai sistem gerak yang sudah ada di globals.css
+           dan sudah dipakai halaman lain, supaya perpindahan daftar ⇄ aliran
+           terasa sama dengan sisa aplikasi. Tidak ada CSS baru. */
+        <div key="daftar-orang" className="flex-1 min-h-0 overflow-y-auto overscroll-contain mo-fade">
           <p className="text-[10px] text-gray-600 px-4 pt-3 pb-2">
             Setoran otomatis terhapus setelah {SETORAN_HARI} hari, berikut berkasnya.
           </p>

@@ -116,7 +116,7 @@ export default function ChatToaster() {
         <div
           key={t.id}
           onClick={goChat}
-          className="pointer-events-auto flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-latar/95 px-4 py-3 shadow-2xl backdrop-blur-md transition-colors hover:border-primer/40 animate-in slide-in-from-right-8 fade-in duration-300"
+          className="pointer-events-auto flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-latar/95 px-4 py-3 shadow-2xl backdrop-blur-md transition-colors hover:border-primer/40 mo-fade-up"
         >
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primer/20 text-tint">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-5 w-5">
