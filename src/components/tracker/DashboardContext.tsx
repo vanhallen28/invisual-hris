@@ -1,5 +1,5 @@
 'use client';
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { AlertCircle, X } from 'lucide-react';
 import { supabase as hrisSupabase } from '@/lib/supabase';
 import { loadFullState } from '@/lib/tracker/load';
@@ -163,6 +163,17 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   const [draggedItem, setDraggedItem] = useState<any>(null);
   const [dragOverItem, setDragOverItem] = useState<any>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+
+  /* Kapan terakhir kali BROWSER INI menulis perubahan struktur papan
+     (nama kolom, urutan kolom, label grup).
+
+     Kegunaannya: perubahan itu sudah tergambar di layar sebelum dikirim,
+     jadi menarik ulang SELURUH papan begitu gemanya kembali lewat realtime
+     hanya menghasilkan kedipan tanpa menambah informasi apa pun — inilah
+     'layar merefresh' sesaat setelah menekan Enter. Gema dari diri sendiri
+     dilewati; perubahan dari orang lain tetap ditarik seperti biasa. */
+  const tulisSendiriRef = useRef(0);
+  const tandaiTulisSendiri = () => { tulisSendiriRef.current = Date.now(); };
   const [detailItem, setDetailItem] = useState<any>(null);
 
   // === TOAST + UNDO ===
@@ -352,6 +363,8 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       clearTimeout(jeda);
       jeda = setTimeout(() => {
         if (sedangMengetik()) { jadwalkanMuatUlang(); return; }
+        // Gema dari tulisan sendiri: layar sudah benar, tak perlu ditarik ulang.
+        if (Date.now() - tulisSendiriRef.current < 2500) return;
         refreshData();
       }, 1500);
     };
@@ -530,6 +543,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     if (cloudOn()) dbAddGroup(supabase, { id, boardId: activeBoardId, title: 'New Group', color, position }).catch((e:any) => pushToast('Gagal tambah grup di cloud: ' + (e?.message || e)));
   };
   const updateGroup = (gId: string, patch: any) => {
+    tandaiTulisSendiri();
     setBoardData(boardData.map((g:any) => g.id === gId ? { ...g, ...patch } : g));
     if (cloudOn()) dbUpdateGroup(supabase, gId, patch).catch((e:any) => pushToast('Gagal simpan grup di cloud: ' + (e?.message || e)));
   };
@@ -603,18 +617,37 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
 
   // === REORDER + INSERT-BELOW + RENAME KOLOM (cloud-aware) ===
   const updateColumnLabel = (colId: string, label: string) => {
+    tandaiTulisSendiri();
     if (columns.some((c:any) => c.id === colId)) setColumns(columns.map((c:any) => c.id === colId ? { ...c, label } : c));
     else setSubColumns(subColumns.map((c:any) => c.id === colId ? { ...c, label } : c));
     if (cloudOn()) dbUpdateColumnLabel(supabase, colId, label).catch((e:any) => pushToast('Gagal rename kolom di cloud: ' + (e?.message || e)));
   };
+  /**
+   * Pindah urutan kolom. Melayani kolom UTAMA maupun kolom SUB.
+   *
+   * Sebelumnya fungsi ini hanya melihat `columns`, jadi kolom sub-item tidak
+   * bisa digeser sama sekali — `findIndex` selalu -1 lalu keluar diam-diam.
+   *
+   * Lingkupnya dijaga: kolom sub tidak bisa dijatuhkan ke barisan kolom
+   * utama (dan sebaliknya). Tanpa penjagaan itu, satu kolom bisa berpindah
+   * tabel dan datanya kehilangan tempat.
+   */
   const reorderColumns = (fromId: string, toId: string) => {
     if (!fromId || fromId === toId) return;
-    const arr = [...columns];
+
+    const diUtama = columns.some((c: any) => c.id === fromId);
+    const sumber = diUtama ? columns : subColumns;
+    if (!sumber.some((c: any) => c.id === fromId)) return;
+    if (!sumber.some((c: any) => c.id === toId)) return;   // beda lingkup → abaikan
+
+    const arr = [...sumber];
     const fromIdx = arr.findIndex((c:any) => c.id === fromId);
     const toIdx = arr.findIndex((c:any) => c.id === toId);
     if (fromIdx < 0 || toIdx < 0) return;
     const [moved] = arr.splice(fromIdx, 1); arr.splice(toIdx, 0, moved);
-    setColumns(arr);
+
+    tandaiTulisSendiri();
+    if (diUtama) setColumns(arr); else setSubColumns(arr);
     if (cloudOn()) dbReindexColumns(supabase, arr.map((c:any) => c.id)).catch((e:any) => pushToast('Gagal simpan urutan kolom: ' + (e?.message || e)));
   };
   const reorderGroups = (fromId: string, toId: string) => {

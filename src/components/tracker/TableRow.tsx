@@ -13,8 +13,13 @@ export default function TableRow({ item, group, gridTemplateColumns, subGridTemp
     dragOverItem, setDragOverItem, triggerConfirm, handleUpdateItem, 
     handleUpdateSubItem, handleDeleteItem, handleDeleteSubItem,
     handleAddSubItem, handleDeleteSubColumn, setDetailItem, openDropdown, updateGroup,
-    insertItemBelow, insertSubBelow, moveItem
+    insertItemBelow, insertSubBelow, moveItem, updateColumnLabel, reorderColumns
   } = useDashboard();
+
+  // Seret-pindah kolom sub. Statenya lokal per-baris, sama seperti pola
+  // kolom utama di MainTable.
+  const [subDrag, setSubDrag] = React.useState<string | null>(null);
+  const [subDragOver, setSubDragOver] = React.useState<string | null>(null);
 
   const isItemRowActive = openDropdown?.itemId === item.id && !openDropdown?.subItemId;
   const isSubRowActive = addColMenuTarget?.id === item.id || item.subItems?.some((s:any) => openDropdown?.subItemId === s.id || addColMenuTarget?.id === s.id);
@@ -97,8 +102,19 @@ export default function TableRow({ item, group, gridTemplateColumns, subGridTemp
                <div className="flex-1 min-w-0"><InlineEdit value={group.subItemLabel || 'Subitem'} onSave={(val: string) => updateGroup(group.id, { subItemLabel: val })} textClassName="text-gray-400 uppercase text-[10px] font-bold truncate hover:opacity-80" className="text-[10px] font-bold uppercase" /></div>
             </div>
             {subColumns.map((col:any) => (
-              <div key={col.id} className="px-3 py-2 border-r border-white/10 flex items-center justify-between group/subcol min-w-0 relative z-10">
-                <div className="flex-1 min-w-0 flex items-center justify-center"><InlineEdit value={col.label} onSave={(newVal: string) => setSubColumns(subColumns.map((c:any) => c.id === col.id ? { ...c, label: newVal } : c))} textClassName="text-center hover:text-white truncate" className="text-center text-[10px]" /></div>
+              <div key={col.id}
+                onDragOver={e => { if (subDrag) { e.preventDefault(); setSubDragOver(col.id); } }}
+                onDrop={e => { if (subDrag) { e.preventDefault(); reorderColumns(subDrag, col.id); setSubDrag(null); setSubDragOver(null); } }}
+                className={`px-3 py-2 border-r border-white/10 flex items-center justify-between gap-1 group/subcol min-w-0 relative z-10 transition-colors ${subDragOver === col.id && subDrag && subDrag !== col.id ? 'bg-blue-500/15' : ''} ${subDrag === col.id ? 'opacity-40' : ''}`}>
+                <span draggable
+                  onDragStart={e => { setSubDrag(col.id); e.dataTransfer.effectAllowed = 'move'; }}
+                  onDragEnd={() => { setSubDrag(null); setSubDragOver(null); }}
+                  className="cursor-grab text-gray-600 hover:text-gray-300 opacity-0 group-hover/subcol:opacity-100 transition-opacity shrink-0"
+                  title="Tarik untuk pindah kolom"><GripVertical size={10}/></span>
+                {/* updateColumnLabel — BUKAN setSubColumns. setSubColumns hanya
+                    mengubah state di layar tanpa menyimpan ke database, jadi
+                    nama barunya hilang begitu papan tersinkron ulang. */}
+                <div className="flex-1 min-w-0 flex items-center justify-center"><InlineEdit value={col.label} onSave={(newVal: string) => updateColumnLabel(col.id, newVal)} textClassName="text-center hover:text-white truncate" className="text-center text-[10px]" /></div>
                 <button onClick={()=>triggerConfirm('Hapus Kolom Sub', `Hapus kolom ${col.label}?`, () => handleDeleteSubColumn(col.id))} className="text-gray-500 hover:text-red-400 opacity-0 group-hover/subcol:opacity-100 transition-opacity shrink-0 ml-1"><Trash2 size={11}/></button>
               </div>
             ))}
