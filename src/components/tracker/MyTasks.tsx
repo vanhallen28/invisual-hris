@@ -121,7 +121,11 @@ export default function MyTasks() {
     setActiveBoardId(t.boardId);
     const tableView = (boardsDataMap[t.boardId]?.views || []).find((v: any) => v.type === 'table');
     setActiveViewId(tableView?.id || '');
-    if (!t.isSub) setDetailItem({ groupId: t.groupId, itemId: t.itemId });
+    // Dulu panel SENGAJA tidak dibuka untuk tugas sub-item — karyawan hanya
+    // dilempar ke tabel tanpa penjelasan apa pun, jadi brief-nya tak pernah
+    // terbaca. Sekarang panel induknya dibuka sambil menunjuk sub-item yang
+    // bersangkutan, dan panel akan membentangkannya sendiri.
+    setDetailItem({ groupId: t.groupId, itemId: t.itemId, subItemId: t.isSub ? t.subId : undefined });
   };
 
   // Reminder: tugas yang telat / jatuh tempo <=3 hari

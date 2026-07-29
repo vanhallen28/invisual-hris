@@ -173,6 +173,14 @@ export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
   // Sub-item mana yang sedang dibentangkan di panel ini.
   const [subTerbuka, setSubTerbuka] = useState<Record<string, boolean>>({});
 
+  // Kalau panel dibuka dengan menunjuk satu sub-item (mis. dari daftar
+  // tugas karyawan), sub-item itu langsung dibentangkan supaya PIC-nya
+  // mendarat tepat di briefnya, bukan harus mencari sendiri.
+  useEffect(() => {
+    const sid = (detailItem as any)?.subItemId;
+    if (sid) setSubTerbuka((o) => ({ ...o, [sid]: true }));
+  }, [detailItem]);
+
   const group = boardData.find((g: any) => g.id === detailItem?.groupId);
   const item = group?.items.find((i: any) => i.id === detailItem?.itemId);
   const open = !!(detailItem && item);
@@ -282,6 +290,35 @@ export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
 
                           {terbuka && (
                             <div className="px-3 pb-3 pt-1 flex flex-col gap-3 border-t border-white/10">
+                              {/* BRIEF — dokumen milik sub-item sendiri.
+                                  Jalur simpannya sudah lengkap sejak dulu
+                                  (saveDoc → handleUpdateSubItem → dbSetItemMeta),
+                                  yang belum ada hanya tombol ini. Tanpa tombol,
+                                  brief untuk sub-item tak punya tempat ditulis
+                                  sehingga tak pernah sampai ke PIC-nya. */}
+                              {(() => {
+                                const isiBrief = sub.description;
+                                const adaBrief = typeof isiBrief === 'string' && isiBrief.replace(/<[^>]*>/g, '').trim().length > 0;
+                                return (
+                                  <button
+                                    onClick={() => openDocEditor({
+                                      scope: 'sub',
+                                      groupId: detailItem.groupId,
+                                      itemId: detailItem.itemId,
+                                      subItemId: sub.id,
+                                      dbItemId: sub.id,
+                                      columnId: 'description',
+                                      value: typeof isiBrief === 'string' ? isiBrief : '',
+                                      title: `${sub.name || 'Sub-item'} — Brief`,
+                                    })}
+                                    className={`w-full flex items-center gap-2.5 text-[13px] px-3 py-2.5 rounded-lg border transition-colors ${adaBrief ? 'bg-blue-500/10 border-blue-500/30 text-blue-200 hover:bg-blue-500/15' : 'bg-kartu/40 border-white/10 text-gray-400 hover:border-white/10 hover:text-gray-200'}`}
+                                  >
+                                    <FileText size={14} className="shrink-0" />
+                                    <span className="truncate">{adaBrief ? 'Buka brief' : 'Tulis brief untuk sub-item ini'}</span>
+                                  </button>
+                                );
+                              })()}
+
                               {subColumns.map((col: any) => (
                                 <div key={col.id} className="grid grid-cols-[110px_1fr] gap-3 items-start">
                                   <div className="text-[11px] font-semibold text-gray-400 pt-1.5 truncate flex items-center gap-1.5">{fieldIcon(col.type)} {col.label}</div>
