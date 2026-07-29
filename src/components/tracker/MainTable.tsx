@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, ChevronDown, ChevronUp, EyeOff, X, Trash2, Check, Filter, Inbox, GripVertical } from 'lucide-react';
+import { Plus, Search, ChevronDown, ChevronUp, EyeOff, X, Trash2, Check, Filter, Inbox, GripVertical, Copy } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import InlineEdit from './InlineEdit';
 import ColumnCenterMenu from './ColumnCenter';
@@ -11,7 +11,7 @@ export default function MainTable() {
     boardData, setBoardData, columns, setColumns, subColumns, hiddenColumns, setHiddenColumns, 
     searchQuery, setSearchQuery, sortConfig, setSortConfig, teamMembers, labels,
     isHideMenuOpen, setIsHideMenuOpen, triggerConfirm, handleDeleteColumn, HEX_COLORS,
-    toggleGroupSelection, handleAddItem, handleAddGroup, updateGroup, handleDeleteGroup, reorderColumns, reorderGroups, updateColumnLabel, openDropdown,
+    toggleGroupSelection, handleAddItem, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, reorderColumns, reorderGroups, updateColumnLabel, openDropdown,
     activeBoardId, supabase
   } = useDashboard();
 
@@ -208,6 +208,8 @@ export default function MainTable() {
                     )}
                   </div>
                 )}
+                <button onClick={() => duplicateGroup(group.id)} title="Duplikat grup beserta isinya"
+                  className="opacity-0 group-hover/board:opacity-100 text-gray-600 hover:text-blue-400 p-1 transition-opacity"><Copy size={14}/></button>
                 <button onClick={() => triggerConfirm('Hapus Grup', 'Hapus grup ini?', () => handleDeleteGroup(group.id))} className="opacity-0 group-hover/board:opacity-100 text-gray-600 hover:text-red-400 p-1 transition-opacity"><Trash2 size={14}/></button>
               </div>
 

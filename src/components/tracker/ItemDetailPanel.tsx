@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, AlignLeft, CheckSquare, CalendarDays, Tag, User, Link as LinkIcon, Hash, FileText, ExternalLink, Plus, Check, Search } from 'lucide-react';
+import { X, Send, AlignLeft, CheckSquare, CalendarDays, Tag, User, Link as LinkIcon, Hash, FileText, ExternalLink, Plus, Check, Search, ChevronRight } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import TaskChat from './TaskChat';
 import RoleDistribution from './RoleDistribution';
@@ -166,9 +166,12 @@ function renderField(col: any, item: any, labels: any, teamMembers: any[], setVa
 
 export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
   const {
-    detailItem, setDetailItem, boardData, columns, labels, teamMembers, openDocEditor,
-    currentUserId, handleUpdateItem, supabase, isManager
+    detailItem, setDetailItem, boardData, columns, subColumns, labels, teamMembers, openDocEditor,
+    currentUserId, handleUpdateItem, handleUpdateSubItem, supabase, isManager
   } = useDashboard();
+
+  // Sub-item mana yang sedang dibentangkan di panel ini.
+  const [subTerbuka, setSubTerbuka] = useState<Record<string, boolean>>({});
 
   const group = boardData.find((g: any) => g.id === detailItem?.groupId);
   const item = group?.items.find((i: any) => i.id === detailItem?.itemId);
@@ -233,6 +236,66 @@ export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
                 {/* RIWAYAT — siapa mengubah apa, kapan */}
                 <RiwayatItem itemId={item.id} />
               </div>
+
+              {/* SUBITEM — kolom sub ikut ditampilkan di sini, tidak lagi
+                  hanya terlihat di tabel. Bisa dibaca dan diubah langsung. */}
+              {(item.subItems?.length || 0) > 0 && (
+                <div className="px-6 py-5 border-b border-white/10">
+                  <div className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">
+                    {group?.subItemLabel || 'Subitem'} ({item.subItems.length})
+                  </div>
+
+                  {subColumns.length === 0 && (
+                    <p className="text-xs text-gray-500 mb-3">
+                      Belum ada kolom sub-item. Tambahkan lewat tombol + di baris sub-item pada tabel.
+                    </p>
+                  )}
+
+                  <div className="flex flex-col gap-2">
+                    {item.subItems.map((sub: any) => {
+                      const terbuka = !!subTerbuka[sub.id];
+                      const setSubVal = (field: string, val: any) =>
+                        handleUpdateSubItem(detailItem.groupId, detailItem.itemId, sub.id, field, val);
+
+                      // Cuplikan status saat ringkas — supaya keadaan tiap
+                      // sub-item terbaca tanpa perlu dibentangkan satu per satu.
+                      const cuplikan = subColumns
+                        .filter((c: any) => c.type === 'status' || c.type === 'tags')
+                        .map((c: any) => (labels[c.id] || []).find((o: any) => o.id === sub[c.id]))
+                        .filter(Boolean)
+                        .slice(0, 3);
+
+                      return (
+                        <div key={sub.id} className="rounded-lg border border-white/10 bg-kartu/40 overflow-hidden">
+                          <button
+                            onClick={() => setSubTerbuka((o) => ({ ...o, [sub.id]: !o[sub.id] }))}
+                            className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-white/5 transition-colors"
+                          >
+                            <ChevronRight size={13} className={`shrink-0 text-gray-500 transition-transform ${terbuka ? 'rotate-90' : ''}`} />
+                            <span className="flex-1 min-w-0 truncate text-[13px] text-gray-200">
+                              {sub.name || <span className="italic text-gray-600">Tanpa nama</span>}
+                            </span>
+                            {!terbuka && cuplikan.map((o: any, i: number) => (
+                              <span key={i} className={`shrink-0 text-[9px] font-bold text-white px-1.5 py-0.5 rounded ${o.color}`}>{o.text}</span>
+                            ))}
+                          </button>
+
+                          {terbuka && (
+                            <div className="px-3 pb-3 pt-1 flex flex-col gap-3 border-t border-white/10">
+                              {subColumns.map((col: any) => (
+                                <div key={col.id} className="grid grid-cols-[110px_1fr] gap-3 items-start">
+                                  <div className="text-[11px] font-semibold text-gray-400 pt-1.5 truncate flex items-center gap-1.5">{fieldIcon(col.type)} {col.label}</div>
+                                  <div className="min-w-0">{renderField(col, sub, labels, teamMembers, setSubVal, isManager, currentUserId)}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* CHAT */}
               <div className="px-6 py-5">

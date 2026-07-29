@@ -784,6 +784,68 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     }
   };
 
+  /**
+   * Duplikat satu GRUP beserta seluruh isinya: item, sub-item, dan nilai
+   * tiap sel — disisipkan tepat di bawah grup aslinya.
+   *
+   * Kolom TIDAK ikut diduplikat: `columns` dan `subColumns` milik PAPAN,
+   * bukan milik grup, jadi salinannya otomatis memakai kolom yang sama.
+   * Menyalinnya justru akan menggandakan kolom di seluruh papan.
+   */
+  const duplicateGroup = (gId: string) => {
+    const asli = boardData.find((g:any) => g.id === gId);
+    if (!asli) return;
+
+    const idBaru = newId();
+    const items = (asli.items || []).map((it:any) => ({
+      ...it,
+      id: newId(),
+      subItems: (it.subItems || []).map((s:any) => ({ ...s, id: newId() })),
+    }));
+    const salinan = { ...asli, id: idBaru, title: `${asli.title} (Copy)`, isCollapsed: false, items };
+
+    const idx = boardData.findIndex((g:any) => g.id === gId);
+    const arr = [...boardData];
+    arr.splice(idx + 1, 0, salinan);
+
+    tandaiTulisSendiri();
+    setBoardData(arr);
+    pushToast(`Grup "${asli.title}" diduplikat`);
+
+    if (cloudOn() && activeBoardId) {
+      (async () => {
+        await dbAddGroup(supabase, { id: idBaru, boardId: activeBoardId, title: salinan.title, color: salinan.color, position: idx + 1 });
+        // Label "Item Name"/"Subitem" tidak ikut di dbAddGroup, jadi disusulkan.
+        await dbUpdateGroup(supabase, idBaru, { itemLabel: asli.itemLabel, subItemLabel: asli.subItemLabel });
+
+        for (let ii = 0; ii < items.length; ii++) {
+          const it = items[ii];
+          await dbAddItem(supabase, { id: it.id, groupId: idBaru, name: it.name, position: ii });
+          if (it.description) await dbSetItemMeta(supabase, it.id, { description: it.description });
+
+          for (const col of columns) {
+            const val = it[col.id];
+            if (val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0)) continue;
+            await dbSetCellValue(supabase, it.id, col.id, col.type, val);
+          }
+
+          const anakList = it.subItems || [];
+          for (let ai = 0; ai < anakList.length; ai++) {
+            const anak = anakList[ai];
+            await dbAddSubItem(supabase, { id: anak.id, groupId: idBaru, parentItemId: it.id, name: anak.name, position: ai });
+            for (const col of subColumns) {
+              const val = anak[col.id];
+              if (val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0)) continue;
+              await dbSetCellValue(supabase, anak.id, col.id, col.type, val);
+            }
+          }
+        }
+
+        await dbReindexGroups(supabase, arr.map((g:any) => g.id));
+      })().catch((e:any) => pushToast('Gagal duplikat grup di cloud: ' + (e?.message || e)));
+    }
+  };
+
   // === VIEW INSTANCES (multi-view ala Monday) ===
   const addView = (type: string, name?: string) => {
     if (!activeBoardId) return;
@@ -943,7 +1005,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     dragOverColumn, setDragOverColumn, detailItem, setDetailItem,
     triggerConfirm, handleUpdateItem, handleUpdateSubItem, handleDeleteItem, handleDeleteSubItem,
     handleAddItem, handleAddSubItem, toggleGroupSelection,
-    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, addYear, addMonth, addBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, pushToast, HEX_COLORS, LABEL_COLORS,
+    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, addYear, addMonth, addBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, pushToast, HEX_COLORS, LABEL_COLORS,
     authUser, doLogout, isManager, currentUserRole, canContentHub, refreshData, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase
   };
 
