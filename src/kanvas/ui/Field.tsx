@@ -57,6 +57,32 @@ export function NumField({
   )
 }
 
+/** Dropdown bergaya sama dengan NumField. Dipakai tipografi. */
+export function SelectField({
+  label, value, options, onCommit,
+}: {
+  label: string
+  value: string
+  options: { nilai: string; label: string }[]
+  onCommit: (v: string) => void
+}) {
+  return (
+    <label className="flex items-center gap-1.5">
+      <span className="num" style={{ color: 'var(--text-2)', width: 14 }}>{label}</span>
+      <select
+        className="num"
+        value={value}
+        onChange={(e) => onCommit(e.target.value)}
+        style={gayaInput}
+      >
+        {options.map((o) => (
+          <option key={o.nilai} value={o.nilai}>{o.label}</option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 export function ColorField({
   label, value, onCommit,
 }: {

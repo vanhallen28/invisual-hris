@@ -8,11 +8,12 @@
 // Tidak ada layar login. Staf sudah masuk lewat portal, jadi kanvas
 // menumpang sesi Supabase yang sama.
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
-import { Shapes, Plus, X, Trash2, FileText, ChevronLeft } from 'lucide-react';
+import { Shapes, Plus, X, Trash2, FileText, ChevronLeft, Upload } from 'lucide-react';
+import { ACCEPT_IMPOR, PESAN_FIG, pesanTakDidukung, pilahBerkas } from '@/kanvas/lib/impor';
 import { useToast } from "@/components/Toast";
 
 // Proyek bersama, disiapkan oleh kanvas.sql.
@@ -53,9 +54,21 @@ const GAYA_KANVAS = `
   font-size: 11px;
   letter-spacing: -0.01em;
 }
-.kanvas-root .canvas-surface {
+/* Seret di kanvas dulu ikut menyorot SELURUH teks antarmuka — nama layer,
+   judul panel, label — karena user-select hanya dipasang di permukaan
+   kanvas. Sekarang dimatikan untuk seluruh editor, lalu dihidupkan lagi
+   khusus di isian teks supaya tetap bisa disalin dan disunting. */
+.kanvas-root {
   user-select: none;
   -webkit-user-select: none;
+}
+.kanvas-root input,
+.kanvas-root textarea,
+.kanvas-root [contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+.kanvas-root .canvas-surface {
   touch-action: none;
 }
 .kanvas-root :focus-visible {
@@ -114,6 +127,37 @@ export default function TestProject() {
   useEffect(() => { if (buka && !aktif) siapkan(); }, [buka, aktif, siapkan]);
 
   /* ── Aksi berkas ── */
+
+  /* Impor dari halaman daftar.
+     Berkas yang sah membuat kanvas BARU bernama sesuai berkasnya, lalu
+     kanvas itu langsung dibuka dan berkasnya ditaruh di sana. Menaruh node
+     ke Y.Doc dari luar editor terlalu berisiko, jadi berkasnya dititipkan
+     lewat prop dan editor yang menempatkannya setelah siap. */
+  const imporRef = useRef<HTMLInputElement>(null);
+  const [berkasAwal, setBerkasAwal] = useState<File[] | null>(null);
+
+  const pilihImpor = async (daftarBerkas: FileList | null) => {
+    if (!daftarBerkas?.length || sibuk) return;
+    const { dipakai, fig, ditolak } = pilahBerkas(Array.from(daftarBerkas));
+
+    if (fig.length) toast.info(PESAN_FIG);
+    if (ditolak.length) toast.gagal(pesanTakDidukung(ditolak[0]));
+    if (!dipakai.length) return;
+
+    setSibuk(true);
+    try {
+      const namaDariBerkas = dipakai[0].name.replace(/\.[^.]+$/, '').slice(0, 60) || `Kanvas ${daftar.length + 1}`;
+      const { data, error } = await supabase
+        .from('kanvas_files').insert({ project_id: PROYEK, name: namaDariBerkas })
+        .select('id, name, updated_at').single();
+      if (error) throw new Error(error.message);
+      setDaftar((d) => [data as Berkas, ...d]);
+      setBerkasAwal(dipakai);
+      await bukaBerkas(data as Berkas);
+    } catch (e: any) { setGalat(e?.message || String(e)); }
+    setSibuk(false);
+  };
+
   const buatBerkas = async () => {
     if (sibuk) return;
     setSibuk(true);
@@ -184,10 +228,19 @@ export default function TestProject() {
               {aktif ? aktif.name : 'Test Project'}
             </span>
             {!aktif && (
-              <button onClick={buatBerkas} disabled={sibuk}
-                className="flex items-center gap-1.5 text-[11px] font-bold text-white bg-primer hover:bg-blue-600 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors shrink-0">
-                <Plus size={12} /> Kanvas baru
-              </button>
+              <>
+                <input ref={imporRef} type="file" accept={ACCEPT_IMPOR} multiple hidden
+                  onChange={(e) => { pilihImpor(e.target.files); e.currentTarget.value = ''; }} />
+                <button onClick={() => imporRef.current?.click()} disabled={sibuk}
+                  title="Impor SVG, PNG, JPG — atau lihat panduan untuk berkas .fig"
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors shrink-0">
+                  <Upload size={12} /> Impor
+                </button>
+                <button onClick={buatBerkas} disabled={sibuk}
+                  className="flex items-center gap-1.5 text-[11px] font-bold text-white bg-primer hover:bg-blue-600 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors shrink-0">
+                  <Plus size={12} /> Kanvas baru
+                </button>
+              </>
             )}
             <button onClick={tutupSemua} title="Tutup"
               className="p-1.5 text-gray-400 hover:text-white transition-colors shrink-0">
@@ -204,6 +257,8 @@ export default function TestProject() {
                 projectId={aktif.project_id}
                 snapshot={(aktif.ydoc as string | null) ?? null}
                 saya={saya}
+                berkasAwal={berkasAwal}
+                onBerkasAwalSelesai={() => setBerkasAwal(null)}
               />
             ) : (
               <div className="h-full overflow-y-auto p-6">

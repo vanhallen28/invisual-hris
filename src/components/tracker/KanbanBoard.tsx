@@ -5,7 +5,7 @@ import { useDashboard } from '@/components/tracker/DashboardContext';
 import Avatar from '@/components/Avatar';
 
 export default function KanbanBoard() {
-  const { boardData, columns, labels, handleUpdateItem, draggedItem, setDraggedItem, dragOverColumn, setDragOverColumn, teamMembers, setDetailItem } = useDashboard();
+  const { boardData, columns, subColumns, labels, handleUpdateItem, handleUpdateSubItem, draggedItem, setDraggedItem, dragOverColumn, setDragOverColumn, teamMembers, setDetailItem } = useDashboard();
 
   // Kanban groups by the board's Status column. Columns use generated ids,
   // so we resolve the real keys here instead of assuming fixed field names.
@@ -15,6 +15,17 @@ export default function KanbanBoard() {
   const timelineKey = columns.find((c: any) => c.type === 'timeline')?.id;
   const tagsKey = columns.find((c: any) => c.type === 'tags')?.id;
   const dateKey = columns.find((c: any) => c.type === 'date')?.id;
+
+  // Kunci kolom SUB terpisah dari kolom utama. Kanban dikelompokkan per
+  // TEKS status (bukan per id kolom), jadi selama kolom Status utama dan
+  // Status sub memakai kosakata yang sama, kartu induk dan kartu aset
+  // berkumpul di kolom yang sama.
+  const sKey = (t: string) => subColumns.find((c: any) => c.type === t)?.id;
+  const subStatusKey = sKey('status');
+  const subTeamKey = sKey('team');
+  const subTimelineKey = sKey('timeline');
+  const subTagsKey = sKey('tags');
+  const subDateKey = sKey('date');
 
   const formatDue = (d?: string) => {
     if (!d) return null;
@@ -28,9 +39,45 @@ export default function KanbanBoard() {
 
   const allKanbanItems = boardData.reduce((acc: any, g: any) => [...acc, ...g.items.map((i: any) => ({ ...i, groupTitle: g.title, groupColor: g.color, groupId: g.id }))], []);
 
-  const handleDragStart = (e: any, groupId: string, itemId: string) => { setDraggedItem({ groupId, itemId }); e.dataTransfer.effectAllowed = 'move'; };
+  // Kartu sub-item, dikumpulkan terpisah supaya baris di atas tidak diubah.
+  const allSubCards = boardData.reduce((acc: any, g: any) => [
+    ...acc,
+    ...(g.items || []).flatMap((it: any) => (it.subItems || []).map((sub: any) => ({
+      ...sub, groupTitle: g.title, groupColor: g.color, groupId: g.id,
+      isSub: true, parentId: it.id, parentName: it.name,
+    }))),
+  ], []);
+
+  const semuaKartu = [...allKanbanItems, ...allSubCards];
+
+  // Setiap kartu dibaca dengan kunci kolomnya sendiri.
+  const bacaStatus = (r: any) => String((r.isSub ? (subStatusKey && r[subStatusKey]) : r[statusKey]) || '');
+  const bacaTags = (r: any) => (r.isSub ? (subTagsKey ? r[subTagsKey] : []) : (tagsKey ? r[tagsKey] : [])) || [];
+  const kunciTags = (r: any) => (r.isSub ? subTagsKey : tagsKey);
+  const bacaPIC = (r: any) => (r.isSub ? (subTeamKey ? r[subTeamKey] : []) : (teamKey ? r[teamKey] : [])) || [];
+  const bacaTanggal = (r: any) => {
+    const dk = r.isSub ? subDateKey : dateKey;
+    const tk = r.isSub ? subTimelineKey : timelineKey;
+    return (dk && r[dk]) || (tk && (r[tk]?.end || r[tk]?.start)) || null;
+  };
+
+  const handleDragStart = (e: any, kartu: any) => {
+    setDraggedItem(kartu.isSub
+      ? { groupId: kartu.groupId, itemId: kartu.parentId, subId: kartu.id }
+      : { groupId: kartu.groupId, itemId: kartu.id });
+    e.dataTransfer.effectAllowed = 'move';
+  };
   const handleDragOver = (e: any, status: string) => { e.preventDefault(); if (dragOverColumn !== status) setDragOverColumn(status); };
-  const handleDrop = (e: any, status: string) => { e.preventDefault(); if (draggedItem && statusKey) handleUpdateItem(draggedItem.groupId, draggedItem.itemId, statusKey, status); setDraggedItem(null); setDragOverColumn(null); };
+  const handleDrop = (e: any, status: string) => {
+    e.preventDefault();
+    if (draggedItem?.subId) {
+      // Menggeser kartu aset menulis ke kolom status SUB, bukan kolom utama.
+      if (subStatusKey) handleUpdateSubItem(draggedItem.groupId, draggedItem.itemId, draggedItem.subId, subStatusKey, status);
+    } else if (draggedItem && statusKey) {
+      handleUpdateItem(draggedItem.groupId, draggedItem.itemId, statusKey, status);
+    }
+    setDraggedItem(null); setDragOverColumn(null);
+  };
 
   if (!statusKey) {
     return (
@@ -47,22 +94,24 @@ export default function KanbanBoard() {
   return (
     <div className="flex gap-6 overflow-x-auto pb-8 flex-1 items-start mt-4">
       {statusColumns.map((col: any) => {
-        const items = allKanbanItems.filter((i: any) => (i[statusKey] || '') === col.text);
+        const items = semuaKartu.filter((i: any) => bacaStatus(i) === col.text);
         return (
           <div key={col.id} onDragOver={e => handleDragOver(e, col.text)} onDrop={e => handleDrop(e, col.text)} className={`w-[320px] shrink-0 flex flex-col rounded-xl border bg-kartu-hover max-h-full ${dragOverColumn === col.text ? 'border-blue-500 bg-kartu' : 'border-white/10'}`}>
             <div className="p-4 border-b border-white/10 bg-kartu-hover rounded-t-xl sticky top-0"><div className="flex justify-between mb-2"><h3 className={`text-xs font-bold text-white px-2.5 py-1 rounded ${col.color || 'bg-kartu-hover'}`}>{col.text || 'No Status'}</h3><span className="text-xs text-gray-500 font-bold bg-white/5 px-2 py-0.5 rounded">{items.length}</span></div></div>
             <div className="p-3 flex flex-col gap-3 overflow-y-auto">
               {items.map((item: any) => {
-                 const tags = tagsKey ? (item[tagsKey] || []) : [];
-                 const due = formatDue((dateKey && item[dateKey]) || item[timelineKey]?.end || item[timelineKey]?.start);
-                 const assignees = (teamKey ? item[teamKey] : []) || [];
+                 const tags = bacaTags(item);
+                 const tagKey = kunciTags(item);
+                 const due = formatDue(bacaTanggal(item));
+                 const assignees = bacaPIC(item);
                  return (
-                 <div key={item.id} draggable onDragStart={e => handleDragStart(e, item.groupId, item.id)} onDragEnd={() => setDraggedItem(null)} onClick={() => setDetailItem({ groupId: item.groupId, itemId: item.id })} className="bg-kartu rounded-lg p-4 border border-white/10 cursor-pointer hover:border-blue-500/60 hover:bg-kartu-hover transition-all" style={{ borderLeftColor: item.groupColor, borderLeftWidth: '3px' }}>
+                 <div key={item.id} draggable onDragStart={e => handleDragStart(e, item)} onDragEnd={() => setDraggedItem(null)} onClick={() => setDetailItem(item.isSub ? { groupId: item.groupId, itemId: item.parentId, subItemId: item.id } : { groupId: item.groupId, itemId: item.id })} className="bg-kartu rounded-lg p-4 border border-white/10 cursor-pointer hover:border-blue-500/60 hover:bg-kartu-hover transition-all" style={{ borderLeftColor: item.groupColor, borderLeftWidth: '3px' }}>
                     <div className="text-[10px] font-black uppercase tracking-wider mb-2" style={{ color: item.groupColor }}>{item.groupTitle}</div>
+                    {item.isSub && <div className="text-[10px] text-gray-500 mb-1 truncate" title={item.parentName}>{item.parentName} ›</div>}
                     <h4 className="text-[14px] font-bold text-gray-100 mb-2">{item.name}</h4>
                     {tags.length > 0 && (
                       <div className="flex flex-wrap gap-1 mb-2">
-                        {tags.map((t: string) => <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white ${labels[tagsKey]?.find((l: any) => l.text === t)?.color || 'bg-kartu-hover'}`}>{t}</span>)}
+                        {tags.map((t: string) => <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white ${(tagKey ? labels[tagKey] : [])?.find((l: any) => l.text === t)?.color || 'bg-kartu-hover'}`}>{t}</span>)}
                       </div>
                     )}
                     <div className="flex items-center justify-between pt-2 border-t border-white/10 text-[11px] text-gray-400">

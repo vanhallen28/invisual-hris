@@ -1,6 +1,8 @@
 import type { NodeType } from '@/kanvas/doc/types'
 
-export type Tool = 'select' | 'hand' | 'frame' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'polygon' | 'star' | 'text'
+export type Tool =
+  | 'select' | 'hand' | 'frame' | 'rect' | 'ellipse' | 'line' | 'arrow'
+  | 'polygon' | 'star' | 'text' | 'sticky' | 'draw'
 
 /** Pemetaan huruf ke tool, mengikuti konvensi editor grafis. */
 export const TOOL_KEYS: Record<string, Tool> = {
@@ -12,6 +14,8 @@ export const TOOL_KEYS: Record<string, Tool> = {
   KeyL: 'line',
   KeyA: 'arrow',
   KeyT: 'text',
+  KeyS: 'sticky',
+  KeyP: 'draw',
 }
 
 export const TOOL_LABEL: Record<Tool, string> = {
@@ -25,6 +29,8 @@ export const TOOL_LABEL: Record<Tool, string> = {
   polygon: 'Poligon',
   star: 'Bintang',
   text: 'Teks  T',
+  sticky: 'Catatan  S',
+  draw: 'Coret  P',
 }
 
 /**

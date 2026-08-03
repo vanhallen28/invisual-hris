@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
-  MousePointer2, Hand, Frame, Square, Circle, Minus, MoveUpRight, Triangle, Star, Type, Image as ImageIcon, ChevronRight,
+  MousePointer2, Hand, Frame, Square, Circle, Minus, MoveUpRight, Triangle, Star, Type,
+  Image as ImageIcon, ChevronRight, MessageSquare, PenLine,
 } from 'lucide-react'
 import { TOOL_LABEL, type Tool } from '@/kanvas/state/tool'
 
@@ -28,6 +29,8 @@ const IKON: Record<Tool, Ikon> = {
   polygon: Triangle,
   star: Star,
   text: Type,
+  sticky: MessageSquare,
+  draw: PenLine,
 }
 
 // Aksi yang bukan tool: tidak mengubah mode kanvas, hanya sekali jalan.
@@ -47,7 +50,8 @@ const GRUP: Isi[][] = [
     { tool: 'star' },
     { aksi: 'gambar', label: 'Gambar…  ⇧⌘K', ikon: ImageIcon },
   ],
-  [{ tool: 'text' }],
+  [{ tool: 'text' }, { tool: 'sticky' }],
+  [{ tool: 'draw' }],
 ]
 
 export function Toolbar({

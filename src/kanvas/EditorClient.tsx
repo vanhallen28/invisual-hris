@@ -11,6 +11,7 @@ import { useProvider } from '@/kanvas/bind/useProvider'
 import { Scene } from '@/kanvas/render/Scene'
 import { SelectionOverlay } from '@/kanvas/render/SelectionOverlay'
 import { Marquee } from '@/kanvas/render/Marquee'
+import { FrameLabels } from '@/kanvas/render/FrameLabels'
 import { Cursors } from '@/kanvas/render/Cursors'
 import { LayersPanel } from '@/kanvas/ui/LayersPanel'
 import { PagesPanel } from '@/kanvas/ui/PagesPanel'
@@ -23,6 +24,7 @@ import { useGesture } from '@/kanvas/interact/useGesture'
 import { topmostAt } from '@/kanvas/interact/hitTest'
 import type { Handle } from '@/kanvas/interact/transform'
 import { unggahAset, ukuranGambar } from '@/kanvas/features/assets/upload'
+import { ACCEPT_IMPOR, PESAN_FIG, pesanTakDidukung, pilahBerkas } from '@/kanvas/lib/impor'
 import { dariBytea } from '@/kanvas/sync/hex'
 import { TOOL_KEYS, toolToNodeType, type Tool } from '@/kanvas/state/tool'
 import {
@@ -40,11 +42,16 @@ export function EditorClient({
   projectId,
   snapshot,
   saya,
+  berkasAwal,
+  onBerkasAwalSelesai,
 }: {
   fileId: string
   fileName: string
   projectId: string
   snapshot: string | null
+  /** Berkas titipan dari tombol Impor di daftar kanvas. Ditaruh sekali. */
+  berkasAwal?: File[] | null
+  onBerkasAwalSelesai?: () => void
   saya: { id: string; nama: string }
 }) {
   const doc = useMemo(() => {
@@ -97,6 +104,28 @@ export function EditorClient({
   const [marquee, setMarquee] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
 
   const svgRef = useRef<SVGSVGElement>(null)
+  /* Coretan tangan yang sedang digambar. Titik dikumpulkan di ref, bukan
+     state: satu gerakan menghasilkan ratusan titik, dan setState di tiap
+     titik akan menggambar ulang seluruh kanvas ratusan kali. State hanya
+     dipakai untuk pratinjau garisnya. */
+  const coretRef = useRef<number[] | null>(null)
+  const [coretPratinjau, setCoretPratinjau] = useState<number[] | null>(null)
+
+  /* Warna catatan yang terakhir dipakai. Saat membuat banyak catatan
+     beruntun, memilih ulang warna tiap kali memutus alurnya.
+
+     Diperbarui setiap kali sebuah catatan terpilih — jadi mengganti warna
+     lewat pemilih warna di panel kanan otomatis jadi warna bawaan
+     berikutnya, tanpa perlu pengaturan terpisah. */
+  const warnaCatatanRef = useRef('#fde68a')
+  /** Warna coretan terakhir — sama alasannya dengan warna catatan. */
+  const warnaCoretRef = useRef('#ef4444')
+  useEffect(() => {
+    if (selection.length !== 1) return
+    const n = readNode(doc, selection[0])
+    if (n?.type === 'sticky' && typeof n.fill === 'string') warnaCatatanRef.current = n.fill
+    if (n?.type === 'draw' && typeof n.stroke === 'string') warnaCoretRef.current = n.stroke
+  }, [selection, doc])
   const pan = useRef<{ x: number; y: number } | null>(null)
   const tarik = useRef<{ x: number; y: number } | null>(null)
   const [spasi, setSpasi] = useState(false)
@@ -121,13 +150,31 @@ export function EditorClient({
     const dunia = screenToWorld(viewport, s.x, s.y)
     const tipe = toolToNodeType(tool)
 
+    // Coret tangan tidak membuat node saat ditekan — node baru dibuat
+    // setelah gerakan selesai, supaya satu coretan jadi satu objek.
+    if (tool === 'draw') {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      coretRef.current = [dunia.x, dunia.y]
+      setCoretPratinjau([dunia.x, dunia.y])
+      return
+    }
+
     if (tipe) {
       // Tool bentuk: buat objek 1×1 lalu langsung masuk mode resize
       // dari handle se, sehingga menyeret langsung menentukan ukuran.
+      // Catatan tempel dibuat sekali klik dengan ukuran tetap — seperti
+      // FigJam. Menyeret untuk menentukan ukuran justru memperlambat, dan
+      // ukuran seragam membuat papan curah gagasan lebih mudah dibaca.
+      const catatan = tipe === 'sticky'
+      const sisi = 180
+
       const id = createNode(doc, {
         type: tipe,
         page: pageAktif,
-        x: dunia.x, y: dunia.y, w: 1, h: 1,
+        ...(catatan
+          ? { x: dunia.x - sisi / 2, y: dunia.y - sisi / 2, w: sisi, h: sisi,
+              fill: warnaCatatanRef.current, text: '', radius: 6 }
+          : { x: dunia.x, y: dunia.y, w: 1, h: 1 }),
         ...(tipe === 'text' ? { text: 'Teks' } : {}),
         // Panah dipakai untuk menandai revisi, jadi harus langsung
         // terbaca. Garis setipis 1px terlalu samar di atas gambar.
@@ -135,7 +182,8 @@ export function EditorClient({
       })
       setSelection([id])
       setTool('select')
-      mulai({ jenis: 'resize', id, handle: 'se' })
+      // Catatan sudah punya ukuran final, jadi tidak masuk mode resize.
+      if (!catatan) mulai({ jenis: 'resize', id, handle: 'se' })
       return
     }
 
@@ -175,6 +223,19 @@ export function EditorClient({
     // attachCursors, jadi aman dipanggil di setiap event.
     kirimKursor.current(d.x, d.y)
 
+    if (coretRef.current) {
+      const t = coretRef.current
+      // Titik yang terlalu rapat dibuang: mengurangi ukuran dokumen dan
+      // membuat garisnya lebih halus, tanpa mengubah bentuk coretan.
+      const dx = d.x - t[t.length - 2]
+      const dy = d.y - t[t.length - 1]
+      if (dx * dx + dy * dy >= 4) {
+        t.push(d.x, d.y)
+        setCoretPratinjau([...t])
+      }
+      return
+    }
+
     if (tarik.current) {
       const a = tarik.current
       setMarquee({
@@ -192,6 +253,34 @@ export function EditorClient({
       e.currentTarget.releasePointerCapture(e.pointerId)
     }
     pan.current = null
+
+    if (coretRef.current) {
+      const t = coretRef.current
+      coretRef.current = null
+      setCoretPratinjau(null)
+
+      // Ketukan tunggal tanpa gerakan bukan coretan — jangan tinggalkan
+      // objek tak kasatmata yang mengganggu seleksi.
+      if (t.length >= 6) {
+        let minX = Infinity, minY = Infinity, maksX = -Infinity, maksY = -Infinity
+        for (let i = 0; i < t.length; i += 2) {
+          minX = Math.min(minX, t[i]); maksX = Math.max(maksX, t[i])
+          minY = Math.min(minY, t[i + 1]); maksY = Math.max(maksY, t[i + 1])
+        }
+        const id = createNode(doc, {
+          type: 'draw', page: pageAktif,
+          x: minX, y: minY,
+          w: Math.max(1, maksX - minX), h: Math.max(1, maksY - minY),
+          points: t,
+          fill: 'transparent',
+          stroke: warnaCoretRef.current,
+          strokeWidth: 3,
+        })
+        setSelection([id])
+      }
+      setTool('select')
+      return
+    }
 
     if (tarik.current && marquee) {
       const m = marquee
@@ -233,18 +322,55 @@ export function EditorClient({
   // layar, bukan di titik kursor, karena aksi ini datang dari menu.
   const berkasRef = useRef<HTMLInputElement>(null)
 
-  async function taruhGambar(daftar: FileList | null) {
+
+  async function taruhGambar(daftar: FileList | File[] | null) {
     if (!daftar?.length) return
     const dunia = screenToWorld(viewport, window.innerWidth / 2, window.innerHeight / 2)
-    for (const f of Array.from(daftar)) {
-      if (!f.type.startsWith('image/')) continue
+
+    // .fig dikenali dan dijelaskan, bukan diabaikan diam-diam — dulu
+    // berkasnya hilang begitu saja tanpa pesan apa pun.
+    const { dipakai, fig, ditolak } = pilahBerkas(Array.from(daftar))
+    if (fig.length) alert(PESAN_FIG)
+    if (ditolak.length) alert(pesanTakDidukung(ditolak[0]))
+
+    await tempatkanBerkas(dipakai, dunia)
+  }
+
+  /* Menaruh sekumpulan berkas berjajar rapi.
+     Dulu SEMUANYA ditaruh di titik yang sama, jadi mengimpor 20 berkas
+     menghasilkan satu tumpukan yang harus dipisah satu per satu dengan
+     tangan. Sekarang disusun jadi kisi: baris demi baris, dengan jarak
+     tetap, dan tinggi baris mengikuti gambar tertinggi di baris itu. */
+  async function tempatkanBerkas(berkas: File[], mulaiDi: { x: number; y: number }) {
+    const JARAK = 24
+    const PER_BARIS = Math.max(1, Math.ceil(Math.sqrt(berkas.length)))
+
+    let kolom = 0
+    let barisX = mulaiDi.x
+    let barisY = mulaiDi.y
+    let tinggiBaris = 0
+
+    for (const f of berkas) {
       try {
         const assetId = await unggahAset(f, projectId)
         const gambar = await ukuranGambar(f)
+
         createNode(doc, {
           type: 'image', page: pageAktif, assetId,
-          x: dunia.x, y: dunia.y, w: gambar.w, h: gambar.h,
+          x: barisX, y: barisY, w: gambar.w, h: gambar.h,
+          name: f.name.replace(/\.[^.]+$/, '').slice(0, 40) || 'Gambar',
         })
+
+        barisX += gambar.w + JARAK
+        tinggiBaris = Math.max(tinggiBaris, gambar.h)
+        kolom += 1
+
+        if (kolom >= PER_BARIS) {
+          kolom = 0
+          barisX = mulaiDi.x
+          barisY += tinggiBaris + JARAK
+          tinggiBaris = 0
+        }
       } catch (err) {
         alert(err instanceof Error ? err.message : 'Gagal mengunggah')
       }
@@ -255,33 +381,35 @@ export function EditorClient({
     if (a === 'gambar') berkasRef.current?.click()
   }
 
+  /* Berkas titipan dari tombol Impor di daftar kanvas.
+     Ditaruh SEKALI saja — `sudahTaruh` mencegah gambar tersalin berkali-kali
+     kalau komponen dirender ulang sebelum induknya sempat mengosongkan prop. */
+  const sudahTaruhRef = useRef(false)
+  useEffect(() => {
+    if (!berkasAwal?.length || sudahTaruhRef.current) return
+    sudahTaruhRef.current = true
+    void (async () => {
+      await taruhGambar(berkasAwal)
+      onBerkasAwalSelesai?.()
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [berkasAwal])
+
   async function onDrop(e: React.DragEvent) {
     e.preventDefault()
-    const berkas = [...e.dataTransfer.files].filter((f) => f.type.startsWith('image/'))
-    if (berkas.length === 0) return
+    // Aturan pemilahan dipakai bersama dengan tombol impor (lib/impor.ts),
+    // supaya seret-lepas dan menu tidak berbeda perilaku.
+    const { dipakai, fig, ditolak } = pilahBerkas([...e.dataTransfer.files])
+    if (fig.length) alert(PESAN_FIG)
+    if (ditolak.length) alert(pesanTakDidukung(ditolak[0]))
+    if (dipakai.length === 0) return
 
     const kotak = e.currentTarget.getBoundingClientRect()
     const dunia = screenToWorld(viewport, e.clientX - kotak.left, e.clientY - kotak.top)
 
-    for (const f of berkas) {
-      try {
-        const assetId = await unggahAset(f, projectId)
-        const gambar = await ukuranGambar(f)
-        createNode(doc, {
-          type: 'image',
-          page: pageAktif,
-          assetId,
-          x: dunia.x,
-          y: dunia.y,
-          w: gambar.w,
-          h: gambar.h,
-        })
-      } catch (err) {
-        // Node tidak dibuat kalau unggah gagal, supaya tidak ada
-        // kotak kosong permanen di kanvas.
-        alert(err instanceof Error ? err.message : 'Gagal mengunggah')
-      }
-    }
+    // Penata yang sama dengan tombol impor — seret-lepas tidak boleh
+    // menghasilkan tata letak yang berbeda.
+    await tempatkanBerkas(dipakai, dunia)
   }
 
   // React memasang onWheel sebagai listener pasif, sehingga
@@ -404,7 +532,7 @@ export function EditorClient({
   return (
     <div className="flex h-screen flex-col" style={{ background: 'var(--surface-0)' }}>
       <input
-        ref={berkasRef} type="file" accept="image/*" multiple hidden
+        ref={berkasRef} type="file" accept={ACCEPT_IMPOR} multiple hidden
         onChange={(e) => { taruhGambar(e.target.files); e.currentTarget.value = '' }}
       />
       <header
@@ -488,7 +616,35 @@ export function EditorClient({
                   onRotateDown={onRotateDown}
                 />
                 <Cursors peers={peers} viewport={viewport} />
+                {/* Judul frame — di lapisan layar supaya ukurannya tetap
+                    berapa pun zoom-nya. Lihat catatan di FrameLabels. */}
+                <FrameLabels store={store} viewport={viewport} page={pageAktif} pageAwal={pageAwal} />
                 <Marquee rect={marquee ? worldRectKeLayar(marquee, viewport) : null} />
+
+                {/* Pratinjau coretan yang sedang digambar. Digambar di
+                    lapisan layar (bukan dunia) supaya tidak perlu menunggu
+                    node dibuat — garisnya mengikuti kursor seketika. */}
+                {coretPratinjau && coretPratinjau.length >= 4 && (
+                  <path
+                    d={coretPratinjau
+                      .reduce<string[]>((keluar, _n, i) => {
+                        if (i % 2) return keluar
+                        const p = worldRectKeLayar(
+                          { x: coretPratinjau[i], y: coretPratinjau[i + 1], w: 0, h: 0 },
+                          viewport,
+                        )
+                        keluar.push(`${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`)
+                        return keluar
+                      }, [])
+                      .join(' ')}
+                    fill="none"
+                    stroke={warnaCoretRef.current}
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    pointerEvents="none"
+                  />
+                )}
               </>
             }
           />

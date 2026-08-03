@@ -123,7 +123,10 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
 
   // === MULTI-VIEW: daftar view & view aktif (per board) ===
   const views = activeBoardData?.views || [];
-  const activeView = activeViewId === 'mytasks' ? null : (views.find((v:any) => v.id === activeViewId) || views[0] || null);
+  // 'mytasks' dan 'acc' adalah view LINTAS PAPAN — bukan milik papan mana pun.
+  // Tanpa dikecualikan di sini, views[0] akan menjadi cadangan dan tabel
+  // ikut tergambar di belakang layar ACC.
+  const activeView = (activeViewId === 'mytasks' || activeViewId === 'acc') ? null : (views.find((v:any) => v.id === activeViewId) || views[0] || null);
 
   // hiddenColumns kini PER-VIEW (disimpan di activeView.config); API tetap sama
   const hiddenColumns = activeView?.config?.hiddenColumns || [];

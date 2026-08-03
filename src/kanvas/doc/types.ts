@@ -3,7 +3,13 @@ import type * as Y from 'yjs'
 export const NODES_KEY = 'nodes'
 export const ROOT = 'root'
 
-export type NodeType = 'frame' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'polygon' | 'star' | 'text' | 'image' | 'group'
+export type NodeType =
+  | 'frame' | 'rect' | 'ellipse' | 'line' | 'arrow' | 'polygon' | 'star'
+  | 'text' | 'image' | 'group'
+  /** Catatan tempel ala FigJam: kotak berwarna berisi teks yang membungkus sendiri. */
+  | 'sticky'
+  /** Coretan tangan bebas: deretan titik, bukan bentuk geometris. */
+  | 'draw'
 
 /** Satu node di dalam Y.Doc. Kunci apa pun bisa berubah sendiri-sendiri. */
 export type YNode = Y.Map<unknown>
@@ -32,6 +38,25 @@ export interface SceneNode {
   page?: string
   /** Jumlah sisi poligon, atau jumlah sudut bintang. */
   sides?: number
+
+  /* ── Tipografi (teks & catatan tempel) ─────────────────────────── */
+  fontSize?: number
+  fontFamily?: string
+  /** 400 biasa, 600 medium, 700 tebal. */
+  fontWeight?: number
+  /** Perataan mendatar isi teks. */
+  align?: 'left' | 'center' | 'right'
+
+  /* ── Cermin ────────────────────────────────────────────────────── */
+  flipX?: boolean
+  flipY?: boolean
+
+  /**
+   * Titik-titik coretan tangan, relatif terhadap x/y node.
+   * Disimpan relatif supaya coretan bisa digeser dan diubah ukurannya
+   * seperti node lain tanpa menghitung ulang setiap titik.
+   */
+  points?: number[]
 }
 
 export type NodeInit = { type: NodeType } & Partial<Omit<SceneNode, 'id' | 'type' | 'order'>>
@@ -63,4 +88,6 @@ export const DEFAULT_NAME: Record<NodeType, string> = {
   text: 'Teks',
   image: 'Gambar',
   group: 'Grup',
+  sticky: 'Catatan',
+  draw: 'Coretan',
 }

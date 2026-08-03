@@ -7,6 +7,10 @@ const VIEW_TYPES = [
   { type: 'kanban', label: 'Kanban', desc: 'Kartu per status', icon: LayoutGrid },
   { type: 'calendar', label: 'Calendar', desc: 'Item per tanggal', icon: CalendarDays },
   { type: 'workload', label: 'Workload', desc: 'Beban kerja per orang', icon: ListChecks },
+  // 'gantt' sudah dikenal addView() dan sudah dirender ManagerBoard, tapi
+  // belum pernah terdaftar di sini — jadi TimelineView.tsx tak pernah bisa
+  // dipakai. Satu baris ini yang menghidupkannya.
+  { type: 'gantt', label: 'Timeline', desc: 'Kampanye per minggu', icon: BarChart3 },
 ];
 
 export default function ViewPicker({ onClose }: any) {

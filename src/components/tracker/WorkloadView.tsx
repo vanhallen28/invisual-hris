@@ -4,12 +4,29 @@ import { useDashboard } from '@/components/tracker/DashboardContext';
 import { Users } from 'lucide-react';
 
 export default function WorkloadView() {
-  const { boardData, columns, teamMembers, labels, setDetailItem } = useDashboard();
+  const { boardData, columns, subColumns, teamMembers, labels, setDetailItem } = useDashboard();
 
   const teamCols = columns.filter((c: any) => c.type === 'team');
   const statusCols = columns.filter((c: any) => c.type === 'status');
   const dateCols = columns.filter((c: any) => c.type === 'date');
   const tlCols = columns.filter((c: any) => c.type === 'timeline');
+
+  // Beban kerja nyata tim sosmed ada di SUB-ITEM (aset per kanal), dan
+  // kolom PIC-nya milik `subColumns`. Tanpa pass ini, Workload melaporkan
+  // beban jauh lebih ringan dari kenyataan.
+  const subTeamCols = subColumns.filter((c: any) => c.type === 'team');
+  const subStatusCols = subColumns.filter((c: any) => c.type === 'status');
+
+  // Sub-item punya kolom statusnya sendiri, jadi warnanya harus dicari di
+  // subColumns — kalau dipaksa lewat `itemStatus`, titiknya selalu abu.
+  const statusBaris = (row: any, parent: any) => {
+    const cols = parent ? subStatusCols : statusCols;
+    for (const kol of cols) { const nilai = row[kol.id]; if (nilai) { const cocok = labels[kol.id]?.find((l: any) => l.text === nilai); return { text: nilai, color: cocok?.color || 'bg-kartu-hover' }; } }
+    return null;
+  };
+  const tujuanKlik = (group: any, row: any, parent: any) => parent
+    ? { groupId: group.id, itemId: parent.id, subItemId: row.id }
+    : { groupId: group.id, itemId: row.id };
 
   const itemStatus = (item: any) => {
     for (const c of statusCols) { const v = item[c.id]; if (v) { const m = labels[c.id]?.find((l: any) => l.text === v); return { text: v, color: m?.color || 'bg-kartu-hover' }; } }
@@ -32,6 +49,15 @@ export default function WorkloadView() {
     if (ids.size === 0) { unassigned.push({ item: it, group: g }); return; }
     ids.forEach(id => { if (assignments[id]) assignments[id].push({ item: it, group: g }); });
   }));
+
+  // Pass kedua: sub-item. Dipisah supaya perhitungan item utama yang sudah
+  // benar tidak diubah sedikit pun.
+  boardData.forEach((g: any) => (g.items || []).forEach((it: any) => (it.subItems || []).forEach((sub: any) => {
+    const idSub = new Set<string>();
+    subTeamCols.forEach((kol: any) => (sub[kol.id] || []).forEach((id: string) => idSub.add(id)));
+    if (idSub.size === 0) return;   // sub tanpa PIC tidak masuk "belum ditugaskan"
+    idSub.forEach(id => { if (assignments[id]) assignments[id].push({ item: sub, group: g, parent: it }); });
+  })));
 
   const maxLoad = Math.max(1, ...teamMembers.map((m: any) => assignments[m.id]?.length || 0));
   const rows = teamMembers.map((m: any) => ({ m, items: assignments[m.id] || [] })).sort((a: any, b: any) => b.items.length - a.items.length);
@@ -79,10 +105,10 @@ export default function WorkloadView() {
               {/* daftar tugas */}
               {items.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
-                  {items.slice(0, 8).map(({ item, group }: any, i: number) => {
-                    const s = itemStatus(item);
+                  {items.slice(0, 8).map(({ item, group, parent }: any, i: number) => {
+                    const s = statusBaris(item, parent);
                     return (
-                      <button key={i} onClick={() => setDetailItem({ groupId: group.id, itemId: item.id })} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 hover:bg-kartu-hover transition-colors text-left max-w-[200px]">
+                      <button key={i} title={parent ? `${parent.name} › ${item.name}` : item.name} onClick={() => setDetailItem(tujuanKlik(group, item, parent))} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 hover:bg-kartu-hover transition-colors text-left max-w-[200px]">
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s?.color || 'bg-kartu-hover'}`}></span>
                         <span className="text-[11px] text-gray-300 truncate">{item.name}</span>
                       </button>

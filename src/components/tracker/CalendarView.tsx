@@ -7,7 +7,7 @@ const DAYS = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
 export default function CalendarView() {
-  const { boardData, columns, labels, setDetailItem } = useDashboard();
+  const { boardData, columns, subColumns, labels, setDetailItem } = useDashboard();
   const [viewDate, setViewDate] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
 
   const year = viewDate.getFullYear();
@@ -17,10 +17,18 @@ export default function CalendarView() {
   const tlCols = columns.filter((c: any) => c.type === 'timeline');
   const statusCols = columns.filter((c: any) => c.type === 'status');
 
-  const itemStatusColor = (item: any) => {
-    for (const c of statusCols) { const v = item[c.id]; if (v) { const m = labels[c.id]?.find((l: any) => l.text === v); if (m) return m.color; } }
+  // Kolom SUB dibaca terpisah: aset per kanal (IG, TikTok, listing) hidup di
+  // sub-item, dan kolomnya milik `subColumns` — bukan `columns`. Tanpa ini
+  // kalender kosong padahal jadwal tayangnya sudah diisi.
+  const subDateCols = subColumns.filter((c: any) => c.type === 'date');
+  const subTlCols = subColumns.filter((c: any) => c.type === 'timeline');
+  const subStatusCols = subColumns.filter((c: any) => c.type === 'status');
+
+  const warnaStatus = (row: any, cols: any[]) => {
+    for (const c of cols) { const v = row[c.id]; if (v) { const m = labels[c.id]?.find((l: any) => l.text === v); if (m) return m.color; } }
     return 'bg-kartu-hover';
   };
+  const itemStatusColor = (item: any) => warnaStatus(item, statusCols);
 
   // Kumpulkan event: satu tanggal utama per item (date dulu, lalu timeline start)
   const events: Record<string, any[]> = {};
@@ -33,6 +41,18 @@ export default function CalendarView() {
     if (!events[key]) events[key] = [];
     events[key].push({ item: it, group: g, color: itemStatusColor(it) });
   }));
+
+  // Pass kedua: sub-item. Sengaja dipisah dari pass di atas supaya logika
+  // item utama yang sudah jalan tidak disentuh sama sekali.
+  boardData.forEach((g: any) => (g.items || []).forEach((it: any) => (it.subItems || []).forEach((sub: any) => {
+    let dsub = '';
+    for (const c of subDateCols) { if (sub[c.id]) { dsub = sub[c.id]; break; } }
+    if (!dsub) { for (const c of subTlCols) { if (sub[c.id]?.start) { dsub = sub[c.id].start; break; } } }
+    if (!dsub) return;
+    const key = String(dsub).slice(0, 10);
+    if (!events[key]) events[key] = [];
+    events[key].push({ item: sub, group: g, color: warnaStatus(sub, subStatusCols), parent: it });
+  })));
 
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstWeekday = new Date(year, month, 1).getDay(); // 0 = Minggu
@@ -79,9 +99,14 @@ export default function CalendarView() {
               <div className={`text-[11px] font-semibold w-6 h-6 flex items-center justify-center rounded-full shrink-0 ${isToday ? 'bg-blue-500 text-white' : 'text-gray-400'}`}>{day}</div>
               <div className="flex flex-col gap-1 overflow-hidden">
                 {dayEvents.slice(0, 4).map((ev, i) => (
-                  <button key={i} onClick={() => setDetailItem({ groupId: ev.group.id, itemId: ev.item.id })} className="flex items-center gap-1.5 text-left px-1.5 py-1 rounded-md bg-white/5 hover:bg-kartu-hover transition-colors group/ev">
+                  <button key={i} title={ev.parent ? `${ev.parent.name} › ${ev.item.name}` : ev.item.name}
+                    onClick={() => setDetailItem(ev.parent
+                      ? { groupId: ev.group.id, itemId: ev.parent.id, subItemId: ev.item.id }
+                      : { groupId: ev.group.id, itemId: ev.item.id })}
+                    className="flex items-center gap-1.5 text-left px-1.5 py-1 rounded-md bg-white/5 hover:bg-kartu-hover transition-colors group/ev">
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ev.color}`}></span>
                     <span className="text-[10px] text-gray-300 group-hover/ev:text-white truncate">{ev.item.name}</span>
+                    {ev.parent && <span className="text-[9px] text-gray-600 shrink-0">sub</span>}
                   </button>
                 ))}
                 {dayEvents.length > 4 && <span className="text-[9px] text-gray-500 px-1.5">+{dayEvents.length - 4} lagi</span>}

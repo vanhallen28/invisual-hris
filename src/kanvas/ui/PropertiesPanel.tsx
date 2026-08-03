@@ -8,7 +8,7 @@ import type { DocStore } from '@/kanvas/bind/store'
 import { readNode, updateNode } from '@/kanvas/doc/nodes'
 import type { SceneNode } from '@/kanvas/doc/types'
 import { DEFAULT_NAME } from '@/kanvas/doc/types'
-import { ColorField, NumField } from './Field'
+import { ColorField, NumField, SelectField } from './Field'
 import { jumlahSisi, SISI_MAKS, SISI_MIN } from '@/kanvas/doc/polygon'
 import { TextEditor } from './TextEditor'
 
@@ -132,6 +132,36 @@ export function PropertiesPanel({
     })
   }
 
+  /* Ratakan JARAK: menyamakan celah antar objek, bukan tepinya.
+     Objek pertama dan terakhir tetap di tempatnya — itu yang membuat
+     hasilnya terduga; kalau semuanya ikut bergerak, susunan yang sudah
+     benar di tepi malah rusak. Butuh minimal 3 objek: dengan 2 objek
+     tidak ada celah di tengah untuk disamakan. */
+  const ratakanJarak = (sumbu: 'x' | 'y') => {
+    const daftar = selection
+      .map((id) => readNode(doc, id))
+      .filter((n): n is SceneNode => !!n && !n.locked)
+    if (daftar.length < 3) return
+
+    const sisi = sumbu === 'x' ? 'w' : 'h'
+    const urut = [...daftar].sort((a, b) => a[sumbu] - b[sumbu])
+
+    const awal = urut[0][sumbu]
+    const akhir = urut[urut.length - 1][sumbu] + urut[urut.length - 1][sisi]
+    const isi = urut.reduce((t, n) => t + n[sisi], 0)
+    // Celah bisa negatif kalau objeknya saling tumpang tindih. Dibiarkan
+    // apa adanya supaya jaraknya tetap seragam, bukan dipaksa nol.
+    const celah = (akhir - awal - isi) / (urut.length - 1)
+
+    doc.transact(() => {
+      let jalan = awal
+      for (const n of urut) {
+        updateNode(doc, n.id, { [sumbu]: Math.round(jalan) } as Partial<SceneNode>)
+        jalan += n[sisi] + celah
+      }
+    })
+  }
+
   const BarisRata = () => (
     <div className="flex items-center gap-0.5">
       {(['kiri', 'tengahH', 'kanan'] as Arah[]).map((a) => (
@@ -141,6 +171,21 @@ export function PropertiesPanel({
       {(['atas', 'tengahV', 'bawah'] as Arah[]).map((a) => (
         <TombolIkon key={a} title={`Ratakan ${a}`} onClick={() => ratakan(a)}><IkonRata arah={a} /></TombolIkon>
       ))}
+      <span style={{ width: 6 }} />
+      {/* Ratakan jarak. Nonaktif di bawah 3 objek — dengan 2 objek tidak
+          ada celah di tengah yang bisa disamakan. */}
+      <TombolIkon
+        title={selection.length < 3 ? 'Ratakan jarak — butuh 3 objek atau lebih' : 'Ratakan jarak mendatar'}
+        onClick={() => ratakanJarak('x')}
+      >
+        <span style={{ fontSize: 12, lineHeight: 1, opacity: selection.length < 3 ? 0.35 : 1 }}>⇹</span>
+      </TombolIkon>
+      <TombolIkon
+        title={selection.length < 3 ? 'Ratakan jarak — butuh 3 objek atau lebih' : 'Ratakan jarak tegak'}
+        onClick={() => ratakanJarak('y')}
+      >
+        <span style={{ fontSize: 12, lineHeight: 1, opacity: selection.length < 3 ? 0.35 : 1 }}>⇳</span>
+      </TombolIkon>
     </div>
   )
 
@@ -176,9 +221,35 @@ export function PropertiesPanel({
         className="flex items-center gap-1"
         style={{ padding: '9px 12px', borderBottom: '1px solid var(--line)' }}
       >
-        <span style={{ fontSize: 12, fontWeight: 500, flex: 1, minWidth: 0 }} className="truncate">
-          {node.name || DEFAULT_NAME[node.type]}
-        </span>
+        {/* Nama bisa langsung disunting di sini. Sebelumnya hanya bisa
+            lewat klik-ganda di panel Layer — tersembunyi, dan untuk frame
+            yang berperan sebagai section, namanya justru tampil di kanvas
+            jadi harus mudah diganti. */}
+        <input
+          defaultValue={node.name || DEFAULT_NAME[node.type]}
+          key={node.id}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = 'transparent'
+            const nama = e.currentTarget.value.trim()
+            if (nama && nama !== node.name) set({ name: nama })
+            else e.currentTarget.value = node.name || DEFAULT_NAME[node.type]
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur()
+            if (e.key === 'Escape') {
+              e.currentTarget.value = node.name || DEFAULT_NAME[node.type]
+              e.currentTarget.blur()
+            }
+          }}
+          title="Klik untuk mengganti nama"
+          style={{
+            fontSize: 12, fontWeight: 500, flex: 1, minWidth: 0,
+            background: 'transparent', border: '1px solid transparent',
+            borderRadius: 'var(--radius)', color: 'var(--text-0)',
+            padding: '2px 4px', outline: 'none',
+          }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--line)'; e.currentTarget.select() }}
+        />
         <TombolIkon
           title={node.visible ? 'Sembunyikan' : 'Tampilkan'}
           onClick={() => set({ visible: !node.visible })}
@@ -195,8 +266,8 @@ export function PropertiesPanel({
         </TombolIkon>
       </div>
 
-      {node.type === 'text' && (
-        <Bagian judul="Isi Teks" kolom={1}>
+      {(node.type === 'text' || node.type === 'sticky') && (
+        <Bagian judul={node.type === 'sticky' ? 'Isi Catatan' : 'Isi Teks'} kolom={1}>
           <TextEditor doc={doc} node={node} />
         </Bagian>
       )}
@@ -252,6 +323,75 @@ export function PropertiesPanel({
           />
         </Bagian>
       )}
+
+      {/* Tipografi — hanya untuk node yang memang berisi teks. Muncul di
+          sini, bukan di dekat isi teks, supaya urutannya sama dengan
+          editor grafis lain: isi dulu, baru bentuknya. */}
+      {(node.type === 'text' || node.type === 'sticky') && (
+        <Bagian judul="Tipografi">
+          <SelectField
+            label="A"
+            value={node.fontFamily || 'var(--font-ui), sans-serif'}
+            options={[
+              { nilai: 'var(--font-ui), sans-serif', label: 'Bawaan' },
+              { nilai: 'Inter, system-ui, sans-serif', label: 'Inter' },
+              { nilai: 'Georgia, serif', label: 'Georgia' },
+              { nilai: '"Times New Roman", serif', label: 'Times' },
+              { nilai: '"Courier New", monospace', label: 'Courier' },
+              { nilai: 'Verdana, sans-serif', label: 'Verdana' },
+            ]}
+            onCommit={(fontFamily) => set({ fontFamily })}
+          />
+          <NumField
+            label="S"
+            value={node.fontSize || (node.type === 'sticky' ? 14 : 16)}
+            onCommit={(v) => set({ fontSize: Math.min(200, Math.max(6, v)) })}
+          />
+          <SelectField
+            label="W"
+            value={String(node.fontWeight || 400)}
+            options={[
+              { nilai: '300', label: 'Tipis' },
+              { nilai: '400', label: 'Biasa' },
+              { nilai: '600', label: 'Medium' },
+              { nilai: '700', label: 'Tebal' },
+              { nilai: '900', label: 'Berat' },
+            ]}
+            onCommit={(v) => set({ fontWeight: Number(v) })}
+          />
+          <SelectField
+            label="≡"
+            value={node.align || 'left'}
+            options={[
+              { nilai: 'left', label: 'Kiri' },
+              { nilai: 'center', label: 'Tengah' },
+              { nilai: 'right', label: 'Kanan' },
+            ]}
+            onCommit={(v) => set({ align: v as 'left' | 'center' | 'right' })}
+          />
+        </Bagian>
+      )}
+
+      {/* Cermin. Dipisah dari Perataan karena yang ini mengubah objeknya,
+          bukan menata letaknya terhadap objek lain. */}
+      <Bagian judul="Cermin" kolom={1}>
+        <div className="flex gap-1.5">
+          <TombolIkon
+            title="Cermin mendatar"
+            onClick={() => set({ flipX: !node.flipX })}
+            aktif={!!node.flipX}
+          >
+            <span style={{ fontSize: 13, lineHeight: 1 }}>⇄</span>
+          </TombolIkon>
+          <TombolIkon
+            title="Cermin tegak"
+            onClick={() => set({ flipY: !node.flipY })}
+            aktif={!!node.flipY}
+          >
+            <span style={{ fontSize: 13, lineHeight: 1 }}>⇅</span>
+          </TombolIkon>
+        </div>
+      </Bagian>
 
       <Bagian judul="Tampilan">
         {/* Kepekatan ditulis dalam persen — 0 sampai 1 sulit dibaca cepat. */}

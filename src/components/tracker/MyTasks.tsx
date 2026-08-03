@@ -1,8 +1,9 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
+import { menungguAcc, sudahSelesai } from '@/lib/tracker/acc';
 import MyContent from '@/components/tracker/MyContent';
-import { ListChecks, CalendarDays, ChevronRight, Inbox, CornerDownRight, AlarmClock, X } from 'lucide-react';
+import { ListChecks, CalendarDays, ChevronRight, Inbox, CornerDownRight, AlarmClock, X, Check } from 'lucide-react';
 
 export default function MyTasks() {
   const { boardsDataMap, workspaces, currentUserId, labels, teamMembers, setActiveBoardId, setActiveViewId, setDetailItem, handleUpdateItem, handleUpdateSubItem, supabase } = useDashboard();
@@ -38,11 +39,13 @@ export default function MyTasks() {
     const statusCol = cols.find((c: any) => c.type === 'status');
     const dateCol = cols.find((c: any) => c.type === 'date');
     const timelineCol = cols.find((c: any) => c.type === 'timeline');
+    const doneCol = cols.find((c: any) => c.type === 'checkbox');
     const subCols = bd.subColumns || [];
     const subTeamCol = subCols.find((c: any) => c.type === 'team');
     const subStatusCol = subCols.find((c: any) => c.type === 'status');
     const subDateCol = subCols.find((c: any) => c.type === 'date');
     const subTimelineCol = subCols.find((c: any) => c.type === 'timeline');
+    const subDoneCol = subCols.find((c: any) => c.type === 'checkbox');
 
     (bd.groups || []).forEach((g: any) => {
       (g.items || []).forEach((it: any) => {
@@ -53,6 +56,7 @@ export default function MyTasks() {
             boardName: boardMeta[boardId]?.name || 'Board', groupTitle: g.title, groupColor: g.color,
             status: statusCol ? it[statusCol.id] : null, statusColId: statusCol?.id,
             due: dateCol ? it[dateCol.id] : (timelineCol ? (it[timelineCol.id]?.end || null) : null),
+            checked: doneCol ? !!it[doneCol.id] : false,
           });
         }
         (it.subItems || []).forEach((sub: any) => {
@@ -63,6 +67,7 @@ export default function MyTasks() {
               boardName: boardMeta[boardId]?.name || 'Board', groupTitle: g.title, groupColor: g.color,
               status: subStatusCol ? sub[subStatusCol.id] : null, statusColId: subStatusCol?.id,
               due: subDateCol ? sub[subDateCol.id] : (subTimelineCol ? (sub[subTimelineCol.id]?.end || null) : null),
+              checked: subDoneCol ? !!sub[subDoneCol.id] : false,
             });
           }
         });
@@ -78,9 +83,33 @@ export default function MyTasks() {
     return a.due < b.due ? -1 : 1;
   });
 
-  const total = tasks.length;
-  const overdue = tasks.filter((t) => t.due && new Date(t.due) < today).length;
-  const dueSoon = tasks.filter((t) => {
+  /* Pemisahan aktif/selesai dipindah ke ATAS karena angka ringkasan di
+     bawah ini sekarang menghitung yang AKTIF saja. Dulu "tugas saya"
+     tetap menampilkan angka penuh walau semuanya sudah beres.
+
+     Sinyal checkbox DITAMBAHKAN ke pengecekan teks yang sudah ada:
+     sebagian papan menandai selesai lewat kolom checkbox, bukan status —
+     itu sinyal yang sudah dipakai TableRow untuk menghitung progres. */
+  /* Aturan "selesai" diambil dari lib/tracker/acc.ts — SATU sumber untuk
+     seluruh aplikasi. Dulu berkas ini punya regex sendiri yang tidak
+     mengenal "Uploaded", sehingga tugas yang sudah dinaikkan admin muncul
+     lagi di daftar karyawan. */
+  const isDone = (t: any) => t.checked === true || sudahSelesai(t.status);
+
+  /* Brief yang belum disetujui project manager DIBUANG sepenuhnya —
+     bukan sekadar disembunyikan dari daftar. Keputusan produk: sebelum
+     ACC, karyawan tidak boleh tahu brief itu ada, supaya tidak ada yang
+     mulai mengerjakan sesuatu yang bisa dibatalkan.
+
+     Papan tanpa label "Menunggu ACC" tidak terpengaruh sama sekali. */
+  const tasksTampak = tasks.filter((t: any) => !menungguAcc(t.status));
+
+  const doneTasks = tasksTampak.filter(isDone);
+  const activeTasks = tasksTampak.filter((t: any) => !isDone(t));
+
+  const total = activeTasks.length;
+  const overdue = activeTasks.filter((t) => t.due && new Date(t.due) < today).length;
+  const dueSoon = activeTasks.filter((t) => {
     if (!t.due) return false;
     const d = new Date(t.due); const diff = Math.ceil((d.getTime() - today.getTime()) / 86400000);
     return diff >= 0 && diff <= 7;
@@ -129,7 +158,7 @@ export default function MyTasks() {
   };
 
   // Reminder: tugas yang telat / jatuh tempo <=3 hari
-  const reminders = tasks.filter((t: any) => {
+  const reminders = activeTasks.filter((t: any) => {
     if (!t.due) return false;
     const d = new Date(t.due); if (isNaN(d.getTime())) return false;
     const diff = Math.ceil((d.getTime() - today.getTime()) / 86400000);
@@ -144,10 +173,9 @@ export default function MyTasks() {
   const hh = new Date().getHours();
   const greeting = hh < 11 ? 'Selamat pagi' : hh < 15 ? 'Selamat siang' : hh < 19 ? 'Selamat sore' : 'Selamat malam';
   const todayStr = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
-  const isDone = (t: any) => /done|selesai|complete|beres/i.test(t.status || '');
-  const doneTasks = tasks.filter(isDone);
-  const activeTasks = tasks.filter((t: any) => !isDone(t));
-  const pct = total ? Math.round((doneTasks.length / total) * 100) : 0;
+  // Progres dihitung dari SELURUH tugas, bukan dari `total` yang kini
+  // hanya berisi yang aktif — kalau tidak, progresnya bisa tembus 100%.
+  const pct = tasksTampak.length ? Math.round((doneTasks.length / tasksTampak.length) * 100) : 0;
 
   const setStatus = (t: any, text: string) => {
     const val = t.status === text ? '' : text;
@@ -237,7 +265,11 @@ export default function MyTasks() {
         </div>
       </div>
 
-      {total === 0 ? (
+      {/* Kosong SUNGGUHAN = tidak punya tugas sama sekali. Memakai `total`
+          (yang kini hanya menghitung tugas aktif) akan menampilkan "belum ada
+          tugas" padahal semuanya sudah beres — dan blok "Semua tugas beres"
+          di bawah tak akan pernah tercapai. */}
+      {tasksTampak.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 text-center py-20 bg-kartu border border-white/10 rounded-xl">
           <Inbox size={32} className="text-gray-700" />
           <p className="text-sm text-gray-500">Belum ada tugas yang di-assign ke kamu.</p>
@@ -251,12 +283,26 @@ export default function MyTasks() {
               <div className="flex flex-col gap-1.5">{activeTasks.map(renderCard)}</div>
             </div>
           )}
-          {doneTasks.length > 0 && (
-            <div>
-              <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5">Selesai ({doneTasks.length})</div>
-              <div className="flex flex-col gap-1.5">{doneTasks.map(renderCard)}</div>
+
+          {/* Semua tugas beres, tapi masih ada riwayat selesai. Tanpa pesan
+              ini layarnya terasa seperti gagal memuat, bukan seperti kabar baik. */}
+          {activeTasks.length === 0 && doneTasks.length > 0 && (
+            <div className="flex flex-col items-center gap-1.5 py-10 text-center">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-1">
+                <Check size={20} className="text-emerald-400" />
+              </div>
+              <p className="text-sm font-bold text-gray-200">Semua tugas beres 🎉</p>
+              <p className="text-xs text-gray-500 max-w-sm">
+                Tidak ada yang menunggu dikerjakan. Tugas baru dari manajer akan muncul di sini.
+              </p>
             </div>
           )}
+
+          {/* Tugas selesai TIDAK ditampilkan lagi di sisi karyawan — begitu
+              statusnya beres, kartunya hilang dan brief berikutnya naik.
+              Jumlahnya tetap terlihat di kartu ringkasan dan bar progres di
+              atas, jadi hasil kerja hari itu tidak jadi tak terlihat.
+              Riwayat lengkapnya tetap ada di papan, dilihat lewat manajer. */}
         </div>
       )}
       <MyContent />

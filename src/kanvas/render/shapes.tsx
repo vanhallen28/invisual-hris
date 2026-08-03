@@ -25,7 +25,25 @@ export function Shape({
   // Rotasi diterapkan di sekitar pusat node, bukan titik asalnya.
   const cx = node.x + node.w / 2
   const cy = node.y + node.h / 2
-  const transform = node.rotation ? `rotate(${node.rotation} ${cx} ${cy})` : undefined
+
+  // Cermin juga berporos di pusat, dan digabung dengan rotasi dalam satu
+  // atribut. Kalau dipisah jadi dua elemen, hit-test dan handle seleksi
+  // ikut bergeser karena keduanya menghitung dari geometri asli.
+  const bagian: string[] = []
+  if (node.rotation) bagian.push(`rotate(${node.rotation} ${cx} ${cy})`)
+  if (node.flipX || node.flipY) {
+    bagian.push(`translate(${cx} ${cy})`)
+    bagian.push(`scale(${node.flipX ? -1 : 1} ${node.flipY ? -1 : 1})`)
+    bagian.push(`translate(${-cx} ${-cy})`)
+  }
+  const transform = bagian.length ? bagian.join(' ') : undefined
+
+  // Tipografi bersama untuk teks dan catatan tempel.
+  const fs = node.fontSize && node.fontSize > 0 ? node.fontSize : 16
+  const ff = node.fontFamily || 'var(--font-ui), sans-serif'
+  const fw = node.fontWeight || 400
+  const rata = node.align || 'left'
+  const anchor = rata === 'center' ? 'middle' : rata === 'right' ? 'end' : 'start'
 
   switch (node.type) {
     case 'frame':
@@ -115,15 +133,131 @@ export function Shape({
       )
     }
 
+    case 'draw': {
+      /* Coretan tangan. Titik disimpan RELATIF terhadap x/y node, lalu
+         diskalakan terhadap ukuran node saat digambar — jadi coretan bisa
+         digeser dan diubah ukurannya seperti bentuk lain, tanpa perlu
+         menulis ulang setiap titik di dokumen. */
+      const t = node.points ?? []
+      if (t.length < 4) return null
+
+      // Rentang asli dicatat saat coretan dibuat lewat w/h awal. Skala
+      // dihitung dari perbandingan ukuran node sekarang terhadap rentang
+      // titiknya sendiri, supaya resize terasa wajar.
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      for (let i = 0; i < t.length; i += 2) {
+        if (t[i] < minX) minX = t[i]
+        if (t[i] > maxX) maxX = t[i]
+        if (t[i + 1] < minY) minY = t[i + 1]
+        if (t[i + 1] > maxY) maxY = t[i + 1]
+      }
+      const lebarAsli = Math.max(1, maxX - minX)
+      const tinggiAsli = Math.max(1, maxY - minY)
+      const sx = node.w / lebarAsli
+      const sy = node.h / tinggiAsli
+
+      const titik: string[] = []
+      for (let i = 0; i < t.length; i += 2) {
+        const px = node.x + (t[i] - minX) * sx
+        const py = node.y + (t[i + 1] - minY) * sy
+        titik.push(`${i === 0 ? 'M' : 'L'}${Math.round(px * 100) / 100} ${Math.round(py * 100) / 100}`)
+      }
+
+      return (
+        <path
+          d={titik.join(' ')}
+          fill="none"
+          stroke={node.stroke && node.stroke !== 'transparent' ? node.stroke : node.fill}
+          strokeWidth={node.strokeWidth || 3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          transform={transform}
+          opacity={node.opacity}
+        />
+      )
+    }
+
+    case 'sticky': {
+      /* Catatan tempel. Teksnya dibungkus MANUAL jadi <tspan> per baris,
+         bukan lewat <foreignObject>: ekspor memakai renderToStaticMarkup
+         lalu dirasterkan, dan foreignObject tidak ikut tergambar di
+         sebagian browser — catatannya akan keluar kosong di PNG. */
+      const pad = 14
+      const ukuranHuruf = node.fontSize && node.fontSize > 0 ? node.fontSize : 14
+      const tinggiBaris = ukuranHuruf * 1.45
+      const lebarIsi = Math.max(0, node.w - pad * 2)
+      // Lebar rata-rata huruf pada sans-serif ≈ 0,55 × ukuran huruf.
+      const maksHuruf = Math.max(1, Math.floor(lebarIsi / (ukuranHuruf * 0.55)))
+
+      const baris: string[] = []
+      for (const paragraf of String(node.text ?? '').split('\n')) {
+        if (!paragraf) { baris.push(''); continue }
+        let kini = ''
+        for (const kata of paragraf.split(/\s+/)) {
+          const gabung = kini ? `${kini} ${kata}` : kata
+          if (gabung.length <= maksHuruf) { kini = gabung; continue }
+          if (kini) baris.push(kini)
+          // Kata tunggal yang lebih panjang dari lebar catatan dipotong,
+          // supaya tidak menjorok keluar kotak.
+          let sisa = kata
+          while (sisa.length > maksHuruf) { baris.push(sisa.slice(0, maksHuruf)); sisa = sisa.slice(maksHuruf) }
+          kini = sisa
+        }
+        baris.push(kini)
+      }
+
+      // Warna teks mengikuti terangnya catatan. Pemilih warna bebas berarti
+      // catatan bisa gelap, dan teks gelap di atasnya tak akan terbaca.
+      const hx = String(node.fill || '#fde68a').replace('#', '')
+      const penuh = hx.length === 3 ? hx.split('').map((c) => c + c).join('') : hx
+      const r = parseInt(penuh.slice(0, 2), 16) || 0
+      const g = parseInt(penuh.slice(2, 4), 16) || 0
+      const b = parseInt(penuh.slice(4, 6), 16) || 0
+      const terang = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+      const warnaTeks = terang > 0.55 ? '#1a1a1a' : '#ffffff'
+
+      const muat = Math.max(1, Math.floor((node.h - pad * 2) / tinggiBaris))
+
+      return (
+        <g transform={transform} opacity={node.opacity}>
+          <rect
+            x={node.x} y={node.y} width={node.w} height={node.h}
+            rx={node.radius || 6}
+            fill={node.fill}
+            stroke={node.stroke}
+            strokeWidth={node.strokeWidth}
+          />
+          <text
+            x={rata === 'center' ? cx : rata === 'right' ? node.x + node.w - pad : node.x + pad}
+            y={node.y + pad + ukuranHuruf}
+            fill={warnaTeks}
+            textAnchor={anchor}
+            style={{ font: `${fw} ${ukuranHuruf}px ${ff}` }}
+          >
+            {baris.slice(0, muat).map((t, i) => (
+              <tspan
+                key={i}
+                x={rata === 'center' ? cx : rata === 'right' ? node.x + node.w - pad : node.x + pad}
+                dy={i === 0 ? 0 : tinggiBaris}
+              >
+                {i === muat - 1 && baris.length > muat ? `${t.slice(0, Math.max(0, maksHuruf - 1))}…` : t}
+              </tspan>
+            ))}
+          </text>
+        </g>
+      )
+    }
+
     case 'text':
       return (
         <text
-          x={node.x}
+          x={rata === 'center' ? cx : rata === 'right' ? node.x + node.w : node.x}
           y={node.y + node.h}
           transform={transform}
           fill={node.fill}
           opacity={node.opacity}
-          style={{ font: '16px var(--font-ui), sans-serif' }}
+          textAnchor={anchor}
+          style={{ font: `${fw} ${fs}px ${ff}` }}
         >
           {node.text ?? ''}
         </text>

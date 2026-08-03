@@ -10,6 +10,7 @@ import Overview from '@/components/tracker/Overview';
 import TimelineView from '@/components/tracker/TimelineView';
 import ItemDetailPanel from '@/components/tracker/ItemDetailPanel';
 import MyTasks from '@/components/tracker/MyTasks';
+import AntreanAcc from '@/components/tracker/AntreanAcc';
 import ViewTabs from '@/components/tracker/ViewTabs';
 import ContentStudio from '@/components/tracker/ContentStudio';
 import CalendarView from '@/components/tracker/CalendarView';
@@ -60,8 +61,8 @@ function BoardContent({ onMenuClick }: any) {
           <div className="max-w-[1600px] w-full mx-auto flex-1 flex flex-col">
             <div className="flex flex-col gap-4 mb-6 border-b border-white/10 pb-0 shrink-0">
               <div className="flex justify-between items-center gap-3">
-                <h1 className="text-xl sm:text-2xl font-bold tracking-wide uppercase text-gray-100 truncate">{activeViewId === 'mytasks' ? 'My Tasks' : activeBoardName}</h1>
-                {activeViewId !== 'mytasks' && <button onClick={handleExportCSV} className="flex items-center gap-2 px-3 py-1.5 bg-kartu-hover border border-white/10 rounded text-xs font-semibold hover:bg-kartu-hover transition-colors shrink-0"><Download size={14}/> <span className="hidden sm:inline">Export CSV</span></button>}
+                <h1 className="text-xl sm:text-2xl font-bold tracking-wide uppercase text-gray-100 truncate">{activeViewId === 'mytasks' ? 'My Tasks' : activeViewId === 'acc' ? 'Antrean' : activeBoardName}</h1>
+                {activeViewId !== 'mytasks' && activeViewId !== 'acc' && <button onClick={handleExportCSV} className="flex items-center gap-2 px-3 py-1.5 bg-kartu-hover border border-white/10 rounded text-xs font-semibold hover:bg-kartu-hover transition-colors shrink-0"><Download size={14}/> <span className="hidden sm:inline">Export CSV</span></button>}
               </div>
               <div className="flex items-center gap-3 flex-wrap">
                 <div className={contentMode ? 'opacity-40' : ''}><ViewTabs /></div>
@@ -76,6 +77,7 @@ function BoardContent({ onMenuClick }: any) {
 
             {contentMode && canContentHub && <ContentStudio />}
             {!contentMode && activeViewId === 'mytasks' && <MyTasks />}
+            {!contentMode && activeViewId === 'acc' && <AntreanAcc />}
             {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'table' && <MainTable />}
             {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'kanban' && <KanbanBoard />}
             {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'gantt' && <TimelineView />}
