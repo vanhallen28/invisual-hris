@@ -71,3 +71,33 @@ export function ungroup(doc: Y.Doc, groupId: string): void {
 
   deleteNode(doc, groupId)
 }
+
+/** Semua id keturunan dari sekumpulan id (termasuk id itu sendiri). Dipakai
+ *  untuk memindahkan wadah (frame/grup) beserta seluruh isinya sekaligus. */
+export function keturunanDari(doc: Y.Doc, ids: string[]): string[] {
+  const semua = readAllNodes(doc)
+  const anakDari = (p: string) => semua.filter((n) => n.parent === p)
+  const keluar = new Set<string>()
+  const telusuri = (id: string) => {
+    if (keluar.has(id)) return
+    keluar.add(id)
+    for (const a of anakDari(id)) telusuri(a.id)
+  }
+  for (const id of ids) telusuri(id)
+  return [...keluar]
+}
+
+/** Frame TERKECIL (paling dalam) yang kotaknya memuat titik (x,y), mengabaikan
+ *  `kecuali` beserta keturunannya — supaya objek tak "masuk ke dirinya sendiri". */
+export function frameDiTitik(doc: Y.Doc, x: number, y: number, kecuali: string): SceneNode | null {
+  const semua = readAllNodes(doc)
+  const larangan = new Set(keturunanDari(doc, [kecuali]))
+  let hasil: SceneNode | null = null
+  for (const n of semua) {
+    if (n.type !== 'frame' || larangan.has(n.id)) continue
+    if (x >= n.x && x <= n.x + n.w && y >= n.y && y <= n.y + n.h) {
+      if (!hasil || n.w * n.h < hasil.w * hasil.h) hasil = n
+    }
+  }
+  return hasil
+}

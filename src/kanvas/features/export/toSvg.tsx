@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Shape } from '@/kanvas/render/shapes'
-import { cropIsiBerlaku, bungkusCropIsiKlip } from '@/kanvas/render/cropIsi'
+import { cropIsiBerlaku, bungkusCropIsiKlip, bungkusKlipFrame } from '@/kanvas/render/cropIsi'
 import type { SceneNode } from '@/kanvas/doc/types'
 import type { Rect } from '@/kanvas/doc/bounds'
 
@@ -46,8 +46,12 @@ export function frameKeSvg(
   const isi = nodes
     .map((n) => {
       const el = <Shape node={n} assetUrl={n.assetId ? asetUrl[n.assetId] : undefined} />
-      const c = cropIsiBerlaku(n, olehId.get(n.parent) ?? null)
-      return renderToStaticMarkup(c ? bungkusCropIsiKlip(el, c.crop, c.kotak, c.cid) : el)
+      const induk = olehId.get(n.parent) ?? null
+      const c = cropIsiBerlaku(n, induk)
+      let bungkus = el
+      if (c) bungkus = bungkusCropIsiKlip(el, c.crop, c.kotak, c.cid)
+      else if (induk && induk.type === 'frame') bungkus = bungkusKlipFrame(el, induk, `cf-${n.id}`)
+      return renderToStaticMarkup(bungkus)
     })
     .join('')
 

@@ -5,7 +5,7 @@ import { useNode } from '@/kanvas/bind/hooks'
 import type { DocStore } from '@/kanvas/bind/store'
 import type { SceneNode } from '@/kanvas/doc/types'
 import { Shape } from './shapes'
-import { cropIsiBerlaku, bungkusCropIsiKlip, transformCropIsi } from './cropIsi'
+import { cropIsiBerlaku, bungkusCropIsiKlip, bungkusKlipFrame, transformCropIsi } from './cropIsi'
 
 /**
  * Satu komponen per node, masing-masing berlangganan hanya pada node miliknya
@@ -21,6 +21,7 @@ export const NodeView = memo(function NodeView({
   override,
   assetUrl,
   tanpaKlipId,
+  sembunyiId,
 }: {
   store: DocStore
   id: string
@@ -28,16 +29,24 @@ export const NodeView = memo(function NodeView({
   assetUrl?: string
   /** Node/grup yang sedang dipotong — dirender TANPA klip agar isinya tampak penuh. */
   tanpaKlipId?: string | null
+  /** Node yang disembunyikan sepenuhnya (mis. sedang diedit inline). */
+  sembunyiId?: string | null
 }) {
   const node = useNode(store, id)
   // '' = tak ada induk (getNode mengembalikan null). Hook tetap dipanggil.
   const induk = useNode(store, node?.parent ?? '')
   if (!node) return null
+  if (sembunyiId != null && id === sembunyiId) return null
 
   const el: ReactNode = <Shape node={override ? { ...node, ...override } : node} assetUrl={assetUrl} />
 
   const c = cropIsiBerlaku(node, induk)
-  if (!c) return el
+  if (!c) {
+    // Frame sebagai wadah: anaknya diklip ke kotak frame (isi di luar frame
+    // tersembunyi), seperti frame di editor desain.
+    if (induk && induk.type === 'frame') return bungkusKlipFrame(el, induk, `cf-${id}`)
+    return el
+  }
 
   // Saat sedang dipotong: transform SAJA (agar geser/skala isi terlihat hidup),
   // TANPA klip — isi tampak penuh; overlay yang menandai jendela & meredupkan luar.

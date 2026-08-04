@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import { createEmptyDoc } from '@/kanvas/doc/doc'
 import { createNode, deleteNode, hapusFieldNode, readAllNodes, readNode, updateNode } from '@/kanvas/doc/nodes'
-import { groupNodes, ungroup } from '@/kanvas/doc/hierarchy'
+import { groupNodes, ungroup, reparent, keturunanDari, frameDiTitik } from '@/kanvas/doc/hierarchy'
+import { ROOT } from '@/kanvas/doc/types'
 import { createUndoManager } from '@/kanvas/doc/undo'
 import { createDocStore } from '@/kanvas/bind/store'
 import { useProvider } from '@/kanvas/bind/useProvider'
@@ -89,6 +90,7 @@ import type { PenPoint } from '@/kanvas/doc/types'
 import { useKomentar, buatKomentar } from '@/kanvas/doc/comments'
 import { CommentPins } from '@/kanvas/render/CommentPins'
 import { CommentPopover } from '@/kanvas/ui/CommentPopover'
+import { TextInlineEditor } from '@/kanvas/ui/TextInlineEditor'
 
 export function EditorClient({
   fileId,
@@ -240,6 +242,33 @@ export function EditorClient({
     setCropIsiId(null)
   }, [doc])
 
+  /* Edit teks INLINE di kanvas. `editTeks` = node teks yang sedang diketik. */
+  const [editTeks, setEditTeks] = useState<{ id: string; pilihSemua: boolean } | null>(null)
+  const editTeksRef = useRef<{ id: string; pilihSemua: boolean } | null>(null)
+  useEffect(() => { editTeksRef.current = editTeks }, [editTeks])
+  const masukEditTeks = useCallback((id: string, pilihSemua: boolean) => {
+    setSelection([id]); setEditTeks({ id, pilihSemua })
+  }, [])
+  const keluarEditTeks = useCallback(() => { setEditTeks(null) }, [])
+
+  /* Frame sebagai WADAH: saat objek dijatuhkan setelah digeser, ia masuk ke
+     frame yang menampung pusatnya (atau keluar ke ROOT bila tak ada). Idempoten
+     — hanya berubah kalau induknya beda. Wadah (frame/grup) tak ikut dimasukkan. */
+  const geserRef = useRef<string[] | null>(null)
+  const reparentSetelahDrop = useCallback((ids: string[]) => {
+    for (const id of ids) {
+      const n = readNode(doc, id)
+      if (!n || n.type === 'frame' || n.type === 'group') continue
+      const cx = n.x + n.w / 2
+      const cy = n.y + n.h / 2
+      const frame = frameDiTitik(doc, cx, cy, id)
+      const indukBaru = frame ? frame.id : ROOT
+      if (n.parent !== indukBaru) {
+        try { reparent(doc, id, indukBaru) } catch { /* siklus — abaikan */ }
+      }
+    }
+  }, [doc])
+
   /* Jalur Pen yang sedang digambar (belum jadi node). `penPts` = anchor yang
      sudah ditaruh; `penCursor` = posisi kursor untuk pratinjau ruas berikutnya.
      Ref dipakai di penangan pointer & keyboard yang membaca lewat closure. */
@@ -358,7 +387,7 @@ export function EditorClient({
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     // Saat mode potong ATAU mode sunting jalur aktif, kanvas tidak menerima
     // interaksi — seluruhnya ditangani overlay masing-masing.
-    if (cropIdRef.current || penEditIdRef.current || cropIsiIdRef.current) return
+    if (cropIdRef.current || penEditIdRef.current || cropIsiIdRef.current || editTeksRef.current) return
     // Klik pada kanvas menutup popover komentar yang terbuka (klik pada pin
     // sendiri sudah menghentikan propagasi, jadi tidak sampai ke sini).
     if (openKomentar && tool !== 'comment') setOpenKomentar(null)
@@ -434,8 +463,13 @@ export function EditorClient({
       })
       setSelection([id])
       setTool('select')
-      // Catatan sudah punya ukuran final, jadi tidak masuk mode resize.
-      if (!catatan) mulai({ jenis: 'resize', id, handle: 'se' })
+      if (tipe === 'text') {
+        // Teks baru: langsung edit inline (ketikan mengganti 'Teks').
+        masukEditTeks(id, true)
+      } else if (!catatan) {
+        // Catatan sudah punya ukuran final, jadi tidak masuk mode resize.
+        mulai({ jenis: 'resize', id, handle: 'se' })
+      }
       return
     }
 
@@ -456,7 +490,8 @@ export function EditorClient({
         : [kena.id]
 
     setSelection(barisan)
-    mulai({ jenis: 'geser', ids: barisan, awalDunia: dunia })
+    geserRef.current = barisan
+    mulai({ jenis: 'geser', ids: keturunanDari(doc, barisan), awalDunia: dunia })
   }
 
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -578,6 +613,7 @@ export function EditorClient({
     tarik.current = null
     setMarquee(null)
     selesai()
+    if (geserRef.current) { reparentSetelahDrop(geserRef.current); geserRef.current = null }
   }
 
   // Dobel-klik sebuah gambar → masuk mode potong. Node lain diabaikan.
@@ -600,6 +636,9 @@ export function EditorClient({
     } else if (kena?.type === 'pen' || kena?.type === 'textpath') {
       e.preventDefault()
       masukSuntingPen(kena.id)
+    } else if (kena?.type === 'text') {
+      e.preventDefault()
+      masukEditTeks(kena.id, false)
     } else if (kena && (kena.type === 'group' || kena.type === 'draw')) {
       // Hanya tipe yang jelas berguna: grup (komposisi) & coretan. Untuk
       // teks/catatan/bentuk/frame, potong isi tersedia lewat tombol panel
@@ -993,6 +1032,7 @@ export function EditorClient({
             onPointerUp={onPointerUp}
             onDoubleClick={onDoubleClick}
             tanpaKlipId={cropIsiId}
+            sembunyiId={editTeks?.id ?? null}
             overlay={
               <>
                 {cropId ? (
@@ -1118,6 +1158,16 @@ export function EditorClient({
               />
             ) : null
           })()}
+          {editTeks && (
+            <TextInlineEditor
+              doc={doc}
+              store={store}
+              id={editTeks.id}
+              viewport={viewport}
+              pilihSemua={editTeks.pilihSemua}
+              onSelesai={keluarEditTeks}
+            />
+          )}
         </div>
 
         {/* Alat gambar — pindah dari header ke sisi kanan sebagai ikon. */}

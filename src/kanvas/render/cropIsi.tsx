@@ -36,6 +36,19 @@ export function cropIsiBerlaku(
 
 /** Bungkus elemen dengan transform + KLIP (kondisi final). Dipakai render
  *  normal maupun ekspor. */
+/** Klip sebuah elemen ke kotak sebuah FRAME (frame sebagai wadah). Dipakai
+ *  render kanvas maupun ekspor. */
+export function bungkusKlipFrame(el: ReactNode, frame: Kotak, cid: string): ReactNode {
+  return (
+    <g>
+      <clipPath id={cid}>
+        <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} />
+      </clipPath>
+      <g clipPath={`url(#${cid})`}>{el}</g>
+    </g>
+  )
+}
+
 export function bungkusCropIsiKlip(el: ReactNode, crop: Crop, kotak: Kotak, cid: string): ReactNode {
   return (
     <g>
