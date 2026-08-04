@@ -1,4 +1,5 @@
 import type { SceneNode } from '@/kanvas/doc/types'
+import { bungkusBaris } from './ukurTeks'
 import { titikBangun, titikKeSvg } from '@/kanvas/doc/polygon'
 import { ImageShape, GambarTerpotong } from './ImageShape'
 import { dJalurPen } from './penPath'
@@ -340,20 +341,42 @@ export function Shape({
       )
     }
 
-    case 'text':
+    case 'text': {
+      // Multi-baris (pisah per '\n'), tinggi baris, perataan vertikal, & jarak
+      // huruf. Perataan vertikal default 'top' supaya teks tak selalu jatuh ke
+      // dasar kotak.
+      const lh = node.lineHeight && node.lineHeight > 0 ? node.lineHeight : 1.2
+      const va = node.valign || 'top'
+      const fontStr = `${fw} ${fs}px ${ff}`
+      const modeT = node.resize || 'auto-w'
+      const baris =
+        modeT === 'auto-w'
+          ? String(node.text ?? '').split('\n')
+          : bungkusBaris(String(node.text ?? ''), node.w, fontStr)
+      const tinggiBlok = baris.length * fs * lh
+      const ax = rata === 'center' ? cx : rata === 'right' ? node.x + node.w : node.x
+      const naik = fs * 0.8 // perkiraan jarak baseline dari atas satu baris
+      const y0 =
+        va === 'middle' ? node.y + node.h / 2 - tinggiBlok / 2 + naik
+        : va === 'bottom' ? node.y + node.h - tinggiBlok + naik
+        : node.y + naik
       return (
         <text
-          x={rata === 'center' ? cx : rata === 'right' ? node.x + node.w : node.x}
-          y={node.y + node.h}
+          x={ax}
+          y={y0}
           transform={transform}
           fill={node.fill}
           opacity={node.opacity}
           textAnchor={anchor}
+          letterSpacing={node.letterSpacing || undefined}
           style={{ font: `${fw} ${fs}px ${ff}` }}
         >
-          {node.text ?? ''}
+          {baris.map((ln, i) => (
+            <tspan key={i} x={ax} dy={i === 0 ? 0 : fs * lh}>{ln === '' ? ' ' : ln}</tspan>
+          ))}
         </text>
       )
+    }
 
     case 'image':
       // Saat assetUrl diberikan, gambar dirender langsung tanpa

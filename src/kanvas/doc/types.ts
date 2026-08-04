@@ -67,6 +67,15 @@ export interface SceneNode {
   fontWeight?: number
   /** Perataan mendatar isi teks. */
   align?: 'left' | 'center' | 'right'
+  /** Perataan vertikal teks di dalam kotaknya (default 'top'). */
+  valign?: 'top' | 'middle' | 'bottom'
+  /** Tinggi baris sebagai kelipatan fontSize (default 1.2). */
+  lineHeight?: number
+  /** Jarak antar huruf dalam px. */
+  letterSpacing?: number
+  /** Mode ukuran kotak teks: auto-lebar (peluk teks), auto-tinggi (lebar tetap,
+   *  tinggi ikut), atau tetap (W&H tetap, teks dibungkus). Default 'auto-w'. */
+  resize?: 'auto-w' | 'auto-h' | 'fixed'
 
   /* ── Cermin ────────────────────────────────────────────────────── */
   flipX?: boolean

@@ -13,6 +13,49 @@ import { SelectionOverlay } from '@/kanvas/render/SelectionOverlay'
 import { CropOverlay } from '@/kanvas/render/CropOverlay'
 import { PathEditOverlay } from '@/kanvas/render/PathEditOverlay'
 import { ContentCropOverlay } from '@/kanvas/render/ContentCropOverlay'
+import { useNodeIds } from '@/kanvas/bind/hooks'
+import { ukurLebar, bungkusBaris } from '@/kanvas/render/ukurTeks'
+
+/**
+ * Menjaga ukuran kotak teks sesuai mode: 'auto-w' memeluk teks (atur W&H),
+ * 'auto-h' menjaga lebar & menyesuaikan tinggi, 'fixed' dibiarkan. Pengukuran
+ * pakai Canvas 2D; hanya memperbarui bila selisih berarti (>0.6px) supaya tak
+ * berputar tanpa henti.
+ */
+function PengukurTeks({ doc, store, page, pageAwal }: { doc: any; store: any; page?: string; pageAwal?: string }) {
+  const ids = useNodeIds(store)
+  useEffect(() => {
+    const ukur = () => {
+      for (const id of ids) {
+        const n = store.getNode(id)
+        if (!n || n.type !== 'text') continue
+        if (page && (n.page || pageAwal) !== page) continue
+        const mode = n.resize || 'auto-w'
+        if (mode === 'fixed') continue
+        const fs = n.fontSize && n.fontSize > 0 ? n.fontSize : 16
+        const lh = n.lineHeight && n.lineHeight > 0 ? n.lineHeight : 1.2
+        const font = `${n.fontWeight || 400} ${fs}px ${n.fontFamily || 'var(--font-ui), sans-serif'}`
+        if (mode === 'auto-w') {
+          const baris = String(n.text ?? '').split('\n')
+          const w = baris.reduce((m: number, l: string) => Math.max(m, ukurLebar(l || ' ', font)), 1) + 2
+          const h = Math.max(1, baris.length * fs * lh)
+          const patch: Record<string, number> = {}
+          if (Math.abs(w - n.w) > 0.6) patch.w = Math.round(w)
+          if (Math.abs(h - n.h) > 0.6) patch.h = Math.round(h)
+          if (Object.keys(patch).length) updateNode(doc, id, patch)
+        } else {
+          const baris = bungkusBaris(String(n.text ?? ''), n.w, font)
+          const h = Math.max(1, baris.length * fs * lh)
+          if (Math.abs(h - n.h) > 0.6) updateNode(doc, id, { h: Math.round(h) })
+        }
+      }
+    }
+    ukur()
+    doc.on('update', ukur)
+    return () => { doc.off('update', ukur) }
+  }, [doc, store, ids, page, pageAwal])
+  return null
+}
 import { Marquee } from '@/kanvas/render/Marquee'
 import { FrameLabels } from '@/kanvas/render/FrameLabels'
 import { Cursors } from '@/kanvas/render/Cursors'
@@ -937,6 +980,7 @@ export function EditorClient({
           onDrop={onDrop}
           onDragOver={(e) => e.preventDefault()}
         >
+          <PengukurTeks doc={doc} store={store} page={pageAktif} pageAwal={pageAwal} />
           <Scene
             svgRef={svgRef}
             store={store}

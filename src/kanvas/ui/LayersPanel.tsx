@@ -7,7 +7,19 @@ import type { DocStore } from '@/kanvas/bind/store'
 import { childrenOf } from '@/kanvas/doc/hierarchy'
 import { readAllNodes, updateNode } from '@/kanvas/doc/nodes'
 import { keyBetween } from '@/kanvas/doc/order'
-import { ROOT, type SceneNode } from '@/kanvas/doc/types'
+import { ROOT, DEFAULT_NAME, type SceneNode } from '@/kanvas/doc/types'
+import {
+  Frame, Square, Circle, Minus, MoveUpRight, Triangle, Star, Type,
+  Image as ImageIcon, MessageSquare, PenLine, PenTool, Spline, Group as GroupIcon,
+} from 'lucide-react'
+
+type IkonKomp = React.ComponentType<{ size?: number }>
+// Ikon tipe objek untuk sisi kiri tiap baris layer (identik dgn Toolbar).
+const IKON_TIPE: Record<string, IkonKomp> = {
+  frame: Frame, rect: Square, ellipse: Circle, line: Minus, arrow: MoveUpRight,
+  polygon: Triangle, star: Star, text: Type, image: ImageIcon, group: GroupIcon,
+  sticky: MessageSquare, draw: PenLine, pen: PenTool, textpath: Spline,
+}
 
 /** Naikkan atau turunkan satu tingkat di antara saudaranya. */
 function geserUrutan(doc: Y.Doc, node: SceneNode, arah: 1 | -1) {
@@ -77,6 +89,14 @@ function Baris({
     )
   }
 
+  // Nama layer teks otomatis mengikuti isi teks (kecuali sudah diberi nama sendiri).
+  const def = DEFAULT_NAME[node.type as keyof typeof DEFAULT_NAME] ?? 'Objek'
+  const isTeks = node.type === 'text' || node.type === 'textpath'
+  const namaKustom = !!node.name && node.name !== def
+  const teksIsi = node.text?.trim()
+  const labelTampil = isTeks && !namaKustom && teksIsi ? teksIsi.slice(0, 40) : (node.name || def)
+  const Ikon = IKON_TIPE[node.type] ?? Square
+
   return (
     <div
       className="flex items-center gap-1 px-2 py-1"
@@ -87,13 +107,16 @@ function Baris({
         fontSize: 12,
       }}
     >
+      <span style={{ color: 'var(--text-2)', display: 'flex', flexShrink: 0 }}>
+        <Ikon size={13} />
+      </span>
       <button
-        className="flex-1 text-left"
+        className="flex-1 text-left truncate"
         onClick={(e) => onSelect(node.id, e.shiftKey)}
         onDoubleClick={() => setSunting(true)}
         style={{ textDecoration: node.locked ? 'line-through' : undefined }}
       >
-        {node.name}
+        {labelTampil}
       </button>
 
       <button

@@ -611,6 +611,57 @@ export function PropertiesPanel({
             ]}
             onCommit={(v) => set({ align: v as 'left' | 'center' | 'right' })}
           />
+          {node.type === 'text' && (
+            <>
+              <SelectField
+                label="⇕"
+                value={node.valign || 'top'}
+                options={[
+                  { nilai: 'top', label: 'Atas' },
+                  { nilai: 'middle', label: 'Tengah' },
+                  { nilai: 'bottom', label: 'Bawah' },
+                ]}
+                onCommit={(v) => set({ valign: v as 'top' | 'middle' | 'bottom' })}
+              />
+              <SelectField
+                label="↕"
+                value={String(node.lineHeight || 1.2)}
+                options={[
+                  { nilai: '1', label: '1.0×' },
+                  { nilai: '1.2', label: '1.2×' },
+                  { nilai: '1.5', label: '1.5×' },
+                  { nilai: '2', label: '2.0×' },
+                ]}
+                onCommit={(v) => set({ lineHeight: Number(v) })}
+              />
+              <NumField
+                label="AV"
+                value={node.letterSpacing || 0}
+                onCommit={(v) => set({ letterSpacing: Math.min(40, Math.max(-10, v)) })}
+              />
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 4, marginTop: 2 }}>
+                {([['auto-w', 'Auto ↔'], ['auto-h', 'Auto ↕'], ['fixed', 'Tetap']] as const).map(([m, lbl]) => {
+                  const aktif = (node.resize || 'auto-w') === m
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      title={m === 'auto-w' ? 'Lebar mengikuti teks' : m === 'auto-h' ? 'Tinggi mengikuti teks (lebar tetap)' : 'Ukuran tetap, teks dibungkus'}
+                      onClick={() => set({ resize: m })}
+                      style={{
+                        flex: 1, padding: '4px 0', fontSize: 11, borderRadius: 6, cursor: 'pointer',
+                        background: aktif ? 'var(--accent)' : 'var(--surface-2)',
+                        color: aktif ? 'var(--void)' : 'var(--text-1)',
+                        border: `1px solid ${aktif ? 'var(--accent)' : 'var(--line)'}`,
+                      }}
+                    >
+                      {lbl}
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </Bagian>
       )}
 
