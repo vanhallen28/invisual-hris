@@ -79,7 +79,11 @@ export function useGesture({ doc, viewport }: { doc: Y.Doc; viewport: Viewport }
         }
       } else if (m.jenis === 'resize') {
         const n = asli.current[m.id]
-        if (n) patch[m.id] = resizeFrom(n, m.handle, dunia.x, dunia.y, shift) as Box
+        // Gambar ber-crop dikunci proporsional: model crop = pecahan kotak,
+        // jadi rasio kotak WAJIB tetap agar rect gambar tak ikut mendistorsi.
+        // Shift tetap dihormati untuk node lain.
+        const prop = shift || !!n?.crop
+        if (n) patch[m.id] = resizeFrom(n, m.handle, dunia.x, dunia.y, prop) as Box
       } else {
         const n = asli.current[m.id]
         if (n) patch[m.id] = { rotation: rotateTo(n, dunia.x, dunia.y, shift) }

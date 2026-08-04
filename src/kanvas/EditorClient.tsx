@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as Y from 'yjs'
 import { createEmptyDoc } from '@/kanvas/doc/doc'
-import { createNode, deleteNode, readAllNodes, readNode, updateNode } from '@/kanvas/doc/nodes'
+import { createNode, deleteNode, hapusFieldNode, readAllNodes, readNode, updateNode } from '@/kanvas/doc/nodes'
 import { groupNodes, ungroup } from '@/kanvas/doc/hierarchy'
 import { createUndoManager } from '@/kanvas/doc/undo'
 import { createDocStore } from '@/kanvas/bind/store'
 import { useProvider } from '@/kanvas/bind/useProvider'
 import { Scene } from '@/kanvas/render/Scene'
 import { SelectionOverlay } from '@/kanvas/render/SelectionOverlay'
+import { CropOverlay } from '@/kanvas/render/CropOverlay'
+import { PathEditOverlay } from '@/kanvas/render/PathEditOverlay'
 import { Marquee } from '@/kanvas/render/Marquee'
 import { FrameLabels } from '@/kanvas/render/FrameLabels'
 import { Cursors } from '@/kanvas/render/Cursors'
@@ -27,14 +29,22 @@ import { unggahAset, ukuranGambar } from '@/kanvas/features/assets/upload'
 import { ACCEPT_IMPOR, PESAN_FIG, pesanTakDidukung, pilahBerkas } from '@/kanvas/lib/impor'
 import { dariBytea } from '@/kanvas/sync/hex'
 import { TOOL_KEYS, toolToNodeType, type Tool } from '@/kanvas/state/tool'
+import { skalaCrop, snapRasio } from '@/kanvas/interact/crop'
 import {
   IDENTITY_VIEWPORT,
   panBy,
   screenToWorld,
   worldRectKeLayar,
+  worldToScreen,
   zoomAt,
   type Viewport,
 } from '@/kanvas/state/viewport'
+import { dJalurPen } from '@/kanvas/render/penPath'
+import { normalisasiPen, hapusAnchor, bboxPen } from '@/kanvas/interact/pen'
+import type { PenPoint } from '@/kanvas/doc/types'
+import { useKomentar, buatKomentar } from '@/kanvas/doc/comments'
+import { CommentPins } from '@/kanvas/render/CommentPins'
+import { CommentPopover } from '@/kanvas/ui/CommentPopover'
 
 export function EditorClient({
   fileId,
@@ -130,6 +140,143 @@ export function EditorClient({
   const tarik = useRef<{ x: number; y: number } | null>(null)
   const [spasi, setSpasi] = useState(false)
 
+  /* Mode potong (crop). `cropId` = node gambar yang sedang dipotong, atau null.
+     Ref-nya dipakai di penangan roda-mouse (efek ber-deps [] akan melihat
+     state basi lewat closure). `cropAsliRef` menyimpan crop SEBELUM masuk,
+     supaya Escape bisa membatalkan (kembalikan seperti semula). */
+  const [cropId, setCropId] = useState<string | null>(null)
+  const cropIdRef = useRef<string | null>(null)
+  const cropAsliRef = useRef<{ ix: number; iy: number; iw: number; ih: number } | undefined>(undefined)
+  useEffect(() => { cropIdRef.current = cropId }, [cropId])
+
+  const masukCrop = useCallback((id: string) => {
+    const n = readNode(doc, id)
+    if (!n || n.type !== 'image') return
+    cropAsliRef.current = n.crop
+    setSelection([id])
+    setCropId(id)
+  }, [doc])
+
+  const keluarCrop = useCallback((simpan: boolean) => {
+    const id = cropIdRef.current
+    if (id && !simpan) {
+      // Batal: kembalikan crop seperti sebelum masuk. Kalau dulu tak ada crop,
+      // hapus fieldnya supaya gambar kembali penuh.
+      if (cropAsliRef.current) updateNode(doc, id, { crop: cropAsliRef.current })
+      else hapusFieldNode(doc, id, 'crop')
+    }
+    cropAsliRef.current = undefined
+    setCropId(null)
+  }, [doc])
+
+  /* Jalur Pen yang sedang digambar (belum jadi node). `penPts` = anchor yang
+     sudah ditaruh; `penCursor` = posisi kursor untuk pratinjau ruas berikutnya.
+     Ref dipakai di penangan pointer & keyboard yang membaca lewat closure. */
+  const [penPts, setPenPts] = useState<PenPoint[] | null>(null)
+  const penPtsRef = useRef<PenPoint[] | null>(null)
+  const [penCursor, setPenCursor] = useState<{ x: number; y: number } | null>(null)
+  const penAturRef = useRef(false)                                   // sedang menyeret handle titik terakhir
+  const penAnchorRef = useRef<{ x: number; y: number } | null>(null) // posisi anchor titik terakhir
+  useEffect(() => { penPtsRef.current = penPts }, [penPts])
+
+  const buangPen = useCallback(() => {
+    setPenPts(null); penPtsRef.current = null; setPenCursor(null)
+    penAturRef.current = false; penAnchorRef.current = null
+  }, [])
+
+  /* Id objek "Teks di jalur" yang BARU dibuat — sinyal agar panel memfokuskan
+     kolom teksnya sekali, supaya bisa langsung diketik setelah menggambar. */
+  const [idTeksBaru, setIdTeksBaru] = useState<string | null>(null)
+
+  /* Komentar (pin). Disimpan di map Yjs terpisah; `openKomentar` = pin yang
+     popovernya sedang terbuka. */
+  const komentar = useKomentar(doc)
+  const [openKomentar, setOpenKomentar] = useState<string | null>(null)
+
+  // Berganti alat saat menggambar jalur = batalkan jalur yang belum selesai,
+  // supaya tidak ada sisa yang muncul lagi saat Pen dipilih berikutnya.
+  useEffect(() => {
+    if (tool !== 'pen' && tool !== 'textpath' && penPtsRef.current) buangPen()
+  }, [tool, buangPen])
+
+  const finalisasiPen = useCallback((pts: PenPoint[] | null, closed: boolean) => {
+    const isi = pts ?? []
+    if (isi.length < 2) { buangPen(); return }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    const catat = (x: number, y: number) => {
+      if (x < minX) minX = x
+      if (x > maxX) maxX = x
+      if (y < minY) minY = y
+      if (y > maxY) maxY = y
+    }
+    for (const p of isi) {
+      catat(p.x, p.y)
+      if (p.hix != null && p.hiy != null) catat(p.hix, p.hiy)
+      if (p.hox != null && p.hoy != null) catat(p.hox, p.hoy)
+    }
+
+    const teksJalur = tool === 'textpath'
+    const id = createNode(doc, {
+      type: teksJalur ? 'textpath' : 'pen',
+      page: pageAktif,
+      x: minX, y: minY,
+      w: Math.max(1, maxX - minX), h: Math.max(1, maxY - minY),
+      path: { pts: isi, closed },
+      ...(teksJalur
+        ? { text: 'Teks', fill: '#e5e5e5', stroke: 'transparent', strokeWidth: 1, fontSize: 24 }
+        : { fill: 'transparent', stroke: '#ef4444', strokeWidth: 2 }),
+    })
+    buangPen()
+    setSelection([id])
+    setTool('select')
+    if (teksJalur) setIdTeksBaru(id)
+  }, [doc, pageAktif, buangPen, tool])
+
+  /* Mode sunting jalur: node pen yang sedang disunting + anchor terpilih
+     (untuk dihapus). Ref dipakai penangan pointer/keyboard lewat closure. */
+  const [penEditId, setPenEditId] = useState<string | null>(null)
+  const penEditIdRef = useRef<string | null>(null)
+  const [penSel, setPenSel] = useState<number | null>(null)
+  const penSelRef = useRef<number | null>(null)
+  useEffect(() => { penEditIdRef.current = penEditId }, [penEditId])
+  useEffect(() => { penSelRef.current = penSel }, [penSel])
+
+  const masukSuntingPen = useCallback((id: string) => {
+    const n = readNode(doc, id)
+    if (!n || (n.type !== 'pen' && n.type !== 'textpath') || !n.path) return
+    // Normalkan sekali: "bake" skala resize apa pun agar penyuntingan 1:1.
+    const npts = normalisasiPen(n.path.pts, { x: n.x, y: n.y, w: n.w, h: n.h })
+    updateNode(doc, id, { path: { pts: npts, closed: n.path.closed } })
+    setSelection([id])
+    setPenSel(null)
+    setPenEditId(id)
+  }, [doc])
+
+  const keluarSuntingPen = useCallback(() => {
+    setPenEditId(null)
+    setPenSel(null)
+  }, [])
+
+  const hapusAnchorTerpilih = useCallback(() => {
+    const id = penEditIdRef.current
+    const i = penSelRef.current
+    if (id == null || i == null) return
+    const n = readNode(doc, id)
+    if (!n || (n.type !== 'pen' && n.type !== 'textpath') || !n.path) return
+    // Jalur butuh minimal 2 titik; kalau tinggal 2, hapus titik = hapus jalur.
+    if (n.path.pts.length <= 2) {
+      deleteNode(doc, id)
+      keluarSuntingPen()
+      setSelection([])
+      return
+    }
+    const npts = hapusAnchor(n.path.pts, i)
+    const bb = bboxPen(npts)
+    updateNode(doc, id, { x: bb.x, y: bb.y, w: bb.w, h: bb.h, path: { pts: npts, closed: n.path.closed } })
+    setPenSel(null)
+  }, [doc, keluarSuntingPen])
+
   const { preview, mulai, lanjut, selesai } = useGesture({ doc, viewport })
 
   const layar = (e: React.PointerEvent) => {
@@ -138,6 +285,12 @@ export function EditorClient({
   }
 
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    // Saat mode potong ATAU mode sunting jalur aktif, kanvas tidak menerima
+    // interaksi — seluruhnya ditangani overlay masing-masing.
+    if (cropIdRef.current || penEditIdRef.current) return
+    // Klik pada kanvas menutup popover komentar yang terbuka (klik pada pin
+    // sendiri sudah menghentikan propagasi, jadi tidak sampai ke sini).
+    if (openKomentar && tool !== 'comment') setOpenKomentar(null)
     const s = layar(e)
     e.currentTarget.setPointerCapture(e.pointerId)
 
@@ -149,6 +302,34 @@ export function EditorClient({
 
     const dunia = screenToWorld(viewport, s.x, s.y)
     const tipe = toolToNodeType(tool)
+
+    // Komentar: klik menaruh pin baru di titik itu lalu membuka popovernya.
+    if (tool === 'comment') {
+      const id = buatKomentar(doc, { x: dunia.x, y: dunia.y, page: pageAktif, text: '', oleh: saya.nama })
+      setOpenKomentar(id)
+      setTool('select')
+      return
+    }
+
+    // Pen: setiap klik menaruh anchor. Klik titik pertama (bila sudah ≥2)
+    // menutup jalur. Menyeret sebelum melepas menjadikan titik itu MULUS.
+    // Berlaku sama untuk alat Teks-di-jalur (bedanya hanya tipe node saat jadi).
+    if (tool === 'pen' || tool === 'textpath') {
+      const arr = penPtsRef.current
+      if (arr && arr.length >= 2) {
+        const AMB = 8 / viewport.zoom
+        const p0 = arr[0]
+        if (Math.hypot(dunia.x - p0.x, dunia.y - p0.y) <= AMB) {
+          finalisasiPen(arr, true)
+          return
+        }
+      }
+      const baru = [...(arr ?? []), { x: dunia.x, y: dunia.y }]
+      setPenPts(baru); penPtsRef.current = baru
+      penAturRef.current = true
+      penAnchorRef.current = { x: dunia.x, y: dunia.y }
+      return
+    }
 
     // Coret tangan tidak membuat node saat ditekan — node baru dibuat
     // setelah gerakan selesai, supaya satu coretan jadi satu objek.
@@ -223,6 +404,26 @@ export function EditorClient({
     // attachCursors, jadi aman dipanggil di setiap event.
     kirimKursor.current(d.x, d.y)
 
+    // Pen: kursor menggerakkan pratinjau ruas berikutnya. Bila sedang menyeret
+    // (setelah menaruh titik), seretannya menentukan handle titik terakhir —
+    // dekat anchor = tetap SUDUT, jauh = MULUS dengan handle tercermin.
+    if (tool === 'pen' || tool === 'textpath') {
+      setPenCursor(d)
+      if (penAturRef.current && penPtsRef.current && penAnchorRef.current) {
+        const a = penAnchorRef.current
+        const jauh = Math.hypot(d.x - a.x, d.y - a.y) > 4 / viewport.zoom
+        const arr = penPtsRef.current
+        const i = arr.length - 1
+        const baru = arr.map((p, idx) => {
+          if (idx !== i) return p
+          if (!jauh) return { x: p.x, y: p.y }
+          return { x: p.x, y: p.y, hox: d.x, hoy: d.y, hix: 2 * a.x - d.x, hiy: 2 * a.y - d.y }
+        })
+        setPenPts(baru); penPtsRef.current = baru
+      }
+      return
+    }
+
     if (coretRef.current) {
       const t = coretRef.current
       // Titik yang terlalu rapat dibuang: mengurangi ukuran dokumen dan
@@ -253,6 +454,14 @@ export function EditorClient({
       e.currentTarget.releasePointerCapture(e.pointerId)
     }
     pan.current = null
+
+    // Pen: lepas jari = titik terakhir selesai (sudut atau mulus sesuai seret).
+    // Jalur belum ditutup; klik berikutnya menaruh titik lagi.
+    if (tool === 'pen' || tool === 'textpath') {
+      penAturRef.current = false
+      penAnchorRef.current = null
+      return
+    }
 
     if (coretRef.current) {
       const t = coretRef.current
@@ -298,6 +507,27 @@ export function EditorClient({
     tarik.current = null
     setMarquee(null)
     selesai()
+  }
+
+  // Dobel-klik sebuah gambar → masuk mode potong. Node lain diabaikan.
+  const onDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    // Saat menggambar Pen, dua klik dobel-klik menaruh dua titik di posisi
+    // sama; buang satu lalu selesaikan jalur terbuka.
+    if (penPtsRef.current) {
+      e.preventDefault()
+      finalisasiPen(penPtsRef.current.slice(0, -1), false)
+      return
+    }
+    const kotak = e.currentTarget.getBoundingClientRect()
+    const dunia = screenToWorld(viewport, e.clientX - kotak.left, e.clientY - kotak.top)
+    const kena = topmostAt(readAllNodes(doc), dunia.x, dunia.y)
+    if (kena?.type === 'image') {
+      e.preventDefault()
+      masukCrop(kena.id)
+    } else if (kena?.type === 'pen' || kena?.type === 'textpath') {
+      e.preventDefault()
+      masukSuntingPen(kena.id)
+    }
   }
 
   const onHandleDown = useCallback(
@@ -423,6 +653,21 @@ export function EditorClient({
       const kotak = el.getBoundingClientRect()
       const sx = e.clientX - kotak.left
       const sy = e.clientY - kotak.top
+
+      // Dalam mode potong, roda menskalakan ISI gambar (bukan zoom kanvas),
+      // dipusatkan di kursor. Faktor sama dengan zoom kanvas agar terasa sama.
+      const idCrop = cropIdRef.current
+      if (idCrop) {
+        const n = readNode(doc, idCrop)
+        if (n && n.crop) {
+          const dunia = screenToWorld(viewport, sx, sy)
+          const fx = Math.min(1, Math.max(0, (dunia.x - n.x) / n.w))
+          const fy = Math.min(1, Math.max(0, (dunia.y - n.y) / n.h))
+          updateNode(doc, idCrop, { crop: skalaCrop(n.crop, Math.exp(-e.deltaY * 0.01), fx, fy) })
+        }
+        return
+      }
+
       if (e.ctrlKey || e.metaKey) {
         setViewport((vp) => zoomAt(vp, sx, sy, Math.exp(-e.deltaY * 0.01)))
       } else {
@@ -431,7 +676,7 @@ export function EditorClient({
     }
     el.addEventListener('wheel', roda, { passive: false })
     return () => el.removeEventListener('wheel', roda)
-  }, [])
+  }, [doc, viewport])
 
   useEffect(() => {
     const turun = (e: KeyboardEvent) => {
@@ -439,6 +684,32 @@ export function EditorClient({
       // di panel properti atau mengganti nama layer.
       const t = e.target as HTMLElement
       if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return
+
+      // Mode potong menahan seluruh papan ketik kecuali Enter (simpan) dan
+      // Escape (batal). Tanpa ini, tombol Delete/tool/anak-panah akan beraksi
+      // pada node yang sedang dipotong.
+      if (cropIdRef.current) {
+        if (e.code === 'Enter') { e.preventDefault(); keluarCrop(true) }
+        else if (e.code === 'Escape') { e.preventDefault(); keluarCrop(false) }
+        return
+      }
+
+      // Menggambar Pen: Enter menyelesaikan jalur terbuka, Escape membatalkan.
+      // Tombol lain ditelan agar tidak mengganti alat atau menghapus di
+      // tengah menggambar.
+      if (penPtsRef.current) {
+        if (e.code === 'Enter') { e.preventDefault(); finalisasiPen(penPtsRef.current, false) }
+        else if (e.code === 'Escape') { e.preventDefault(); buangPen() }
+        return
+      }
+
+      // Mode sunting jalur: Delete menghapus anchor terpilih, Enter/Escape
+      // keluar. Tombol lain ditelan.
+      if (penEditIdRef.current) {
+        if (e.code === 'Delete' || e.code === 'Backspace') { e.preventDefault(); hapusAnchorTerpilih() }
+        else if (e.code === 'Enter' || e.code === 'Escape') { e.preventDefault(); keluarSuntingPen() }
+        return
+      }
 
       const cmd = e.metaKey || e.ctrlKey
 
@@ -503,6 +774,21 @@ export function EditorClient({
         return
       }
 
+      // Cermin cepat: Shift+H mendatar, Shift+V tegak — pada semua objek
+      // terpilih. Diperiksa sebelum pemetaan tool agar tidak ikut mengganti
+      // alat (KeyH=tangan, KeyV=pilih dipicu tanpa Shift).
+      if (!cmd && e.shiftKey && (e.code === 'KeyH' || e.code === 'KeyV')) {
+        e.preventDefault()
+        const sumbuX = e.code === 'KeyH'
+        doc.transact(() => {
+          for (const id of selection) {
+            const n = readNode(doc, id)
+            if (n) updateNode(doc, id, sumbuX ? { flipX: !n.flipX } : { flipY: !n.flipY })
+          }
+        }, 'local')
+        return
+      }
+
       if (!cmd && TOOL_KEYS[e.code]) setTool(TOOL_KEYS[e.code])
     }
 
@@ -516,7 +802,7 @@ export function EditorClient({
       window.removeEventListener('keydown', turun)
       window.removeEventListener('keyup', naik)
     }
-  }, [doc, selection, undo])
+  }, [doc, selection, undo, keluarCrop, finalisasiPen, buangPen, hapusAnchorTerpilih, keluarSuntingPen])
 
   const pilihDariPanel = useCallback(
     (id: string, shift: boolean) => {
@@ -591,7 +877,7 @@ export function EditorClient({
 
         <div
           className="flex-1"
-          style={{ cursor: spasi ? 'grab' : tool === 'select' ? 'default' : 'crosshair' }}
+          style={{ position: 'relative', cursor: spasi ? 'grab' : tool === 'select' ? 'default' : 'crosshair' }}
           onDrop={onDrop}
           onDragOver={(e) => e.preventDefault()}
         >
@@ -605,16 +891,37 @@ export function EditorClient({
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
+            onDoubleClick={onDoubleClick}
             overlay={
               <>
-                <SelectionOverlay
-                  store={store}
-                  selection={selection}
-                  viewport={viewport}
-                  preview={preview}
-                  onHandleDown={onHandleDown}
-                  onRotateDown={onRotateDown}
-                />
+                {cropId ? (
+                  <CropOverlay
+                    store={store}
+                    doc={doc}
+                    id={cropId}
+                    viewport={viewport}
+                    onSelesai={() => keluarCrop(true)}
+                  />
+                ) : penEditId ? (
+                  <PathEditOverlay
+                    store={store}
+                    doc={doc}
+                    id={penEditId}
+                    viewport={viewport}
+                    sel={penSel}
+                    onPilih={setPenSel}
+                    onSelesai={keluarSuntingPen}
+                  />
+                ) : (
+                  <SelectionOverlay
+                    store={store}
+                    selection={selection}
+                    viewport={viewport}
+                    preview={preview}
+                    onHandleDown={onHandleDown}
+                    onRotateDown={onRotateDown}
+                  />
+                )}
                 <Cursors peers={peers} viewport={viewport} />
                 {/* Judul frame — di lapisan layar supaya ukurannya tetap
                     berapa pun zoom-nya. Lihat catatan di FrameLabels. */}
@@ -645,9 +952,63 @@ export function EditorClient({
                     pointerEvents="none"
                   />
                 )}
+
+                {/* Pratinjau jalur Pen yang sedang digambar: jalur yang sudah
+                    jadi, ruas putus-putus ke kursor, dan titik anchor (yang
+                    pertama disorot sebagai sasaran menutup jalur). */}
+                {(tool === 'pen' || tool === 'textpath') && penPts && penPts.length > 0 && (
+                  <g pointerEvents="none">
+                    <path
+                      d={dJalurPen(penPts, false, (x, y) => worldToScreen(viewport, x, y))}
+                      fill="none" stroke="var(--accent)" strokeWidth={1.5}
+                      strokeLinecap="round" strokeLinejoin="round"
+                    />
+                    {penCursor && (
+                      <line
+                        x1={worldToScreen(viewport, penPts[penPts.length - 1].x, penPts[penPts.length - 1].y).x}
+                        y1={worldToScreen(viewport, penPts[penPts.length - 1].x, penPts[penPts.length - 1].y).y}
+                        x2={worldToScreen(viewport, penCursor.x, penCursor.y).x}
+                        y2={worldToScreen(viewport, penCursor.x, penCursor.y).y}
+                        stroke="var(--accent)" strokeWidth={1} strokeDasharray="4 3"
+                      />
+                    )}
+                    {penPts.map((p, i) => {
+                      const s = worldToScreen(viewport, p.x, p.y)
+                      const pertama = i === 0
+                      return (
+                        <circle
+                          key={i} cx={s.x} cy={s.y} r={pertama ? 5 : 3.5}
+                          fill={pertama ? 'var(--accent)' : 'var(--surface-0)'}
+                          stroke="var(--accent)" strokeWidth={1.5}
+                        />
+                      )
+                    })}
+                  </g>
+                )}
+
+                {/* Pin komentar — selalu tampak (di semua mode), ukuran tetap. */}
+                <CommentPins
+                  komentar={komentar}
+                  viewport={viewport}
+                  page={pageAktif}
+                  openId={openKomentar}
+                  onBuka={setOpenKomentar}
+                />
               </>
             }
           />
+          {openKomentar && (() => {
+            const k = komentar.find((c) => c.id === openKomentar)
+            return k ? (
+              <CommentPopover
+                key={k.id}
+                doc={doc}
+                viewport={viewport}
+                komentar={k}
+                onTutup={() => setOpenKomentar(null)}
+              />
+            ) : null
+          })()}
         </div>
 
         {/* Alat gambar — pindah dari header ke sisi kanan sebagai ikon. */}
@@ -658,7 +1019,30 @@ export function EditorClient({
           <Toolbar tool={tool} onTool={setTool} onAksi={jalankanAksi} />
         </div>
 
-        <PropertiesPanel doc={doc} store={store} selection={selection} />
+        <PropertiesPanel
+          doc={doc}
+          store={store}
+          selection={selection}
+          cropId={cropId}
+          onCrop={masukCrop}
+          onSelesaiCrop={() => keluarCrop(true)}
+          onPresetRasio={(id, rasio) => {
+            const n = readNode(doc, id)
+            if (!n || !n.crop) return
+            const { kotak, crop } = snapRasio(n, n.crop, rasio)
+            updateNode(doc, id, { x: kotak.x, y: kotak.y, w: kotak.w, h: kotak.h, crop })
+          }}
+          onResetCrop={(id) => {
+            hapusFieldNode(doc, id, 'crop')
+            if (cropIdRef.current === id) keluarCrop(true)
+          }}
+          penEditId={penEditId}
+          onSuntingJalur={masukSuntingPen}
+          onSelesaiSunting={keluarSuntingPen}
+          onHapusAnchor={hapusAnchorTerpilih}
+          idTeksBaru={idTeksBaru}
+          onFokusTeksSelesai={() => setIdTeksBaru(null)}
+        />
       </div>
     </div>
   )

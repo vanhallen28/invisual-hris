@@ -1,6 +1,7 @@
 import type { SceneNode } from '@/kanvas/doc/types'
 import { titikBangun, titikKeSvg } from '@/kanvas/doc/polygon'
-import { ImageShape } from './ImageShape'
+import { ImageShape, GambarTerpotong } from './ImageShape'
+import { dJalurPen } from './penPath'
 
 /**
  * Murni. Tidak mengimpor Yjs maupun store, sehingga setiap bentuk
@@ -177,6 +178,97 @@ export function Shape({
       )
     }
 
+    case 'pen': {
+      /* Jalur bezier. Anchor+handle disimpan di ruang sumber lalu diskalakan
+         ke kotak node — pola yang sama dengan 'draw', sehingga jalur bisa
+         digeser, diubah ukuran, dirotasi, dan dicermin seperti bentuk lain. */
+      const p = node.path
+      if (!p || p.pts.length < 2) return null
+
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      const catat = (x: number, y: number) => {
+        if (x < minX) minX = x
+        if (x > maxX) maxX = x
+        if (y < minY) minY = y
+        if (y > maxY) maxY = y
+      }
+      for (const pt of p.pts) {
+        catat(pt.x, pt.y)
+        if (pt.hix != null && pt.hiy != null) catat(pt.hix, pt.hiy)
+        if (pt.hox != null && pt.hoy != null) catat(pt.hox, pt.hoy)
+      }
+      const sx = node.w / Math.max(1, maxX - minX)
+      const sy = node.h / Math.max(1, maxY - minY)
+      const petakan = (x: number, y: number) => ({
+        x: node.x + (x - minX) * sx,
+        y: node.y + (y - minY) * sy,
+      })
+
+      const isi = p.closed && node.fill && node.fill !== 'transparent' ? node.fill : 'none'
+      return (
+        <path
+          d={dJalurPen(p.pts, p.closed, petakan)}
+          fill={isi}
+          stroke={node.stroke && node.stroke !== 'transparent' ? node.stroke : '#ef4444'}
+          strokeWidth={node.strokeWidth || 2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          transform={transform}
+          opacity={node.opacity}
+        />
+      )
+    }
+
+    case 'textpath': {
+      /* Teks mengikuti jalur bezier. Jalur diberi id lalu dirujuk <textPath>.
+         Warna teks = fill; garis jalur = stroke (default tersembunyi → panduan
+         yang bisa dinyalakan). Skala jalur mengikuti kotak node, seperti 'pen'. */
+      const p = node.path
+      if (!p || p.pts.length < 2) return null
+
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      const catat = (x: number, y: number) => {
+        if (x < minX) minX = x
+        if (x > maxX) maxX = x
+        if (y < minY) minY = y
+        if (y > maxY) maxY = y
+      }
+      for (const pt of p.pts) {
+        catat(pt.x, pt.y)
+        if (pt.hix != null && pt.hiy != null) catat(pt.hix, pt.hiy)
+        if (pt.hox != null && pt.hoy != null) catat(pt.hox, pt.hoy)
+      }
+      const sx = node.w / Math.max(1, maxX - minX)
+      const sy = node.h / Math.max(1, maxY - minY)
+      const petakan = (x: number, y: number) => ({
+        x: node.x + (x - minX) * sx,
+        y: node.y + (y - minY) * sy,
+      })
+
+      const pid = `tp-${node.id}`
+      const ukuran = node.fontSize && node.fontSize > 0 ? node.fontSize : 16
+      const keluarga = node.fontFamily || 'var(--font-ui), sans-serif'
+      const tebal = node.fontWeight || 400
+      const warnaTeks = node.fill && node.fill !== 'transparent' ? node.fill : '#e5e5e5'
+      const garisTampak = node.stroke && node.stroke !== 'transparent'
+      return (
+        <g transform={transform} opacity={node.opacity}>
+          <path
+            id={pid}
+            d={dJalurPen(p.pts, p.closed, petakan)}
+            fill="none"
+            stroke={garisTampak ? node.stroke : 'none'}
+            strokeWidth={node.strokeWidth || 1}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <text fontSize={ukuran} fontFamily={keluarga} fontWeight={tebal} fill={warnaTeks}>
+            <textPath href={`#${pid}`}>{node.text ?? ''}</textPath>
+          </text>
+        </g>
+      )
+    }
+
     case 'sticky': {
       /* Catatan tempel. Teksnya dibungkus MANUAL jadi <tspan> per baris,
          bukan lewat <foreignObject>: ekspor memakai renderToStaticMarkup
@@ -268,12 +360,16 @@ export function Shape({
       // pengambilan async. Export memerlukan ini karena
       // renderToStaticMarkup tidak menjalankan efek.
       return assetUrl ? (
-        <image
-          href={assetUrl}
-          x={node.x} y={node.y} width={node.w} height={node.h}
-          transform={transform} opacity={node.opacity}
-          preserveAspectRatio="xMidYMid slice"
-        />
+        node.crop ? (
+          <GambarTerpotong node={node} url={assetUrl} transform={transform} />
+        ) : (
+          <image
+            href={assetUrl}
+            x={node.x} y={node.y} width={node.w} height={node.h}
+            transform={transform} opacity={node.opacity}
+            preserveAspectRatio="xMidYMid slice"
+          />
+        )
       ) : (
         <ImageShape node={node} transform={transform} />
       )

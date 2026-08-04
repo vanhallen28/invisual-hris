@@ -61,6 +61,20 @@ export function updateNode(doc: Y.Doc, id: string, patch: Partial<SceneNode>): v
   }, 'local')
 }
 
+/**
+ * Menghapus SATU properti dari sebuah node. `updateNode` hanya bisa menetapkan
+ * nilai, tidak menghapus kunci — ini dipakai untuk "membatalkan potong": crop
+ * harus benar-benar TIDAK ADA agar gambar kembali ke render penuh (menyetel
+ * ke nilai identitas tidak cukup karena render membedakan ada/tidaknya crop).
+ */
+export function hapusFieldNode(doc: Y.Doc, id: string, kunci: string): void {
+  const node = nodesMap(doc).get(id)
+  if (!node) return
+  doc.transact(() => {
+    node.delete(kunci)
+  }, 'local')
+}
+
 export function deleteNode(doc: Y.Doc, id: string): void {
   const semua = readAllNodes(doc)
 

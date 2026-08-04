@@ -48,6 +48,19 @@ export function ImageShape({ node, transform }: { node: SceneNode; transform?: s
     )
   }
 
+  const bereskanGagalMuat = () => {
+    // URL kedaluwarsa atau gagal. Buang dari cache lalu minta ulang,
+    // bukan membiarkan ikon rusak menetap sampai halaman dimuat ulang.
+    if (node.assetId) cache.delete(node.assetId)
+    setUrl(null)
+  }
+
+  if (node.crop) {
+    return (
+      <GambarTerpotong node={node} url={url} transform={transform} onError={bereskanGagalMuat} />
+    )
+  }
+
   return (
     <image
       href={url}
@@ -57,12 +70,50 @@ export function ImageShape({ node, transform }: { node: SceneNode; transform?: s
       // sebelumnya MEMOTONG sisi yang tidak sebanding dengan kotaknya —
       // itu sebabnya hasil impor SVG tampak terpangkas.
       preserveAspectRatio="xMidYMid meet"
-      onError={() => {
-        // URL kedaluwarsa atau gagal. Buang dari cache lalu minta ulang,
-        // bukan membiarkan ikon rusak menetap sampai halaman dimuat ulang.
-        if (node.assetId) cache.delete(node.assetId)
-        setUrl(null)
-      }}
+      onError={bereskanGagalMuat}
     />
+  )
+}
+
+/**
+ * Gambar terpotong: gambar penuh digambar pada rect crop lalu di-clip ke kotak
+ * node. Dipakai bersama oleh render kanvas (ImageShape) dan ekspor (shapes),
+ * supaya potongan otomatis ikut ke PNG/SVG. `id` clip diturunkan dari id node
+ * agar unik saat banyak gambar dirender ke satu SVG.
+ *
+ * `preserveAspectRatio="none"` aman: rect crop sudah berasio gambar asli
+ * (dijaga oleh interaksi crop), jadi gambar mengisi rect tanpa distorsi.
+ */
+export function GambarTerpotong({
+  node,
+  url,
+  transform,
+  onError,
+}: {
+  node: SceneNode
+  url: string
+  transform?: string
+  onError?: () => void
+}) {
+  const c = node.crop!
+  const Rx = node.x + c.ix * node.w
+  const Ry = node.y + c.iy * node.h
+  const Rw = c.iw * node.w
+  const Rh = c.ih * node.h
+  const cid = `crop-${node.id}`
+
+  return (
+    <g transform={transform} opacity={node.opacity}>
+      <clipPath id={cid}>
+        <rect x={node.x} y={node.y} width={node.w} height={node.h} />
+      </clipPath>
+      <image
+        href={url}
+        x={Rx} y={Ry} width={Rw} height={Rh}
+        preserveAspectRatio="none"
+        clipPath={`url(#${cid})`}
+        onError={onError}
+      />
+    </g>
   )
 }

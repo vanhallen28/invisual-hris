@@ -1,12 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type * as Y from 'yjs'
 import { updateNode } from '@/kanvas/doc/nodes'
 import type { SceneNode } from '@/kanvas/doc/types'
 
-export function TextEditor({ doc, node }: { doc: Y.Doc; node: SceneNode }) {
+export function TextEditor({
+  doc,
+  node,
+  autoFokus,
+  onFokusSelesai,
+}: {
+  doc: Y.Doc
+  node: SceneNode
+  /** Fokus + pilih seluruh teks saat pertama tampil (mis. objek teks baru dibuat). */
+  autoFokus?: boolean
+  onFokusSelesai?: () => void
+}) {
   const [draf, setDraf] = useState(node.text ?? '')
+  const ref = useRef<HTMLTextAreaElement>(null)
 
   // Disinkronkan saat render, bukan di effect (pola resmi React
   // "menyesuaikan state ketika prop berubah").
@@ -16,8 +28,20 @@ export function TextEditor({ doc, node }: { doc: Y.Doc; node: SceneNode }) {
     setDraf(node.text ?? '')
   }
 
+  // Fokus sekali saat mount bila diminta — supaya objek "Teks di jalur" yang
+  // baru digambar bisa langsung diketik (teks contoh tersorot untuk ditimpa).
+  useEffect(() => {
+    if (autoFokus && ref.current) {
+      ref.current.focus()
+      ref.current.select()
+      onFokusSelesai?.()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
     <textarea
+      ref={ref}
       value={draf}
       onChange={(e) => setDraf(e.target.value)}
       onBlur={() => updateNode(doc, node.id, { text: draf })}

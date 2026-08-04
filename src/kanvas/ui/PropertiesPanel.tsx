@@ -94,10 +94,35 @@ type Arah = 'kiri' | 'tengahH' | 'kanan' | 'atas' | 'tengahV' | 'bawah'
 
 export function PropertiesPanel({
   doc, store, selection,
+  cropId = null,
+  onCrop,
+  onSelesaiCrop,
+  onResetCrop,
+  onPresetRasio,
+  penEditId = null,
+  onSuntingJalur,
+  onSelesaiSunting,
+  onHapusAnchor,
+  idTeksBaru = null,
+  onFokusTeksSelesai,
 }: {
   doc: Y.Doc
   store: DocStore
   selection: string[]
+  /** Node gambar yang sedang dipotong, atau null. Semua prop crop opsional. */
+  cropId?: string | null
+  onCrop?: (id: string) => void
+  onSelesaiCrop?: () => void
+  onResetCrop?: (id: string) => void
+  onPresetRasio?: (id: string, rasio: number) => void
+  /** Sunting jalur Pen. Semua opsional. */
+  penEditId?: string | null
+  onSuntingJalur?: (id: string) => void
+  onSelesaiSunting?: () => void
+  onHapusAnchor?: () => void
+  /** Auto-fokus kolom teks untuk objek "Teks di jalur" yang baru dibuat. */
+  idTeksBaru?: string | null
+  onFokusTeksSelesai?: () => void
 }) {
   const satu = selection.length === 1 ? selection[0] : null
   const node = useNode(store, satu ?? '')
@@ -189,6 +214,19 @@ export function PropertiesPanel({
     </div>
   )
 
+  /* Membalik (cermin) SEMUA objek terpilih di tempat — sama seperti tombol
+     Cermin objek tunggal, hanya diterapkan ke tiap objek. Toggle per objek:
+     yang sudah terbalik kembali normal, jadi menekan dua kali = seperti semula. */
+  const cerminSemua = (sumbu: 'x' | 'y') => {
+    doc.transact(() => {
+      for (const id of selection) {
+        const n = readNode(doc, id)
+        if (!n) continue
+        updateNode(doc, id, sumbu === 'x' ? { flipX: !n.flipX } : { flipY: !n.flipY })
+      }
+    }, 'local')
+  }
+
   if (selection.length === 0) {
     return (
       <aside style={kerangka} className="p-3">
@@ -206,6 +244,16 @@ export function PropertiesPanel({
         </div>
         <Bagian judul="Perataan" kolom={1}>
           <BarisRata />
+        </Bagian>
+        <Bagian judul="Cermin" kolom={1}>
+          <div className="flex gap-1.5">
+            <TombolIkon title="Cermin mendatar (Shift+H)" onClick={() => cerminSemua('x')}>
+              <span style={{ fontSize: 13, lineHeight: 1 }}>⇄</span>
+            </TombolIkon>
+            <TombolIkon title="Cermin tegak (Shift+V)" onClick={() => cerminSemua('y')}>
+              <span style={{ fontSize: 13, lineHeight: 1 }}>⇅</span>
+            </TombolIkon>
+          </div>
         </Bagian>
       </aside>
     )
@@ -266,9 +314,14 @@ export function PropertiesPanel({
         </TombolIkon>
       </div>
 
-      {(node.type === 'text' || node.type === 'sticky') && (
+      {(node.type === 'text' || node.type === 'sticky' || node.type === 'textpath') && (
         <Bagian judul={node.type === 'sticky' ? 'Isi Catatan' : 'Isi Teks'} kolom={1}>
-          <TextEditor doc={doc} node={node} />
+          <TextEditor
+            doc={doc}
+            node={node}
+            autoFokus={node.type === 'textpath' && node.id === idTeksBaru}
+            onFokusSelesai={onFokusTeksSelesai}
+          />
         </Bagian>
       )}
 
@@ -324,10 +377,132 @@ export function PropertiesPanel({
         </Bagian>
       )}
 
+      {node.type === 'image' && cropId === node.id && (
+        <Bagian judul="Rasio potong" kolom={5}>
+          {([['1:1', 1], ['4:3', 4 / 3], ['3:2', 3 / 2], ['16:9', 16 / 9], ['9:16', 9 / 16]] as Array<[string, number]>).map(
+            ([label, rasio]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => onPresetRasio?.(node.id, rasio)}
+                style={{
+                  padding: '5px 2px', fontSize: 10, borderRadius: 6, cursor: 'pointer',
+                  background: 'var(--surface-2)', color: 'var(--text-1)',
+                  border: '1px solid var(--line-strong)',
+                }}
+              >
+                {label}
+              </button>
+            )
+          )}
+        </Bagian>
+      )}
+
+      {node.type === 'image' && (
+        <Bagian judul="Gambar" kolom={1}>
+          {cropId === node.id ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onSelesaiCrop?.()}
+                style={{
+                  width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 6,
+                  cursor: 'pointer', background: 'var(--accent)', color: 'var(--void)',
+                  border: '1px solid var(--accent)',
+                }}
+              >
+                Selesai memotong
+              </button>
+              <button
+                type="button"
+                onClick={() => onResetCrop?.(node.id)}
+                style={{
+                  width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 6,
+                  cursor: 'pointer', background: 'var(--surface-2)', color: 'var(--text-0)',
+                  border: '1px solid var(--line-strong)',
+                }}
+              >
+                Reset potong
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => onCrop?.(node.id)}
+                style={{
+                  width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 6,
+                  cursor: 'pointer', background: 'var(--surface-2)', color: 'var(--text-0)',
+                  border: '1px solid var(--line-strong)',
+                }}
+              >
+                Potong gambar
+              </button>
+              {node.crop && (
+                <button
+                  type="button"
+                  onClick={() => onResetCrop?.(node.id)}
+                  style={{
+                    width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 6,
+                    cursor: 'pointer', background: 'transparent', color: 'var(--text-1)',
+                    border: '1px solid var(--line)',
+                  }}
+                >
+                  Reset potong
+                </button>
+              )}
+            </>
+          )}
+        </Bagian>
+      )}
+
+      {(node.type === 'pen' || node.type === 'textpath') && (
+        <Bagian judul="Jalur" kolom={1}>
+          {penEditId === node.id ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onSelesaiSunting?.()}
+                style={{
+                  width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 6,
+                  cursor: 'pointer', background: 'var(--accent)', color: 'var(--void)',
+                  border: '1px solid var(--accent)',
+                }}
+              >
+                Selesai menyunting
+              </button>
+              <button
+                type="button"
+                onClick={() => onHapusAnchor?.()}
+                style={{
+                  width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 6,
+                  cursor: 'pointer', background: 'var(--surface-2)', color: 'var(--text-0)',
+                  border: '1px solid var(--line-strong)',
+                }}
+              >
+                Hapus titik terpilih
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onSuntingJalur?.(node.id)}
+              style={{
+                width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 6,
+                cursor: 'pointer', background: 'var(--surface-2)', color: 'var(--text-0)',
+                border: '1px solid var(--line-strong)',
+              }}
+            >
+              Sunting jalur
+            </button>
+          )}
+        </Bagian>
+      )}
+
       {/* Tipografi — hanya untuk node yang memang berisi teks. Muncul di
           sini, bukan di dekat isi teks, supaya urutannya sama dengan
           editor grafis lain: isi dulu, baru bentuknya. */}
-      {(node.type === 'text' || node.type === 'sticky') && (
+      {(node.type === 'text' || node.type === 'sticky' || node.type === 'textpath') && (
         <Bagian judul="Tipografi">
           <SelectField
             label="A"
@@ -377,14 +552,14 @@ export function PropertiesPanel({
       <Bagian judul="Cermin" kolom={1}>
         <div className="flex gap-1.5">
           <TombolIkon
-            title="Cermin mendatar"
+            title="Cermin mendatar (Shift+H)"
             onClick={() => set({ flipX: !node.flipX })}
             aktif={!!node.flipX}
           >
             <span style={{ fontSize: 13, lineHeight: 1 }}>⇄</span>
           </TombolIkon>
           <TombolIkon
-            title="Cermin tegak"
+            title="Cermin tegak (Shift+V)"
             onClick={() => set({ flipY: !node.flipY })}
             aktif={!!node.flipY}
           >
