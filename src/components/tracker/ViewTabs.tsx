@@ -8,7 +8,7 @@ import { menungguAcc, siapUpload } from '@/lib/tracker/acc';
 const ICONS: any = { table: Columns, kanban: LayoutGrid, gantt: CalendarDays, chart: BarChart3, calendar: CalendarDays, workload: ListChecks };
 
 export default function ViewTabs() {
-  const { views, activeView, activeViewId, setActiveViewId, renameView, deleteView, duplicateView, reorderViews, isManager, boardsDataMap } = useDashboard();
+  const { views, activeView, activeViewId, setActiveViewId, renameView, deleteView, duplicateView, reorderViews, isManager, canAcc, boardsDataMap } = useDashboard();
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [picker, setPicker] = useState(false);
@@ -21,7 +21,7 @@ export default function ViewTabs() {
   // Jumlah brief menunggu ACC — lintas papan, sama seperti antreannya.
   // Dihitung di sini supaya angka di tab tidak perlu menunggu halamannya dibuka.
   const jumlahAcc = React.useMemo(() => {
-    if (!isManager) return 0;
+    if (!isManager && !canAcc) return 0;
     let n = 0;
     Object.values(boardsDataMap || {}).forEach((bd: any) => {
       const sCol = (bd.columns || []).find((c: any) => c.type === 'status');
@@ -35,7 +35,7 @@ export default function ViewTabs() {
       }));
     });
     return n;
-  }, [boardsDataMap, isManager]);
+  }, [boardsDataMap, isManager, canAcc]);
 
 
   const commitRename = (id: string, val: string) => {
@@ -90,7 +90,7 @@ export default function ViewTabs() {
       <button onClick={() => setActiveViewId('mytasks')} className={`flex items-center gap-1.5 pb-3 pt-1 px-1.5 border-b-2 transition-colors whitespace-nowrap shrink-0 ${myTasksActive ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'}`}><ListChecks size={14} /> My Tasks</button>
 
       {/* Antrean ACC — global juga, hanya untuk project manager */}
-      {isManager && (
+      {(isManager || canAcc) && (
         <button onClick={() => setActiveViewId('acc')} className={`flex items-center gap-1.5 pb-3 pt-1 px-1.5 border-b-2 transition-colors whitespace-nowrap shrink-0 ${accActive ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
           <CheckSquare size={14} /> Antrean
           {jumlahAcc > 0 && <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{jumlahAcc}</span>}

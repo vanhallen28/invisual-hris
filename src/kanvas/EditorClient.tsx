@@ -12,6 +12,7 @@ import { Scene } from '@/kanvas/render/Scene'
 import { SelectionOverlay } from '@/kanvas/render/SelectionOverlay'
 import { CropOverlay } from '@/kanvas/render/CropOverlay'
 import { PathEditOverlay } from '@/kanvas/render/PathEditOverlay'
+import { ContentCropOverlay } from '@/kanvas/render/ContentCropOverlay'
 import { Marquee } from '@/kanvas/render/Marquee'
 import { FrameLabels } from '@/kanvas/render/FrameLabels'
 import { Cursors } from '@/kanvas/render/Cursors'
@@ -29,7 +30,7 @@ import { unggahAset, ukuranGambar } from '@/kanvas/features/assets/upload'
 import { ACCEPT_IMPOR, PESAN_FIG, pesanTakDidukung, pilahBerkas } from '@/kanvas/lib/impor'
 import { dariBytea } from '@/kanvas/sync/hex'
 import { TOOL_KEYS, toolToNodeType, type Tool } from '@/kanvas/state/tool'
-import { skalaCrop, snapRasio } from '@/kanvas/interact/crop'
+import { skalaCrop, snapRasio, skalaIsi } from '@/kanvas/interact/crop'
 import {
   IDENTITY_VIEWPORT,
   panBy,
@@ -169,6 +170,33 @@ export function EditorClient({
     setCropId(null)
   }, [doc])
 
+  /* Potong ISI untuk node NON-GAMBAR (geser/skala isi di dalam jendela).
+     Terpisah dari crop gambar (`cropId`) karena tak ada syarat menutup dan
+     skalanya seragam. */
+  const [cropIsiId, setCropIsiId] = useState<string | null>(null)
+  const cropIsiIdRef = useRef<string | null>(null)
+  const cropIsiAsliRef = useRef<{ ix: number; iy: number; iw: number; ih: number } | undefined>(undefined)
+  useEffect(() => { cropIsiIdRef.current = cropIsiId }, [cropIsiId])
+
+  const masukCropIsi = useCallback((id: string) => {
+    const n = readNode(doc, id)
+    if (!n || n.type === 'image') return // gambar memakai crop-nya sendiri
+    cropIsiAsliRef.current = n.crop
+    if (!n.crop) updateNode(doc, id, { crop: { ix: 0, iy: 0, iw: 1, ih: 1 } })
+    setSelection([id])
+    setCropIsiId(id)
+  }, [doc])
+
+  const keluarCropIsi = useCallback((simpan: boolean) => {
+    const id = cropIsiIdRef.current
+    if (id && !simpan) {
+      if (cropIsiAsliRef.current) updateNode(doc, id, { crop: cropIsiAsliRef.current })
+      else hapusFieldNode(doc, id, 'crop')
+    }
+    cropIsiAsliRef.current = undefined
+    setCropIsiId(null)
+  }, [doc])
+
   /* Jalur Pen yang sedang digambar (belum jadi node). `penPts` = anchor yang
      sudah ditaruh; `penCursor` = posisi kursor untuk pratinjau ruas berikutnya.
      Ref dipakai di penangan pointer & keyboard yang membaca lewat closure. */
@@ -287,7 +315,7 @@ export function EditorClient({
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     // Saat mode potong ATAU mode sunting jalur aktif, kanvas tidak menerima
     // interaksi — seluruhnya ditangani overlay masing-masing.
-    if (cropIdRef.current || penEditIdRef.current) return
+    if (cropIdRef.current || penEditIdRef.current || cropIsiIdRef.current) return
     // Klik pada kanvas menutup popover komentar yang terbuka (klik pada pin
     // sendiri sudah menghentikan propagasi, jadi tidak sampai ke sini).
     if (openKomentar && tool !== 'comment') setOpenKomentar(null)
@@ -521,12 +549,20 @@ export function EditorClient({
     const kotak = e.currentTarget.getBoundingClientRect()
     const dunia = screenToWorld(viewport, e.clientX - kotak.left, e.clientY - kotak.top)
     const kena = topmostAt(readAllNodes(doc), dunia.x, dunia.y)
+    // Masuk mode edit apa pun menutup popover komentar yang mungkin terbuka.
+    if (openKomentar) setOpenKomentar(null)
     if (kena?.type === 'image') {
       e.preventDefault()
       masukCrop(kena.id)
     } else if (kena?.type === 'pen' || kena?.type === 'textpath') {
       e.preventDefault()
       masukSuntingPen(kena.id)
+    } else if (kena && (kena.type === 'group' || kena.type === 'draw')) {
+      // Hanya tipe yang jelas berguna: grup (komposisi) & coretan. Untuk
+      // teks/catatan/bentuk/frame, potong isi tersedia lewat tombol panel
+      // (agar dobel-klik tak mengejutkan). Jalur/gambar ditangani di atas.
+      e.preventDefault()
+      masukCropIsi(kena.id)
     }
   }
 
@@ -668,6 +704,19 @@ export function EditorClient({
         return
       }
 
+      // Mode potong ISI: roda menskalakan isi (seragam) di sekitar kursor.
+      const idIsi = cropIsiIdRef.current
+      if (idIsi) {
+        const n = readNode(doc, idIsi)
+        if (n && n.crop) {
+          const dunia = screenToWorld(viewport, sx, sy)
+          const fx = (dunia.x - n.x) / n.w
+          const fy = (dunia.y - n.y) / n.h
+          updateNode(doc, idIsi, { crop: skalaIsi(n.crop, Math.exp(-e.deltaY * 0.01), fx, fy) })
+        }
+        return
+      }
+
       if (e.ctrlKey || e.metaKey) {
         setViewport((vp) => zoomAt(vp, sx, sy, Math.exp(-e.deltaY * 0.01)))
       } else {
@@ -691,6 +740,13 @@ export function EditorClient({
       if (cropIdRef.current) {
         if (e.code === 'Enter') { e.preventDefault(); keluarCrop(true) }
         else if (e.code === 'Escape') { e.preventDefault(); keluarCrop(false) }
+        return
+      }
+
+      // Mode potong isi: Enter simpan, Escape batal.
+      if (cropIsiIdRef.current) {
+        if (e.code === 'Enter') { e.preventDefault(); keluarCropIsi(true) }
+        else if (e.code === 'Escape') { e.preventDefault(); keluarCropIsi(false) }
         return
       }
 
@@ -802,7 +858,7 @@ export function EditorClient({
       window.removeEventListener('keydown', turun)
       window.removeEventListener('keyup', naik)
     }
-  }, [doc, selection, undo, keluarCrop, finalisasiPen, buangPen, hapusAnchorTerpilih, keluarSuntingPen])
+  }, [doc, selection, undo, keluarCrop, finalisasiPen, buangPen, hapusAnchorTerpilih, keluarSuntingPen, keluarCropIsi])
 
   const pilihDariPanel = useCallback(
     (id: string, shift: boolean) => {
@@ -892,6 +948,7 @@ export function EditorClient({
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onDoubleClick={onDoubleClick}
+            tanpaKlipId={cropIsiId}
             overlay={
               <>
                 {cropId ? (
@@ -911,6 +968,14 @@ export function EditorClient({
                     sel={penSel}
                     onPilih={setPenSel}
                     onSelesai={keluarSuntingPen}
+                  />
+                ) : cropIsiId ? (
+                  <ContentCropOverlay
+                    store={store}
+                    doc={doc}
+                    id={cropIsiId}
+                    viewport={viewport}
+                    onSelesai={() => keluarCropIsi(true)}
                   />
                 ) : (
                   <SelectionOverlay
@@ -1042,6 +1107,13 @@ export function EditorClient({
           onHapusAnchor={hapusAnchorTerpilih}
           idTeksBaru={idTeksBaru}
           onFokusTeksSelesai={() => setIdTeksBaru(null)}
+          cropIsiId={cropIsiId}
+          onPotongIsi={masukCropIsi}
+          onSelesaiPotongIsi={() => keluarCropIsi(true)}
+          onResetPotongIsi={(id) => {
+            hapusFieldNode(doc, id, 'crop')
+            if (cropIsiIdRef.current === id) keluarCropIsi(true)
+          }}
         />
       </div>
     </div>

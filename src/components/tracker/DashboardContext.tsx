@@ -95,6 +95,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   const [currentUserId, setCurrentUserId] = useState<string>('me');
   const [currentUserRole, setCurrentUserRole] = useState<string>('member');
   const [canContentHub, setCanContentHub] = useState<boolean>(true);
+  const [canAcc, setCanAcc] = useState<boolean>(false);
   const [docEditorTarget, setDocEditorTarget] = useState<any>(null);
   const [teamMembers, setTeamMembers] = useState<any[]>([{ id: 'me', name: 'You', color: 'bg-primer-terang', initials: 'Y' }]);
   const [labels, setLabels] = useState<any>({});
@@ -254,6 +255,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
         if (s.currentUserId) setCurrentUserId(s.currentUserId);
         setCurrentUserRole(s.currentUserRole || 'member');
         setCanContentHub(s.canContentHub !== false);
+        setCanAcc(s.canAcc === true);
         // Pulihkan board terakhir yang dibuka (kalau masih ada); jika tidak, board pertama.
         let saved: string | null = null;
         try { saved = localStorage.getItem('dwt_active_board'); } catch {}
@@ -300,6 +302,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       if (s.currentUserId) setCurrentUserId(s.currentUserId);
       setCurrentUserRole(s.currentUserRole || 'member');
       setCanContentHub(s.canContentHub !== false);
+      setCanAcc(s.canAcc === true);
     } catch { /* abaikan */ }
   };
 
@@ -1009,7 +1012,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     triggerConfirm, handleUpdateItem, handleUpdateSubItem, handleDeleteItem, handleDeleteSubItem,
     handleAddItem, handleAddSubItem, toggleGroupSelection,
     handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, addYear, addMonth, addBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, pushToast, HEX_COLORS, LABEL_COLORS,
-    authUser, doLogout, isManager, currentUserRole, canContentHub, refreshData, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase
+    authUser, doLogout, isManager, currentUserRole, canContentHub, canAcc, refreshData, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase
   };
 
   const gate = (() => {

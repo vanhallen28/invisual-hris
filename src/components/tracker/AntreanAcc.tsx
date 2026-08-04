@@ -15,7 +15,7 @@ import { kumpulkanBrief, cariBentrok, labelSetelahAcc, labelSetelahUpload, type 
  */
 export default function AntreanAcc() {
   const {
-    boardsDataMap, workspaces, labels, teamMembers, isManager,
+    boardsDataMap, workspaces, labels, teamMembers, isManager, canAcc,
     handleUpdateItem, handleUpdateSubItem, setActiveBoardId, setActiveViewId,
     setDetailItem, pushToast,
   } = useDashboard();
@@ -72,7 +72,7 @@ export default function AntreanAcc() {
     setDetailItem({ groupId: b.groupId, itemId: b.itemId, subItemId: b.isSub ? b.subId : undefined });
   };
 
-  if (!isManager) {
+  if (!isManager && !canAcc) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-20 text-center">
         <Inbox size={40} className="text-blue-500/20 mb-1" />

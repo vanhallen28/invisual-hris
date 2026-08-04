@@ -49,6 +49,10 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
   const currentUserRole = isAdminEmail ? 'manager' : ((meRow?.role) || 'member');
   // Akses Content Hub (kolom members.content_hub) — default boleh; admin selalu boleh
   const canContentHub = isAdminEmail ? true : (meRow?.content_hub !== false);
+  // Akses ACC Brief (kolom members.acc_brief) — default TIDAK boleh; admin selalu
+  // boleh. Manajer sudah otomatis bisa lewat gerbang isManager, jadi ini murni
+  // untuk memberi akses ACC kepada NON-manajer (akses "tanggung").
+  const canAcc = isAdminEmail ? true : (meRow?.acc_brief === true);
 
   // Pembatasan board per-manajer (tabel board_access).
   // Manajer TANPA baris di board_access → akses semua board (perilaku default).
@@ -132,5 +136,5 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
   }))
   .filter((ws: any) => (allowedPatterns.length ? ws.years.length > 0 : true));
 
-  return { workspaces, boardsDataMap, labels, teamMembers, currentUserId, currentUserRole, canContentHub };
+  return { workspaces, boardsDataMap, labels, teamMembers, currentUserId, currentUserRole, canContentHub, canAcc };
 }

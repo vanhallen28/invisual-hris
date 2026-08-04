@@ -15,6 +15,7 @@ export function Scene({
   preview,
   page,
   pageAwal,
+  tanpaKlipId,
   ...rest
 }: {
   store: DocStore
@@ -26,6 +27,8 @@ export function Scene({
   page?: string
   /** Halaman pertama, untuk node lama yang belum punya penanda halaman. */
   pageAwal?: string
+  /** Node/grup yang sedang dipotong — dirender tanpa klip agar isinya tampak penuh. */
+  tanpaKlipId?: string | null
 } & React.SVGProps<SVGSVGElement>) {
   const semua = useNodeIds(store)
   const ids = page
@@ -43,7 +46,7 @@ export function Scene({
           ((wx - vp.x) * zoom, ...), persis seperti worldToScreen. */}
       <g transform={`scale(${viewport.zoom}) translate(${-viewport.x} ${-viewport.y})`}>
         {ids.map((id) => (
-          <NodeView key={id} store={store} id={id} override={preview?.[id]} />
+          <NodeView key={id} store={store} id={id} override={preview?.[id]} tanpaKlipId={tanpaKlipId} />
         ))}
       </g>
       {overlay}

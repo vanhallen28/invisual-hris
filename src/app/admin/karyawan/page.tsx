@@ -43,7 +43,7 @@ export default function AdminKaryawanPage() {
     noRekening: "", isAktif: true, role: "member",
     institusiMagang: "", tanggalSelesaiMagang: "",
     boardAccess: [] as string[], contentHub: true, corporateAccess: false,
-    jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: ""
+    jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: "", tanggalLahir: "", accBrief: false
   });
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); // user_id -> role Tracker
   const [allBoards, setAllBoards] = useState<string[]>([]); // nama board Daily Task untuk pembatasan akses
@@ -136,7 +136,7 @@ export default function AdminKaryawanPage() {
       sisaCuti: 12, gajiPokok: "", namaBank: "", noRekening: "", isAktif: true, role: "member",
       institusiMagang: "", tanggalSelesaiMagang: "",
       boardAccess: [] as string[], contentHub: true, corporateAccess: false,
-      jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: ""
+      jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: "", tanggalLahir: "", accBrief: false
     });
     setShowModal(true);
   };
@@ -145,7 +145,7 @@ export default function AdminKaryawanPage() {
     setIsEditMode(true);
     fetch(`/api/employees?idKaryawan=${encodeURIComponent(emp.idKaryawan)}`)
       .then((r) => r.json())
-      .then((d) => { if (d && !d.error) setFormData((prev) => ({ ...prev, boardAccess: Array.isArray(d.boardAccess) ? d.boardAccess : [], contentHub: d.contentHub !== false, corporateAccess: d.corporateAccess === true, role: d.role || prev.role })); })
+      .then((d) => { if (d && !d.error) setFormData((prev) => ({ ...prev, boardAccess: Array.isArray(d.boardAccess) ? d.boardAccess : [], contentHub: d.contentHub !== false, corporateAccess: d.corporateAccess === true, accBrief: d.accBrief === true, role: d.role || prev.role })); })
       .catch(() => {});
     setFormData({
       idKaryawan: emp.idKaryawan || "",
@@ -168,7 +168,7 @@ export default function AdminKaryawanPage() {
       tanggalSelesaiMagang: emp.tanggalSelesaiMagang || "",
       boardAccess: [], contentHub: true, corporateAccess: false,
       jamMasuk: emp.jamMasuk || "09:00", jamKeluar: emp.jamKeluar || "17:00", fleksibel: emp.fleksibel === true,
-      avatarUrl: emp.avatarUrl || ""
+      avatarUrl: emp.avatarUrl || "", tanggalLahir: emp.tanggalLahir || "", accBrief: false
     });
     setShowModal(true);
   };
@@ -205,7 +205,8 @@ export default function AdminKaryawanPage() {
       panggilan: formData.panggilan?.trim() || null,
       email: formData.email.trim().toLowerCase(),
       noPonsel: formData.noPonsel || null,
-      nikKtp: formData.nikKtp ? String(formData.nikKtp) : null, 
+      nikKtp: formData.nikKtp ? String(formData.nikKtp) : null,
+      tanggalLahir: formData.tanggalLahir || null, 
       alamatDomisili: formData.alamatDomisili || null,
       jabatan: formData.jabatan || null, 
       status: formData.status,
@@ -230,8 +231,8 @@ export default function AdminKaryawanPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
           isEditMode
-            ? { ...payload, idKaryawan: formData.idKaryawan, role: formData.role, boardAccess: formData.boardAccess, contentHub: formData.contentHub, corporateAccess: formData.corporateAccess }
-            : { ...payload, role: formData.role, boardAccess: formData.boardAccess, contentHub: formData.contentHub, corporateAccess: formData.corporateAccess }
+            ? { ...payload, idKaryawan: formData.idKaryawan, role: formData.role, boardAccess: formData.boardAccess, contentHub: formData.contentHub, corporateAccess: formData.corporateAccess, accBrief: formData.accBrief }
+            : { ...payload, role: formData.role, boardAccess: formData.boardAccess, contentHub: formData.contentHub, corporateAccess: formData.corporateAccess, accBrief: formData.accBrief }
         ),
       });
       const json = await res.json().catch(() => ({}));
@@ -647,6 +648,10 @@ export default function AdminKaryawanPage() {
                     <input type="text" placeholder="16 Digit..." value={formData.nikKtp} onChange={(e) => setFormData({...formData, nikKtp: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none font-mono" />
                   </div>
                   <div>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Tanggal Lahir (KTP)</label>
+                    <input type="date" value={formData.tanggalLahir} onChange={(e) => setFormData({...formData, tanggalLahir: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                  </div>
+                  <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Alamat Domisili</label>
                     <input type="text" placeholder="Alamat lengkap..." value={formData.alamatDomisili} onChange={(e) => setFormData({...formData, alamatDomisili: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
                   </div>
@@ -771,6 +776,18 @@ export default function AdminKaryawanPage() {
                           <p className="text-[10px] text-gray-500 mt-0.5">Izinkan membuka Corporate Vault (dokumen, email, langganan).</p>
                         </div>
                         <input type="checkbox" checked={formData.corporateAccess} onChange={(e) => setFormData({ ...formData, corporateAccess: e.target.checked })} className="accent-primer w-4 h-4 shrink-0" />
+                      </label>
+                    </div>
+                  )}
+
+                  {formData.role === "member" && (
+                    <div className="md:col-span-3">
+                      <label className="flex items-center justify-between bg-input border border-white/10 rounded-lg px-4 py-3 cursor-pointer">
+                        <div className="pr-3">
+                          <span className="text-sm font-bold text-white">Akses ACC Brief</span>
+                          <p className="text-[10px] text-gray-500 mt-0.5">Izinkan menyetujui (ACC) brief di halaman Antrean — tanpa jadi Manager penuh.</p>
+                        </div>
+                        <input type="checkbox" checked={!!formData.accBrief} onChange={(e) => setFormData({ ...formData, accBrief: e.target.checked })} className="accent-primer w-4 h-4 shrink-0" />
                       </label>
                     </div>
                   )}

@@ -208,7 +208,7 @@ export default function DetailKaryawanPage() {
                       <InfoRow label="Jenis Kelamin" value="Tidak Diketahui" />
                       <InfoRow label="Status Warga Negara" value="WNI (Indonesia)" />
                       <InfoRow label="Data Identitas (NIK KTP)" value={employee.nikKtp} isMono />
-                      <InfoRow label="Tempat, Tgl Lahir" value={employee.tanggalLahir} />
+                      <InfoRow label="Tanggal Lahir" value={employee.tanggalLahir} />
                       <InfoRow label="Status Perkawinan" value={employee.statusPerkawinan} />
                       <InfoRow label="Agama" value={employee.agama} />
                       <InfoRow label="Golongan Darah" value={employee.golonganDarah} />

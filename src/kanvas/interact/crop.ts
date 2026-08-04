@@ -159,3 +159,24 @@ export function putarVektor(dx: number, dy: number, deg: number): { x: number; y
     y: dx * Math.sin(rad) + dy * Math.cos(rad),
   }
 }
+
+/* ── Crop ISI untuk node NON-GAMBAR ─────────────────────────────────────────
+   Berbeda dari gambar: TAK ADA syarat "menutup" (isi boleh lebih kecil dari
+   jendela) dan skala SELALU seragam (iw=ih) supaya bentuk/teks tak terdistorsi.
+   Render memakai translate(ix·w, iy·h) lalu scale(iw, iw) terhadap kotak. */
+
+const MIN_SKALA_ISI = 0.1
+const MAKS_SKALA_ISI = 10
+
+/** Geser isi bebas (tanpa clamp) sebesar pecahan kotak. */
+export function geserIsi(c: Crop, dFracX: number, dFracY: number): Crop {
+  return { ix: c.ix + dFracX, iy: c.iy + dFracY, iw: c.iw, ih: c.ih }
+}
+
+/** Skala isi seragam faktor k di sekitar titik (pusatX,pusatY) pecahan kotak. */
+export function skalaIsi(c: Crop, k: number, pusatX = 0.5, pusatY = 0.5): Crop {
+  const f = Math.min(MAKS_SKALA_ISI, Math.max(MIN_SKALA_ISI, c.iw * k))
+  const ux = c.iw ? (pusatX - c.ix) / c.iw : 0
+  const uy = c.ih ? (pusatY - c.iy) / c.ih : 0
+  return { ix: pusatX - ux * f, iy: pusatY - uy * f, iw: f, ih: f }
+}

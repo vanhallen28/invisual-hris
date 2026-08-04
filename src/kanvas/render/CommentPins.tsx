@@ -36,6 +36,7 @@ export function CommentPins({
               style={{ cursor: 'pointer' }}
               pointerEvents="all"
               onPointerDown={(e) => { e.stopPropagation(); onBuka(k.id) }}
+              onDoubleClick={(e) => { e.stopPropagation(); e.preventDefault() }}
             >
               {/* Ekor menunjuk ke titik (0,0). */}
               <path d="M0 0 L-7 -13 L7 -13 Z" fill={warna} />

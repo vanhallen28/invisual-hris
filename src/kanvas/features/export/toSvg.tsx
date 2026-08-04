@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { Shape } from '@/kanvas/render/shapes'
+import { cropIsiBerlaku, bungkusCropIsiKlip } from '@/kanvas/render/cropIsi'
 import type { SceneNode } from '@/kanvas/doc/types'
 import type { Rect } from '@/kanvas/doc/bounds'
 
@@ -39,12 +40,15 @@ export function frameKeSvg(
 ): string {
   // Komponen Shape yang sama dipakai ulang, bukan generator SVG
   // kedua. Satu perubahan pada bentuk otomatis ikut ke export.
+  // Node non-gambar/grup yang dipotong dibungkus transform+klip crop-isi —
+  // sama persis dengan render kanvas (NodeView), agar hasil ekspor konsisten.
+  const olehId = new Map(nodes.map((n) => [n.id, n]))
   const isi = nodes
-    .map((n) =>
-      renderToStaticMarkup(
-        <Shape node={n} assetUrl={n.assetId ? asetUrl[n.assetId] : undefined} />
-      )
-    )
+    .map((n) => {
+      const el = <Shape node={n} assetUrl={n.assetId ? asetUrl[n.assetId] : undefined} />
+      const c = cropIsiBerlaku(n, olehId.get(n.parent) ?? null)
+      return renderToStaticMarkup(c ? bungkusCropIsiKlip(el, c.crop, c.kotak, c.cid) : el)
+    })
     .join('')
 
   // Font ditulis literal: variabel CSS tidak ada artinya di dalam

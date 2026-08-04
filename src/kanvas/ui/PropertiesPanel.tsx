@@ -105,6 +105,10 @@ export function PropertiesPanel({
   onHapusAnchor,
   idTeksBaru = null,
   onFokusTeksSelesai,
+  cropIsiId = null,
+  onPotongIsi,
+  onSelesaiPotongIsi,
+  onResetPotongIsi,
 }: {
   doc: Y.Doc
   store: DocStore
@@ -123,6 +127,11 @@ export function PropertiesPanel({
   /** Auto-fokus kolom teks untuk objek "Teks di jalur" yang baru dibuat. */
   idTeksBaru?: string | null
   onFokusTeksSelesai?: () => void
+  /** Potong isi (crop) untuk node non-gambar. Semua opsional. */
+  cropIsiId?: string | null
+  onPotongIsi?: (id: string) => void
+  onSelesaiPotongIsi?: () => void
+  onResetPotongIsi?: (id: string) => void
 }) {
   const satu = selection.length === 1 ? selection[0] : null
   const node = useNode(store, satu ?? '')
@@ -495,6 +504,64 @@ export function PropertiesPanel({
             >
               Sunting jalur
             </button>
+          )}
+        </Bagian>
+      )}
+
+      {node.type !== 'image' && (
+        <Bagian judul="Potong isi" kolom={1}>
+          {cropIsiId === node.id ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onSelesaiPotongIsi?.()}
+                style={{
+                  width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 6,
+                  cursor: 'pointer', background: 'var(--accent)', color: 'var(--void)',
+                  border: '1px solid var(--accent)',
+                }}
+              >
+                Selesai memotong
+              </button>
+              <button
+                type="button"
+                onClick={() => onResetPotongIsi?.(node.id)}
+                style={{
+                  width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 6,
+                  cursor: 'pointer', background: 'var(--surface-2)', color: 'var(--text-0)',
+                  border: '1px solid var(--line-strong)',
+                }}
+              >
+                Reset potong
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => onPotongIsi?.(node.id)}
+                style={{
+                  width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 6,
+                  cursor: 'pointer', background: 'var(--surface-2)', color: 'var(--text-0)',
+                  border: '1px solid var(--line-strong)',
+                }}
+              >
+                Potong isi
+              </button>
+              {node.crop && (
+                <button
+                  type="button"
+                  onClick={() => onResetPotongIsi?.(node.id)}
+                  style={{
+                    width: '100%', padding: '6px 10px', fontSize: 12, borderRadius: 6,
+                    cursor: 'pointer', background: 'transparent', color: 'var(--text-1)',
+                    border: '1px solid var(--line)',
+                  }}
+                >
+                  Reset potong
+                </button>
+              )}
+            </>
           )}
         </Bagian>
       )}
