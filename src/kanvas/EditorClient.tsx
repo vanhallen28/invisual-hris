@@ -71,6 +71,7 @@ import { useGesture } from '@/kanvas/interact/useGesture'
 import { topmostAt } from '@/kanvas/interact/hitTest'
 import type { Handle } from '@/kanvas/interact/transform'
 import { unggahAset, ukuranGambar } from '@/kanvas/features/assets/upload'
+import { svgKeNodeInit } from '@/kanvas/lib/svgKeNode'
 import { ACCEPT_IMPOR, PESAN_FIG, pesanTakDidukung, pilahBerkas } from '@/kanvas/lib/impor'
 import { dariBytea } from '@/kanvas/sync/hex'
 import { TOOL_KEYS, toolToNodeType, type Tool } from '@/kanvas/state/tool'
@@ -245,6 +246,8 @@ export function EditorClient({
   /* Edit teks INLINE di kanvas. `editTeks` = node teks yang sedang diketik. */
   const [editTeks, setEditTeks] = useState<{ id: string; pilihSemua: boolean } | null>(null)
   const editTeksRef = useRef<{ id: string; pilihSemua: boolean } | null>(null)
+  // Klipboard dalam-memori untuk salin/tempel objek (beserta isinya).
+  const klipRef = useRef<any[] | null>(null)
   useEffect(() => { editTeksRef.current = editTeks }, [editTeks])
   const masukEditTeks = useCallback((id: string, pilihSemua: boolean) => {
     setSelection([id]); setEditTeks({ id, pilihSemua })
@@ -700,17 +703,37 @@ export function EditorClient({
 
     for (const f of berkas) {
       try {
-        const assetId = await unggahAset(f, projectId)
-        const gambar = await ukuranGambar(f)
+        let lebar = 0
+        let tinggi = 0
+        // SVG → node VEKTOR (bukan gambar). Kalau gagal diurai, jatuh ke gambar.
+        const svgFile = /\.svg$/i.test(f.name) || f.type === 'image/svg+xml'
+        const inits = svgFile ? svgKeNodeInit(await f.text(), barisX, barisY) : []
 
-        createNode(doc, {
-          type: 'image', page: pageAktif, assetId,
-          x: barisX, y: barisY, w: gambar.w, h: gambar.h,
-          name: f.name.replace(/\.[^.]+$/, '').slice(0, 40) || 'Gambar',
-        })
+        if (inits.length) {
+          const ids = inits.map((it) => createNode(doc, { ...it, page: pageAktif }))
+          if (ids.length > 1) groupNodes(doc, ids)
+          let maxX = barisX
+          let maxY = barisY
+          for (const it of inits) {
+            maxX = Math.max(maxX, (it.x ?? 0) + (it.w ?? 0))
+            maxY = Math.max(maxY, (it.y ?? 0) + (it.h ?? 0))
+          }
+          lebar = maxX - barisX
+          tinggi = maxY - barisY
+        } else {
+          const assetId = await unggahAset(f, projectId)
+          const gambar = await ukuranGambar(f)
+          createNode(doc, {
+            type: 'image', page: pageAktif, assetId,
+            x: barisX, y: barisY, w: gambar.w, h: gambar.h,
+            name: f.name.replace(/\.[^.]+$/, '').slice(0, 40) || 'Gambar',
+          })
+          lebar = gambar.w
+          tinggi = gambar.h
+        }
 
-        barisX += gambar.w + JARAK
-        tinggiBaris = Math.max(tinggiBaris, gambar.h)
+        barisX += lebar + JARAK
+        tinggiBaris = Math.max(tinggiBaris, tinggi)
         kolom += 1
 
         if (kolom >= PER_BARIS) {
@@ -885,6 +908,42 @@ export function EditorClient({
           return [createNode(doc, { ...sisa, page: n.page || pageAktif, x: n.x + 10, y: n.y + 10 })]
         })
         if (baru.length) setSelection(baru)
+        return
+      }
+
+      // Salin (Ctrl/Cmd+C): simpan seleksi BESERTA isinya (grup/frame + anak).
+      if (cmd && e.code === 'KeyC') {
+        e.preventDefault()
+        const setId = new Set<string>()
+        for (const id of selection) for (const k of keturunanDari(doc, [id])) setId.add(k)
+        klipRef.current = readAllNodes(doc).filter((n) => setId.has(n.id))
+        return
+      }
+      // Tempel (Ctrl/Cmd+V): buat salinan (id baru, geser 20px). Anak tetap
+      // menempel ke induk salinannya. Objek "atas sendiri" digeser; anak tidak.
+      if (cmd && e.code === 'KeyV') {
+        e.preventDefault()
+        const data = klipRef.current
+        if (!data || !data.length) return
+        const asli = new Set(data.map((n: any) => n.id))
+        const peta = new Map<string, string>()
+        const baruT: string[] = []
+        for (const n of data as any[]) {
+          const atasSendiri = !n.parent || !asli.has(n.parent)
+          const { id: _i, order: _o, ...sisa } = n
+          void _i; void _o
+          const parentBaru = atasSendiri ? (n.parent ?? ROOT) : (peta.get(n.parent) ?? ROOT)
+          const idBaru = createNode(doc, {
+            ...sisa,
+            parent: parentBaru,
+            page: n.page || pageAktif,
+            x: n.x + (atasSendiri ? 20 : 0),
+            y: n.y + (atasSendiri ? 20 : 0),
+          })
+          peta.set(n.id, idBaru)
+          if (atasSendiri) baruT.push(idBaru)
+        }
+        if (baruT.length) setSelection(baruT)
         return
       }
 

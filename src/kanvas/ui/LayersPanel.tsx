@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type * as Y from 'yjs'
 import { useNode, useNodeIds } from '@/kanvas/bind/hooks'
 import type { DocStore } from '@/kanvas/bind/store'
-import { childrenOf, reparent } from '@/kanvas/doc/hierarchy'
+import { childrenOf, reparent, isDescendant } from '@/kanvas/doc/hierarchy'
 import { readAllNodes, updateNode } from '@/kanvas/doc/nodes'
 import { keyBetween } from '@/kanvas/doc/order'
 import { ROOT, DEFAULT_NAME, type SceneNode } from '@/kanvas/doc/types'
@@ -41,7 +41,7 @@ function geserUrutan(doc: Y.Doc, node: SceneNode, arah: 1 | -1) {
 
 function Baris({
   doc, store, id, depth, terpilih, onSelect, punyaAnak, terTutup, onToggle,
-  onSeretMulai, onSeretAtas, onJatuh, onSeretSelesai, seretId, atasId,
+  onSeretMulai, onSeretAtas, onJatuh, onSeretSelesai, seretId, atasInfo,
 }: {
   doc: Y.Doc
   store: DocStore
@@ -54,11 +54,11 @@ function Baris({
   terTutup: boolean
   onToggle: () => void
   onSeretMulai: (id: string) => void
-  onSeretAtas: (id: string) => void
+  onSeretAtas: (id: string, pos: 'atas' | 'bawah' | 'dalam') => void
   onJatuh: (id: string) => void
   onSeretSelesai: () => void
   seretId: string | null
-  atasId: string | null
+  atasInfo: { id: string; pos: 'atas' | 'bawah' | 'dalam' } | null
 }) {
   // Berlangganan per-node, bukan menerima node sebagai props.
   // Daftar id tidak disiarkan saat properti berubah, jadi baris
@@ -113,17 +113,32 @@ function Baris({
       className="flex items-center gap-1 px-2 py-1"
       draggable
       onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onSeretMulai(node.id) }}
-      onDragOver={(e) => { e.preventDefault(); onSeretAtas(node.id) }}
+      onDragOver={(e) => {
+        e.preventDefault()
+        const r = e.currentTarget.getBoundingClientRect()
+        const y = e.clientY - r.top
+        const wadah = node.type === 'frame' || node.type === 'group'
+        const pos: 'atas' | 'bawah' | 'dalam' = wadah
+          ? (y < r.height * 0.28 ? 'atas' : y > r.height * 0.72 ? 'bawah' : 'dalam')
+          : (y < r.height * 0.5 ? 'atas' : 'bawah')
+        onSeretAtas(node.id, pos)
+      }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onJatuh(node.id) }}
       onDragEnd={onSeretSelesai}
       style={{
         paddingLeft: 8 + depth * 12,
         background:
-          atasId === node.id && seretId !== node.id
+          atasInfo?.id === node.id && atasInfo.pos === 'dalam' && seretId !== node.id
             ? 'var(--accent-soft)'
             : terpilih ? 'var(--accent-soft)' : 'transparent',
         boxShadow:
-          atasId === node.id && seretId !== node.id ? 'inset 0 0 0 1px var(--accent)' : undefined,
+          atasInfo?.id === node.id && seretId !== node.id
+            ? atasInfo.pos === 'dalam'
+              ? 'inset 0 0 0 1px var(--accent)'
+              : atasInfo.pos === 'atas'
+                ? 'inset 0 2px 0 0 var(--accent)'
+                : 'inset 0 -2px 0 0 var(--accent)'
+            : undefined,
         color: node.visible ? 'var(--text-0)' : 'var(--text-2)',
         fontSize: 12,
         cursor: 'grab',
@@ -223,17 +238,32 @@ export function LayersPanel({
   // menjadikannya ANAK; ke layer biasa → pindah ke level yang sama; ke area
   // kosong panel → keluar ke root.
   const [seret, setSeret] = useState<string | null>(null)
-  const [atas, setAtas] = useState<string | null>(null)
+  const [atas, setAtas] = useState<{ id: string; pos: 'atas' | 'bawah' | 'dalam' } | null>(null)
   const onSeretSelesai = () => { setSeret(null); setAtas(null) }
   const onJatuh = (targetId: string) => {
     const dragId = seret
+    const info = atas
     onSeretSelesai()
     if (!dragId || dragId === targetId) return
     const target = store.getNode(targetId)
     if (!target) return
-    const indukBaru =
-      target.type === 'frame' || target.type === 'group' ? targetId : (target.parent || ROOT)
-    try { reparent(doc, dragId, indukBaru) } catch { /* siklus — abaikan */ }
+    const pos = info?.id === targetId ? info.pos : 'bawah'
+    // Tengah baris wadah = MASUK ke frame/grup.
+    if (pos === 'dalam' && (target.type === 'frame' || target.type === 'group')) {
+      try { reparent(doc, dragId, targetId) } catch { /* siklus — abaikan */ }
+      return
+    }
+    // Atas/bawah = SUSUN-ULANG: sisip sebelum/sesudah target di induk target.
+    const parent = target.parent ?? ROOT
+    if (parent !== ROOT && isDescendant(readAllNodes(doc), parent, dragId)) return
+    const saudara = childrenOf(doc, parent).filter((n: any) => n.id !== dragId)
+    const i = saudara.findIndex((n: any) => n.id === targetId)
+    if (i < 0) return
+    const orderBaru =
+      pos === 'atas'
+        ? keyBetween(saudara[i].order, saudara[i + 1]?.order ?? null)
+        : keyBetween(saudara[i - 1]?.order ?? null, saudara[i].order)
+    try { updateNode(doc, dragId, { parent, order: orderBaru }) } catch { /* abaikan */ }
   }
 
   function pohon(induk: string, depth: number): React.ReactNode[] {
@@ -256,11 +286,11 @@ export function LayersPanel({
           terTutup={terTutup}
           onToggle={() => toggleTutup(n.id)}
           onSeretMulai={setSeret}
-          onSeretAtas={setAtas}
+          onSeretAtas={(id, pos) => setAtas({ id, pos })}
           onJatuh={onJatuh}
           onSeretSelesai={onSeretSelesai}
           seretId={seret}
-          atasId={atas}
+          atasInfo={atas}
         />,
         ...(ada && !terTutup ? pohon(n.id, depth + 1) : []),
       ]

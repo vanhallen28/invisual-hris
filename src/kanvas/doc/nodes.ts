@@ -1,7 +1,7 @@
 import * as Y from 'yjs'
 import { nodesMap } from './doc'
-import { keyAfter, sortByOrder } from './order'
-import { DEFAULTS, DEFAULT_NAME, type NodeInit, type SceneNode, type YNode } from './types'
+import { keyAfter } from './order'
+import { DEFAULTS, DEFAULT_NAME, ROOT, type NodeInit, type SceneNode, type YNode } from './types'
 
 function lastOrderIn(doc: Y.Doc, parent: string): string | null {
   const saudara = readAllNodes(doc).filter((n) => n.parent === parent)
@@ -40,12 +40,44 @@ export function readNode(doc: Y.Doc, id: string): SceneNode | null {
   return { ...(node.toJSON() as Omit<SceneNode, 'id'>), id }
 }
 
+/**
+ * Urutan HIERARKIS untuk render & hit-test: induk lalu anak-anaknya, sehingga
+ * ANAK selalu "di atas" induknya. Saudara diurutkan berdasarkan order key.
+ * Penting agar objek di dalam Frame bisa diklik/dipilih (tak tertutup frame)
+ * dan frame tak menutupi isinya.
+ */
+function sortHierarki(nodes: SceneNode[]): SceneNode[] {
+  const anak = new Map<string, SceneNode[]>()
+  for (const n of nodes) {
+    const p = n.parent ?? ROOT
+    if (!anak.has(p)) anak.set(p, [])
+    anak.get(p)!.push(n)
+  }
+  for (const arr of anak.values()) {
+    arr.sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0))
+  }
+  const keluar: SceneNode[] = []
+  const dilihat = new Set<string>()
+  const telusuri = (p: string) => {
+    for (const n of anak.get(p) ?? []) {
+      if (dilihat.has(n.id)) continue
+      dilihat.add(n.id)
+      keluar.push(n)
+      telusuri(n.id)
+    }
+  }
+  telusuri(ROOT)
+  // Node yatim (induknya tak ada) tetap disertakan di akhir agar tak hilang.
+  for (const n of nodes) if (!dilihat.has(n.id)) keluar.push(n)
+  return keluar
+}
+
 export function readAllNodes(doc: Y.Doc): SceneNode[] {
   const keluar: SceneNode[] = []
   nodesMap(doc).forEach((node, id) => {
     keluar.push({ ...(node.toJSON() as Omit<SceneNode, 'id'>), id })
   })
-  return sortByOrder(keluar)
+  return sortHierarki(keluar)
 }
 
 export function updateNode(doc: Y.Doc, id: string, patch: Partial<SceneNode>): void {

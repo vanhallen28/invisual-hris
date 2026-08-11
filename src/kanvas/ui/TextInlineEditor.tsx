@@ -53,12 +53,21 @@ export function TextInlineEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc, id])
 
+  // Tinggi textarea mengikuti isinya (stabil, tak ikut menyusut/meloncat karena
+  // resize otomatis node). Ukuran akhir node disesuaikan saat editor ditutup.
+  useEffect(() => {
+    const t = ref.current
+    if (!t) return
+    t.style.height = 'auto'
+    t.style.height = t.scrollHeight + 'px'
+  }, [draf])
+
   if (!node) return null
 
   const zoom = viewport.zoom
   const tl = worldToScreen(viewport, node.x, node.y)
   const fs = (node.fontSize && node.fontSize > 0 ? node.fontSize : 16) * zoom
-  const w = Math.max(24, node.w * zoom)
+  const w = Math.max(120, node.w * zoom)
   const h = Math.max(fs, node.h * zoom)
   const rot = node.rotation ? `rotate(${node.rotation}deg)` : undefined
 
@@ -66,7 +75,7 @@ export function TextInlineEditor({
     <textarea
       ref={ref}
       value={draf}
-      onChange={(e) => { setDraf(e.target.value); updateNode(doc, id, { text: e.target.value }) }}
+      onChange={(e) => setDraf(e.target.value)}
       onBlur={onSelesai}
       onKeyDown={(e) => {
         e.stopPropagation() // jangan picu pintasan kanvas (hapus, ganti alat)
