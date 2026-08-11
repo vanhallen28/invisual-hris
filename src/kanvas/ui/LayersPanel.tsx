@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type * as Y from 'yjs'
 import { useNode, useNodeIds } from '@/kanvas/bind/hooks'
 import type { DocStore } from '@/kanvas/bind/store'
-import { childrenOf, reparent, isDescendant } from '@/kanvas/doc/hierarchy'
+import { childrenOf, reparent, keturunanDari } from '@/kanvas/doc/hierarchy'
 import { readAllNodes, updateNode } from '@/kanvas/doc/nodes'
 import { keyBetween } from '@/kanvas/doc/order'
 import { ROOT, DEFAULT_NAME, type SceneNode } from '@/kanvas/doc/types'
@@ -255,7 +255,7 @@ export function LayersPanel({
     }
     // Atas/bawah = SUSUN-ULANG: sisip sebelum/sesudah target di induk target.
     const parent = target.parent ?? ROOT
-    if (parent !== ROOT && isDescendant(readAllNodes(doc), parent, dragId)) return
+    if (parent !== ROOT && keturunanDari(doc, [dragId]).includes(parent)) return
     const saudara = childrenOf(doc, parent).filter((n: any) => n.id !== dragId)
     const i = saudara.findIndex((n: any) => n.id === targetId)
     if (i < 0) return
