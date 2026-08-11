@@ -61,6 +61,7 @@ export default function AdminDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   
   const [activeModal, setActiveModal] = useState<string | null>(null);
+  const [bukaAlasan, setBukaAlasan] = useState<string | number | null>(null); // baris keterangan yang terbuka
 
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [broadcastMessage, setBroadcastMessage] = useState("");
@@ -793,23 +794,35 @@ export default function AdminDashboardPage() {
               )}
               {activeModal === "absen" && (
                 <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
-                  {approvedLeaves.map((leave, i) => (
-                    <div key={leave.id || `lv-${i}`} className="flex flex-col p-3 bg-input rounded-lg border border-white/5 border-l-2 border-l-red-500">
-                      <div className="flex justify-between items-center"><p className="font-bold text-sm text-white">{leave.nama}</p><span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded font-bold uppercase">{leave.jenis}</span></div>
-                      <p className="text-[10px] text-gray-500 mt-1">{leave.tanggal}</p>
-                    </div>
-                  ))}
+                  {approvedLeaves.length > 0 && <p className="text-[10px] text-gray-500 mb-1">Klik nama untuk melihat keterangan.</p>}
+                  {approvedLeaves.map((leave, i) => {
+                    const kunci = leave.id || `lv-${i}`;
+                    const buka = bukaAlasan === kunci;
+                    return (
+                      <div key={kunci} onClick={() => setBukaAlasan(buka ? null : kunci)} className="flex flex-col p-3 bg-input rounded-lg border border-white/5 border-l-2 border-l-red-500 cursor-pointer hover:bg-white/5 transition-colors">
+                        <div className="flex justify-between items-center"><p className="font-bold text-sm text-white">{leave.nama}</p><span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded font-bold uppercase">{leave.jenis}</span></div>
+                        <p className="text-[10px] text-gray-500 mt-1">{leave.tanggal}</p>
+                        {buka && <p className="text-[11px] text-gray-300 mt-2 pt-2 border-t border-white/10 italic whitespace-pre-wrap break-words">{leave.alasan ? `"${leave.alasan}"` : "Tidak ada keterangan."}</p>}
+                      </div>
+                    );
+                  })}
                   {approvedLeaves.length === 0 && <p className="text-sm text-gray-500 text-center py-4">Tidak ada cuti/sakit.</p>}
                 </div>
               )}
               {activeModal === "remote" && (
                 <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
-                  {remoteToday.map((leave, i) => (
-                    <div key={leave.id || `rm-${i}`} className="flex flex-col p-3 bg-input rounded-lg border border-white/5 border-l-2 border-l-primer">
-                      <div className="flex justify-between items-center"><p className="font-bold text-sm text-white">{leave.nama}</p><span className="text-[10px] bg-primer/15 text-tint-redup px-2 py-1 rounded font-bold uppercase">{leave.jenis}</span></div>
-                      <p className="text-[10px] text-gray-500 mt-1">{leave.tanggal}</p>
-                    </div>
-                  ))}
+                  {remoteToday.length > 0 && <p className="text-[10px] text-gray-500 mb-1">Klik nama untuk melihat keterangan.</p>}
+                  {remoteToday.map((leave, i) => {
+                    const kunci = leave.id || `rm-${i}`;
+                    const buka = bukaAlasan === kunci;
+                    return (
+                      <div key={kunci} onClick={() => setBukaAlasan(buka ? null : kunci)} className="flex flex-col p-3 bg-input rounded-lg border border-white/5 border-l-2 border-l-primer cursor-pointer hover:bg-white/5 transition-colors">
+                        <div className="flex justify-between items-center"><p className="font-bold text-sm text-white">{leave.nama}</p><span className="text-[10px] bg-primer/15 text-tint-redup px-2 py-1 rounded font-bold uppercase">{leave.jenis}</span></div>
+                        <p className="text-[10px] text-gray-500 mt-1">{leave.tanggal}</p>
+                        {buka && <p className="text-[11px] text-gray-300 mt-2 pt-2 border-t border-white/10 italic whitespace-pre-wrap break-words">{leave.alasan ? `"${leave.alasan}"` : "Tidak ada keterangan."}</p>}
+                      </div>
+                    );
+                  })}
                   {remoteToday.length === 0 && <p className="text-sm text-gray-500 text-center py-4">Tidak ada WFH/WFC hari ini.</p>}
                 </div>
               )}
