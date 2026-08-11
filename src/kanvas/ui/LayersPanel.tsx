@@ -4,13 +4,13 @@ import { useState } from 'react'
 import type * as Y from 'yjs'
 import { useNode, useNodeIds } from '@/kanvas/bind/hooks'
 import type { DocStore } from '@/kanvas/bind/store'
-import { childrenOf } from '@/kanvas/doc/hierarchy'
+import { childrenOf, reparent } from '@/kanvas/doc/hierarchy'
 import { readAllNodes, updateNode } from '@/kanvas/doc/nodes'
 import { keyBetween } from '@/kanvas/doc/order'
 import { ROOT, DEFAULT_NAME, type SceneNode } from '@/kanvas/doc/types'
 import {
   Frame, Square, Circle, Minus, MoveUpRight, Triangle, Star, Type,
-  Image as ImageIcon, MessageSquare, PenLine, PenTool, Spline, Group as GroupIcon,
+  Image as ImageIcon, MessageSquare, PenLine, PenTool, Spline, Group as GroupIcon, ChevronRight,
 } from 'lucide-react'
 
 type IkonKomp = React.ComponentType<{ size?: number }>
@@ -40,7 +40,8 @@ function geserUrutan(doc: Y.Doc, node: SceneNode, arah: 1 | -1) {
 }
 
 function Baris({
-  doc, store, id, depth, terpilih, onSelect,
+  doc, store, id, depth, terpilih, onSelect, punyaAnak, terTutup, onToggle,
+  onSeretMulai, onSeretAtas, onJatuh, onSeretSelesai, seretId, atasId,
 }: {
   doc: Y.Doc
   store: DocStore
@@ -48,6 +49,16 @@ function Baris({
   depth: number
   terpilih: boolean
   onSelect: (id: string, shift: boolean) => void
+  /** Apakah node ini punya anak (wadah) — untuk menampilkan panah lipat. */
+  punyaAnak: boolean
+  terTutup: boolean
+  onToggle: () => void
+  onSeretMulai: (id: string) => void
+  onSeretAtas: (id: string) => void
+  onJatuh: (id: string) => void
+  onSeretSelesai: () => void
+  seretId: string | null
+  atasId: string | null
 }) {
   // Berlangganan per-node, bukan menerima node sebagai props.
   // Daftar id tidak disiarkan saat properti berubah, jadi baris
@@ -100,13 +111,38 @@ function Baris({
   return (
     <div
       className="flex items-center gap-1 px-2 py-1"
+      draggable
+      onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; onSeretMulai(node.id) }}
+      onDragOver={(e) => { e.preventDefault(); onSeretAtas(node.id) }}
+      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onJatuh(node.id) }}
+      onDragEnd={onSeretSelesai}
       style={{
         paddingLeft: 8 + depth * 12,
-        background: terpilih ? 'var(--accent-soft)' : 'transparent',
+        background:
+          atasId === node.id && seretId !== node.id
+            ? 'var(--accent-soft)'
+            : terpilih ? 'var(--accent-soft)' : 'transparent',
+        boxShadow:
+          atasId === node.id && seretId !== node.id ? 'inset 0 0 0 1px var(--accent)' : undefined,
         color: node.visible ? 'var(--text-0)' : 'var(--text-2)',
         fontSize: 12,
+        cursor: 'grab',
       }}
     >
+      {punyaAnak ? (
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggle() }}
+          title={terTutup ? 'Buka' : 'Tutup'}
+          style={{ display: 'flex', flexShrink: 0, color: 'var(--text-2)' }}
+        >
+          <ChevronRight
+            size={12}
+            style={{ transform: terTutup ? 'none' : 'rotate(90deg)', transition: 'transform .1s' }}
+          />
+        </button>
+      ) : (
+        <span style={{ width: 12, flexShrink: 0 }} />
+      )}
       <span style={{ color: 'var(--text-2)', display: 'flex', flexShrink: 0 }}>
         <Ikon size={13} />
       </span>
@@ -173,27 +209,75 @@ export function LayersPanel({
   const semua = page ? semuaNode.filter((n) => (n.page || pageAwal) === page) : semuaNode
   const anakDari = (induk: string) => semua.filter((n) => n.parent === induk)
 
+  // Wadah (frame/grup) yang sedang dilipat di panel — anaknya disembunyikan.
+  const [tutup, setTutup] = useState<Set<string>>(() => new Set())
+  const toggleTutup = (id: string) =>
+    setTutup((lama) => {
+      const baru = new Set(lama)
+      if (baru.has(id)) baru.delete(id)
+      else baru.add(id)
+      return baru
+    })
+
+  // Seret-untuk-menyusun: tarik satu layer ke atas layer Frame/Grup untuk
+  // menjadikannya ANAK; ke layer biasa → pindah ke level yang sama; ke area
+  // kosong panel → keluar ke root.
+  const [seret, setSeret] = useState<string | null>(null)
+  const [atas, setAtas] = useState<string | null>(null)
+  const onSeretSelesai = () => { setSeret(null); setAtas(null) }
+  const onJatuh = (targetId: string) => {
+    const dragId = seret
+    onSeretSelesai()
+    if (!dragId || dragId === targetId) return
+    const target = store.getNode(targetId)
+    if (!target) return
+    const indukBaru =
+      target.type === 'frame' || target.type === 'group' ? targetId : (target.parent || ROOT)
+    try { reparent(doc, dragId, indukBaru) } catch { /* siklus — abaikan */ }
+  }
+
   function pohon(induk: string, depth: number): React.ReactNode[] {
     // Dibalik supaya yang paling atas di kanvas tampil paling atas
     // di panel, sesuai kebiasaan editor grafis.
-    return [...anakDari(induk)].reverse().flatMap((n) => [
-      <Baris
-        key={n.id}
-        doc={doc}
-        store={store}
-        id={n.id}
-        depth={depth}
-        terpilih={selection.includes(n.id)}
-        onSelect={onSelect}
-      />,
-      ...pohon(n.id, depth + 1),
-    ])
+    return [...anakDari(induk)].reverse().flatMap((n) => {
+      const anak = anakDari(n.id)
+      const ada = anak.length > 0
+      const terTutup = tutup.has(n.id)
+      return [
+        <Baris
+          key={n.id}
+          doc={doc}
+          store={store}
+          id={n.id}
+          depth={depth}
+          terpilih={selection.includes(n.id)}
+          onSelect={onSelect}
+          punyaAnak={ada}
+          terTutup={terTutup}
+          onToggle={() => toggleTutup(n.id)}
+          onSeretMulai={setSeret}
+          onSeretAtas={setAtas}
+          onJatuh={onJatuh}
+          onSeretSelesai={onSeretSelesai}
+          seretId={seret}
+          atasId={atas}
+        />,
+        ...(ada && !terTutup ? pohon(n.id, depth + 1) : []),
+      ]
+    })
   }
 
   return (
     <aside
       style={{ background: 'var(--surface-1)' }}
       className="flex-1 min-h-0 overflow-y-auto"
+      onDragOver={(e) => { if (seret) e.preventDefault() }}
+      onDrop={(e) => {
+        e.preventDefault()
+        const dragId = seret
+        onSeretSelesai()
+        if (dragId) { try { reparent(doc, dragId, ROOT) } catch { /* abaikan */ } }
+      }}
     >
       <h3
         style={{

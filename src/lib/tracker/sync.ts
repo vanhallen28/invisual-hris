@@ -169,3 +169,11 @@ export async function dbReindexItems(supabase: SB, items: { id: string; position
     if (error) throw new Error(error.message);
   }
 }
+
+// Pindahkan sekumpulan item ke grup lain dalam SATU query (posisi tak diubah).
+// Dipakai agar subitem/brief ikut pindah grup mengikuti induknya.
+export async function dbMoveItemsGroup(supabase: SB, ids: string[], groupId: string) {
+  if (!ids.length) return;
+  const { error } = await supabase.from('items').update({ group_id: groupId }).in('id', ids);
+  if (error) throw new Error(error.message);
+}
