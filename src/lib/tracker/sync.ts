@@ -40,7 +40,15 @@ export async function dbSetCellValue(supabase: SB, itemId: string, columnId: str
     { item_id: itemId, column_id: columnId, value: val },
     { onConflict: 'item_id,column_id' }
   );
-  if (up.error) throw new Error(up.error.message);
+  if (up.error) {
+    // Fallback bila UNIQUE (item_id, column_id) belum ada di DB sehingga upsert
+    // onConflict ditolak: hapus baris lama lalu sisipkan. Nilai tetap tersimpan
+    // walau constraint belum dipasang. (Jalankan perbaiki-nilai-sel.sql agar
+    // kembali memakai upsert yang lebih efisien.)
+    await supabase.from('item_values').delete().eq('item_id', itemId).eq('column_id', columnId);
+    const ins = await supabase.from('item_values').insert({ item_id: itemId, column_id: columnId, value: val });
+    if (ins.error) throw new Error(ins.error.message);
+  }
 }
 
 // id uuid untuk entitas baru (PK Supabase). Fallback hanya untuk browser sangat lama.

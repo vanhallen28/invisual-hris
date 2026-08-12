@@ -12,33 +12,45 @@ export type FullState = {
   currentUserRole: string;
 };
 
+/**
+ * Ambil SEMUA baris sebuah tabel dengan paginasi. Supabase membatasi
+ * select('*') ke maksimum 1000 baris per permintaan; tanpa ini, data di atas
+ * 1000 baris (mis. item_values yang banyak) tak ikut termuat sehingga sel
+ * tampak kosong saat reload.
+ */
+async function ambilSemua(supabase: SB, tabel: string): Promise<any[]> {
+  const semua: any[] = [];
+  const ukuran = 1000;
+  let dari = 0;
+  // Batas aman agar tak pernah tak-berujung (maks ~500rb baris).
+  for (let putaran = 0; putaran < 500; putaran++) {
+    const { data, error } = await supabase.from(tabel).select('*').range(dari, dari + ukuran - 1);
+    if (error) throw new Error(error.message);
+    const batch = data || [];
+    semua.push(...batch);
+    if (batch.length < ukuran) break;
+    dari += ukuran;
+  }
+  return semua;
+}
+
 export async function loadFullState(supabase: SB): Promise<FullState> {
   const ures = await supabase.auth.getUser();
   const currentUserId = ures?.data?.user?.id || null;
   const currentEmail = String(ures?.data?.user?.email || '').toLowerCase();
   const isAdminEmail = currentEmail.endsWith('@invisual.studio');
 
-  const [nodesR, groupsR, colsR, optsR, itemsR, valsR, asgR, membersR] = await Promise.all([
-    supabase.from('tree_nodes').select('*'),
-    supabase.from('groups').select('*'),
-    supabase.from('columns').select('*'),
-    supabase.from('column_options').select('*'),
-    supabase.from('items').select('*'),
-    supabase.from('item_values').select('*'),
-    supabase.from('item_assignees').select('*'),
-    supabase.from('members').select('*'),
+  // Semua tabel diambil dengan paginasi agar tak terpotong batas 1000 baris.
+  const [nodes, groups, columns, options, items, values, assignees, membersRows] = await Promise.all([
+    ambilSemua(supabase, 'tree_nodes'),
+    ambilSemua(supabase, 'groups'),
+    ambilSemua(supabase, 'columns'),
+    ambilSemua(supabase, 'column_options'),
+    ambilSemua(supabase, 'items'),
+    ambilSemua(supabase, 'item_values'),
+    ambilSemua(supabase, 'item_assignees'),
+    ambilSemua(supabase, 'members'),
   ]);
-  const checks = [nodesR, groupsR, colsR, optsR, itemsR, valsR, asgR, membersR];
-  for (const r of checks) { if (r.error) throw new Error(r.error.message); }
-
-  const nodes = nodesR.data || [];
-  const groups = groupsR.data || [];
-  const columns = colsR.data || [];
-  const options = optsR.data || [];
-  const items = itemsR.data || [];
-  const values = valsR.data || [];
-  const assignees = asgR.data || [];
-  const membersRows = membersR.data || [];
 
   const num = (x: any) => (typeof x === 'number' ? x : 0);
   const byPos = (a: any, b: any) => num(a.position) - num(b.position);
