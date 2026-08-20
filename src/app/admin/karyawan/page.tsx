@@ -43,7 +43,8 @@ export default function AdminKaryawanPage() {
     noRekening: "", isAktif: true, role: "member",
     institusiMagang: "", tanggalSelesaiMagang: "",
     boardAccess: [] as string[], contentHub: true, corporateAccess: false,
-    jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: "", tanggalLahir: "", accBrief: false
+    jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: "", tanggalLahir: "", accBrief: false,
+    tanggalBerakhirKontrak: ""
   });
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); // user_id -> role Tracker
   const [allBoards, setAllBoards] = useState<string[]>([]); // nama board Daily Task untuk pembatasan akses
@@ -136,7 +137,8 @@ export default function AdminKaryawanPage() {
       sisaCuti: 12, gajiPokok: "", namaBank: "", noRekening: "", isAktif: true, role: "member",
       institusiMagang: "", tanggalSelesaiMagang: "",
       boardAccess: [] as string[], contentHub: true, corporateAccess: false,
-      jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: "", tanggalLahir: "", accBrief: false
+      jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: "", tanggalLahir: "", accBrief: false,
+      tanggalBerakhirKontrak: ""
     });
     setShowModal(true);
   };
@@ -168,7 +170,8 @@ export default function AdminKaryawanPage() {
       tanggalSelesaiMagang: emp.tanggalSelesaiMagang || "",
       boardAccess: [], contentHub: true, corporateAccess: false,
       jamMasuk: emp.jamMasuk || "09:00", jamKeluar: emp.jamKeluar || "17:00", fleksibel: emp.fleksibel === true,
-      avatarUrl: emp.avatarUrl || "", tanggalLahir: emp.tanggalLahir || "", accBrief: false
+      avatarUrl: emp.avatarUrl || "", tanggalLahir: emp.tanggalLahir || "", accBrief: false,
+      tanggalBerakhirKontrak: emp.tanggalBerakhirKontrak || ""
     });
     setShowModal(true);
   };
@@ -219,6 +222,8 @@ export default function AdminKaryawanPage() {
       // Khusus magang — dikosongkan otomatis kalau status bukan Internship
       institusiMagang: formData.status === "Internship" ? (formData.institusiMagang || null) : null,
       tanggalSelesaiMagang: formData.status === "Internship" ? (formData.tanggalSelesaiMagang || null) : null,
+      // Khusus PKWT — tanggal berakhir kontrak (untuk pengingat H-7).
+      tanggalBerakhirKontrak: formData.status === "PKWT (Kontrak)" ? (formData.tanggalBerakhirKontrak || null) : null,
       jamMasuk: formData.jamMasuk || "09:00",
       jamKeluar: formData.jamKeluar || "17:00",
       fleksibel: formData.fleksibel === true,
@@ -288,6 +293,24 @@ export default function AdminKaryawanPage() {
     return matchQuery && emp.status === selectedStatusFilter;
   });
 
+  // Pengingat kontrak: karyawan PKWT (aktif) yang kontraknya berakhir dalam <= 7
+  // hari ke depan (termasuk hari ini). Dihitung dari SEMUA karyawan (bukan hasil
+  // filter) supaya pengingat tetap tampil apa pun filter/pencariannya.
+  const pengingatKontrak = (() => {
+    const kini = new Date(); kini.setHours(0, 0, 0, 0);
+    return employees
+      .filter((e) => e.status === "PKWT (Kontrak)" && e.tanggalBerakhirKontrak && e.isAktif !== false)
+      .map((e) => {
+        const [yy, mm, dd] = String(e.tanggalBerakhirKontrak).split("-").map(Number);
+        const akhir = new Date(yy, (mm || 1) - 1, dd || 1); // tengah malam LOKAL
+        const sisa = Math.round((akhir.getTime() - kini.getTime()) / 86400000);
+        return { emp: e, sisa };
+      })
+      .filter((x) => x.sisa >= 0 && x.sisa <= 7)
+      .sort((a, b) => a.sisa - b.sisa);
+  })();
+  const idKontrakSegera = new Set(pengingatKontrak.map((x) => x.emp.idKaryawan));
+
   // =========================================================================
   // EFEK TRANSISI HALAMAN MENGGUNAKAN LOGO BERPUTAR LENGKAP (Layar Penuh)
   // =========================================================================
@@ -337,6 +360,23 @@ export default function AdminKaryawanPage() {
       </div>
 
       {/* FILTER & PENCARIAN */}
+      {pengingatKontrak.length > 0 && (
+        <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/[0.07]">
+          <div className="flex items-center gap-2 mb-2.5">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-amber-400 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+            <p className="text-sm font-bold text-amber-300">Pengingat Kontrak — {pengingatKontrak.length} karyawan PKWT akan habis masa kontrak dalam 7 hari</p>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {pengingatKontrak.map(({ emp, sisa }) => (
+              <div key={emp.idKaryawan} className="flex items-center justify-between gap-3 text-xs bg-black/20 rounded-lg px-3 py-2">
+                <span className="font-bold text-white truncate">{emp.nama} <span className="text-gray-500 font-normal">· {emp.jabatan || "-"}</span></span>
+                <span className="text-amber-300 font-mono shrink-0">{sisa === 0 ? "Berakhir HARI INI" : `${sisa} hari lagi`} ({emp.tanggalBerakhirKontrak})</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="w-full md:flex-1 relative">
           <input type="text" placeholder="Cari nama atau ID karyawan..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-latar border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-white/30 transition-colors shadow-sm" />
@@ -370,7 +410,7 @@ export default function AdminKaryawanPage() {
               </thead>
               <tbody>
                 {filteredEmployees.map((emp, index) => (
-                  <tr key={emp.idKaryawan || `emp-${index}`} className="group">
+                  <tr key={emp.idKaryawan || `emp-${index}`} className={`group ${idKontrakSegera.has(emp.idKaryawan) ? "bg-amber-500/[0.05]" : ""}`}>
                     
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
@@ -682,6 +722,13 @@ export default function AdminKaryawanPage() {
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Tanggal Resmi Bergabung</label>
                     <input type="date" value={formData.tanggalBergabung} onChange={(e) => setFormData({...formData, tanggalBergabung: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none [color-scheme:dark]" />
                   </div>
+                  {formData.status === "PKWT (Kontrak)" && (
+                    <div className="md:col-span-3">
+                      <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Tanggal Berakhir Kontrak (PKWT)</label>
+                      <input type="date" value={formData.tanggalBerakhirKontrak} onChange={(e) => setFormData({...formData, tanggalBerakhirKontrak: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none [color-scheme:dark]" />
+                      <p className="text-[10px] text-gray-500 mt-1">Dipakai untuk pengingat H-7 sebelum kontrak berakhir.</p>
+                    </div>
+                  )}
 
                   <div className="md:col-span-3 grid grid-cols-2 gap-4 bg-primer/[0.04] border border-primer/20 rounded-xl p-4">
                     <div className="col-span-2 -mb-1">
