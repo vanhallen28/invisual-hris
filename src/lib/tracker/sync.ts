@@ -142,8 +142,14 @@ export async function dbRenameTreeNode(supabase: SB, nodeId: string, name: strin
 
 // Hapus node pohon (cascade: anak node + groups/columns/items ikut terhapus)
 export async function dbDeleteTreeNode(supabase: SB, nodeId: string) {
-  const { error } = await supabase.from('tree_nodes').delete().eq('id', nodeId);
+  // .select() mengembalikan baris yang BENAR-BENAR terhapus. Kalau RLS/izin
+  // memblokir DELETE, Supabase memberi sukses tapi 0 baris — tanpa cek ini,
+  // penghapusan gagal DIAM-DIAM dan node muncul lagi saat reload.
+  const { data, error } = await supabase.from('tree_nodes').delete().eq('id', nodeId).select('id');
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) {
+    throw new Error('Tidak ada baris terhapus di server (0 baris) — kemungkinan diblokir aturan keamanan (RLS)/izin tabel tree_nodes, atau foreign key menahannya.');
+  }
 }
 
 // Rename label kolom
