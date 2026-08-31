@@ -490,6 +490,23 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       .catch((e:any) => pushToast('Gagal tambah sub-item di cloud: ' + (e?.message || e)));
   };
   const toggleGroupSelection = (group: any) => { const allIds = group.items.map((i:any) => i.id), isAll = allIds.length > 0 && allIds.every((id:string) => selectedItems.includes(id)); if (isAll) setSelectedItems((p:any) => p.filter((id:string) => !allIds.includes(id))); else setSelectedItems((p:any) => [...p, ...allIds.filter((id:string) => !p.includes(id))]); };
+  // Lipat/buka SEMUA subitem di sebuah grup sekaligus (dipakai chevron header
+  // ITEM NAME). Kalau ada yang terbuka → tutup semua; kalau semua tertutup → buka semua.
+  const toggleAllSubItems = (group: any) => {
+    const items = group.items || [];
+    if (!items.length) return;
+    const nilai = !items.some((i:any) => i.isSubItemsOpen);
+    setBoardsDataMap((prev:any) => {
+      if (!activeBoardId || !prev[activeBoardId]) return prev;
+      const bd = prev[activeBoardId];
+      const groups = bd.groups.map((g:any) => g.id !== group.id ? g : { ...g, items: (g.items || []).map((i:any) => ({ ...i, isSubItemsOpen: nilai })) });
+      return { ...prev, [activeBoardId]: { ...bd, groups } };
+    });
+    if (cloudOn()) {
+      (async () => { for (const it of items) await dbSetItemMeta(supabase, it.id, { is_subitems_open: nilai }); })()
+        .catch((e:any) => pushToast('Gagal simpan lipat semua: ' + (e?.message || e)));
+    }
+  };
 
   const handleDeleteTeamMember = (memberId: string) => {
     const snap = teamMembers;
@@ -1043,7 +1060,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     setIsHideMenuOpen, confirmModal, setConfirmModal, draggedItem, setDraggedItem, dragOverItem, setDragOverItem,
     dragOverColumn, setDragOverColumn, detailItem, setDetailItem,
     triggerConfirm, handleUpdateItem, handleUpdateSubItem, handleDeleteItem, handleDeleteSubItem,
-    handleAddItem, handleAddSubItem, toggleGroupSelection,
+    handleAddItem, handleAddSubItem, toggleGroupSelection, toggleAllSubItems,
     handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, addYear, addMonth, addBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, accountTargets, setAccountTarget, pushToast, HEX_COLORS, LABEL_COLORS,
     authUser, doLogout, isManager, currentUserRole, canContentHub, canAcc, refreshData, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase
   };

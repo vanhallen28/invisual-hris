@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, ChevronDown, ChevronUp, EyeOff, X, Trash2, Check, Filter, Inbox, GripVertical, Copy } from 'lucide-react';
+import { Plus, Search, ChevronDown, EyeOff, X, Trash2, Check, Filter, Inbox, GripVertical, Copy } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import InlineEdit from './InlineEdit';
 import ColumnCenterMenu from './ColumnCenter';
@@ -16,6 +16,9 @@ export default function MainTable() {
   } = useDashboard();
 
   const [addColMenuTarget, setAddColMenuTarget] = useState<{ type: 'main'|'sub', id: string } | null>(null);
+  // Grup yang baris ITEM-nya sedang dilipat (chevron di header ITEM NAME).
+  const [rowsTutup, setRowsTutup] = useState<Set<string>>(() => new Set());
+  const toggleRows = (gid: string) => setRowsTutup((s) => { const n = new Set(s); if (n.has(gid)) n.delete(gid); else n.add(gid); return n; });
   const [filterPerson, setFilterPerson] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [filterMenu, setFilterMenu] = useState<'person' | 'status' | null>(null);
@@ -227,9 +230,8 @@ export default function MainTable() {
                        <div className="flex-1 min-w-0">
                           <InlineEdit value={group.itemLabel || 'Item Name'} onSave={(val: string) => updateGroup(group.id, { itemLabel: val })} textClassName="text-gray-400 uppercase text-[11px] font-bold truncate hover:opacity-80" className="text-[11px] font-bold uppercase" />
                        </div>
-                       <button onClick={()=>setSortConfig((s:any)=>({key:'name', direction: s?.direction==='asc'?'desc':'asc'}))} className="text-gray-500 group-hover/namecol:text-blue-400 shrink-0">
-                         {sortConfig?.key==='name' && (sortConfig.direction==='asc'?<ChevronDown size={12}/>:<ChevronUp size={12}/>)}
-                         {sortConfig?.key!=='name' && <ChevronDown size={12} className="opacity-0 group-hover/namecol:opacity-100"/>}
+                       <button onClick={() => toggleRows(group.id)} title={rowsTutup.has(group.id) ? 'Tampilkan item' : 'Sembunyikan item'} className={`p-0.5 rounded shrink-0 transition-colors ${!rowsTutup.has(group.id) ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}>
+                         <ChevronDown size={14} className={`transition-transform ${!rowsTutup.has(group.id) ? '' : '-rotate-90'}`} />
                        </button>
                     </div>
 
@@ -275,6 +277,7 @@ export default function MainTable() {
                     </div>
                   )}
 
+                  {!rowsTutup.has(group.id) && (
                   <div className="flex flex-col relative z-20">
                     {filteredItems.map((item: any) => (
                       <TableRow 
@@ -286,6 +289,7 @@ export default function MainTable() {
                       />
                     ))}
                   </div>
+                  )}
 
                   <div className="grid items-center border-t border-white/10 bg-kartu h-[34px] rounded-b-md relative z-0" style={{ gridTemplateColumns }}>
                     <div className="absolute left-0 top-0 bottom-0 z-30 pointer-events-none rounded-bl-md" style={{ width: '6px', backgroundColor: group.color, clipPath: 'polygon(0 0, 100% 0, 50% 100%, 0 100%)' }} />

@@ -12,11 +12,30 @@ export default function TableCell({ type, item, group, col }: any) {
     openDropdown, setOpenDropdown, newLabelText, setNewLabelText, 
     newMemberName, setNewMemberName, tempTimeline, setTempTimeline, 
     triggerConfirm, handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, HEX_COLORS, LABEL_COLORS, openDocEditor,
-    handleUpdateItem, handleUpdateSubItem 
+    handleUpdateItem, handleUpdateSubItem, columns, subColumns 
   } = useDashboard();
 
   const [colorPickerFor, setColorPickerFor] = useState<string | null>(null);
   const [newLabelColor, setNewLabelColor] = useState<string>('');
+
+  // BERBAGI OPSI: dropdown/status dengan nama kolom SAMA di level item & subitem
+  // memakai opsi + warna yang sama (didefinisikan sekali, muncul identik di
+  // kedua level). Digabung berdasarkan nama kolom, dedup berdasarkan teks.
+  const opsiKolom = React.useMemo(() => {
+    const nama = String(col.label || '').trim().toLowerCase();
+    const semua = [...(columns || []), ...(subColumns || [])];
+    const keluar: any[] = [];
+    const ada = new Set<string>();
+    for (const c of semua) {
+      if (String(c.label || '').trim().toLowerCase() !== nama) continue;
+      for (const l of (labels[c.id] || [])) {
+        if (ada.has(l.text)) continue;
+        ada.add(l.text);
+        keluar.push(l);
+      }
+    }
+    return keluar.length ? keluar : (labels[col.id] || []);
+  }, [col.label, col.id, columns, subColumns, labels]);
 
   const isSub = type === 'sub';
   const actualItemId = isSub ? item.parentId : item.id;
@@ -28,7 +47,7 @@ export default function TableCell({ type, item, group, col }: any) {
   
   const activePopupPos = 'left-1/2 -translate-x-1/2'; 
 
-  const getLabelColor = (field: string, value: string) => { const match = labels[field]?.find((l: any) => l.text === value); return match ? `${match.color} text-white shadow-sm` : 'bg-white/5 text-gray-500 border border-white/10'; };
+  const getLabelColor = (_field: string, value: string) => { const match = opsiKolom.find((l: any) => l.text === value); return match ? `${match.color} text-white shadow-sm` : 'bg-white/5 text-gray-500 border border-white/10'; };
   const memberColor = (m: any) => {
     if (m?.color && String(m.color).startsWith('bg-')) return m.color;
     const s = String(m?.id || m?.name || '');
@@ -116,7 +135,7 @@ export default function TableCell({ type, item, group, col }: any) {
           <button onClick={() => { setOpenDropdown({ type, groupId: group.id, itemId: actualItemId, subItemId: actualSubItemId, field: col.id }); setNewLabelText(''); setNewLabelColor(LABEL_COLORS[0]); setColorPickerFor(null); }} className={`w-full h-full text-center text-[11px] font-semibold rounded-sm py-1 px-1 outline-none transition-colors truncate ${getLabelColor(col.id, item[col.id])}`}>{item[col.id] || '-'}</button>
         ) : (
           <div onClick={() => setOpenDropdown({ type, groupId: group.id, itemId: actualItemId, subItemId: actualSubItemId, field: col.id })} className="flex flex-wrap gap-1 items-center justify-center w-full h-full cursor-pointer hover:bg-white/5 p-1 rounded-sm overflow-hidden">
-            {item[col.id]?.length > 0 ? item[col.id].map((t: string) => <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-sm max-w-full truncate ${labels[col.id]?.find((l:any)=>l.text === t)?.color || 'bg-kartu-hover'}`}>{t}</span>) : <Tag size={12} className="text-gray-600"/>}
+            {item[col.id]?.length > 0 ? item[col.id].map((t: string) => <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold text-white shadow-sm max-w-full truncate ${opsiKolom.find((l:any)=>l.text === t)?.color || 'bg-kartu-hover'}`}>{t}</span>) : <Tag size={12} className="text-gray-600"/>}
           </div>
         )}
         {isDrop && (
@@ -126,7 +145,7 @@ export default function TableCell({ type, item, group, col }: any) {
                <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider px-2 py-1 mb-1">{col.label}</div>
                {!isMulti && <button onClick={() => { triggerUpdate(col.id, ''); setOpenDropdown(null); }} className="text-left text-xs px-3 py-2 hover:bg-kartu-hover rounded-lg text-gray-400 w-full mb-1 transition-colors shrink-0">- Reset</button>}
                <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5 pr-1 custom-scrollbar mb-1.5">
-                 {(labels[col.id] || []).map((l: any) => {
+                 {opsiKolom.map((l: any) => {
                    const hasMulti = isMulti && item[col.id]?.includes(l.text);
                    return (
                      <div key={l.id}>

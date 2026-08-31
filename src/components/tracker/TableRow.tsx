@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { GripVertical, CornerDownRight, Trash2, MessageSquare, Plus } from 'lucide-react';
+import { GripVertical, ChevronDown, Trash2, MessageSquare, Plus } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import InlineEdit from './InlineEdit';
 import TableCell from './TableCell';
@@ -54,7 +54,7 @@ export default function TableRow({ item, group, gridTemplateColumns, subGridTemp
         </div>
         
         <div className="px-3 py-1.5 flex items-center border-r border-white/10 min-w-0 group/cell justify-between gap-2 sticky left-[40px] z-[15] bg-kartu group-hover/row:bg-kartu">
-          <button onClick={() => handleUpdateItem(group.id, item.id, 'isSubItemsOpen', !item.isSubItemsOpen)} className={`p-0.5 rounded shrink-0 transition-colors ${item.isSubItemsOpen ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}><CornerDownRight size={13} /></button>
+          <button onClick={() => handleUpdateItem(group.id, item.id, 'isSubItemsOpen', !item.isSubItemsOpen)} title={item.isSubItemsOpen ? 'Sembunyikan subitem' : 'Tampilkan subitem'} className={`p-0.5 rounded shrink-0 transition-colors ${item.isSubItemsOpen ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}><ChevronDown size={14} className={`transition-transform ${item.isSubItemsOpen ? '' : '-rotate-90'}`} /></button>
           <div className="flex-1 min-w-0">
             <InlineEdit value={item.name} onSave={(newVal: string) => handleUpdateItem(group.id, item.id, 'name', newVal)} onEnter={addItemBelow} textClassName="font-medium text-gray-200 text-left truncate" />
           </div>
