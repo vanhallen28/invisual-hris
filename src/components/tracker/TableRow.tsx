@@ -97,7 +97,7 @@ export default function TableRow({ item, group, gridTemplateColumns, subGridTemp
           
           <div className={`grid items-center border border-white/10 bg-kartu text-[10px] font-bold text-gray-400 uppercase select-none rounded-t-md relative shadow-sm ${addColMenuTarget?.id === item.id ? 'z-40' : 'z-10'}`} style={{ gridTemplateColumns: subGridTemplateColumns }}>
             <div className="absolute left-[-22px] top-0 w-[22px] h-[50%] border-l-[2px] border-b-[2px] rounded-bl-[16px] z-0 opacity-50 pointer-events-none" style={{ borderColor: group.color }}></div>
-            <div className="px-2 py-2 flex justify-center border-r border-white/10 relative z-10"><input type="checkbox" className="rounded bg-latar border-white/10 text-blue-500 cursor-pointer w-3.5 h-3.5" /></div>
+            <div className="px-2 py-2 flex justify-center border-r border-white/10 relative z-10"><input type="checkbox" checked={(item.subItems || []).length > 0 && (item.subItems || []).every((s: any) => selectedItems.includes(s.id))} onChange={() => { const ids = (item.subItems || []).map((s: any) => s.id); const all = ids.length > 0 && ids.every((id: string) => selectedItems.includes(id)); setSelectedItems((p: any) => all ? p.filter((i: any) => !ids.includes(i)) : [...p, ...ids.filter((id: string) => !p.includes(id))]); }} className="rounded bg-latar border-white/10 text-blue-500 cursor-pointer w-3.5 h-3.5" /></div>
             <div className="px-3 py-2 border-r border-white/10 flex items-center min-w-0 relative z-10">
                <div className="flex-1 min-w-0"><InlineEdit value={group.subItemLabel || 'Subitem'} onSave={(val: string) => updateGroup(group.id, { subItemLabel: val })} textClassName="text-gray-400 uppercase text-[10px] font-bold truncate hover:opacity-80" className="text-[10px] font-bold uppercase" /></div>
             </div>
@@ -131,7 +131,7 @@ export default function TableRow({ item, group, gridTemplateColumns, subGridTemp
               return (
                 <div key={sub.id} className={`group/subrow dwt-row-in grid items-stretch hover:bg-kartu bg-kartu border-b border-white/10 text-xs relative ${isSubActive ? 'z-50' : 'z-10'}`} style={{ gridTemplateColumns: subGridTemplateColumns }}>
                   <div className="absolute left-[-22px] top-[-2px] w-[22px] h-[calc(50%+2px)] border-l-[2px] border-b-[2px] rounded-bl-[16px] z-0 opacity-50 pointer-events-none" style={{ borderColor: group.color }}></div>
-                  <div className="px-1 flex items-center justify-center border-r border-white/10 relative z-10"><input type="checkbox" className="rounded bg-latar border-white/10 text-blue-500 cursor-pointer w-3.5 h-3.5 mx-auto" /></div>
+                  <div className="px-1 flex items-center justify-center border-r border-white/10 relative z-10"><input type="checkbox" checked={selectedItems.includes(sub.id)} onChange={() => setSelectedItems((p: any) => p.includes(sub.id) ? p.filter((i: any) => i !== sub.id) : [...p, sub.id])} className="rounded bg-latar border-white/10 text-blue-500 cursor-pointer w-3.5 h-3.5 mx-auto" /></div>
                   <div className="px-3 py-1.5 flex items-center border-r border-white/10 min-w-0 justify-between relative z-10">
                     <div className="flex-1 min-w-0 pr-2">
                       <InlineEdit value={sub.name} onSave={(newVal: string) => handleUpdateSubItem(group.id, item.id, sub.id, 'name', newVal)} onEnter={() => addSubBelow(sub.id)} textClassName="font-medium text-gray-300 text-left truncate" />

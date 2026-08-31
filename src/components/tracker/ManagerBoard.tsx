@@ -15,14 +15,15 @@ import ViewTabs from '@/components/tracker/ViewTabs';
 import ContentStudio from '@/components/tracker/ContentStudio';
 import CalendarView from '@/components/tracker/CalendarView';
 import WorkloadView from '@/components/tracker/WorkloadView';
-import { LayoutGrid, Download, X, Copy, Trash2, Menu, ChevronLeft, Megaphone } from 'lucide-react';
+import { LayoutGrid, Download, X, Copy, Trash2, Menu, ChevronLeft, Megaphone, Tag } from 'lucide-react';
 
 // Konten board (breadcrumb + tombol kembali + view aktif + panel detail + toolbar massal).
 function BoardContent({ onMenuClick }: any) {
   const {
     activeView, activeViewId, activeBoardName, activeBoardId, activeBoardPath,
-    handleExportCSV, selectedItems, setSelectedItems, triggerConfirm, handleBulkDelete, handleBulkDuplicate, canContentHub,
+    handleExportCSV, selectedItems, setSelectedItems, triggerConfirm, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, columns, labels, canContentHub,
   }: any = useDashboard();
+  const [statusMenu, setStatusMenu] = useState(false);
   const [contentMode, setContentMode] = useState(false);
   const pathname = usePathname();
   const backHref = pathname && pathname.startsWith('/admin') ? '/admin/dashboard' : '/user/dashboard';
@@ -94,6 +95,23 @@ function BoardContent({ onMenuClick }: any) {
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-kartu border border-blue-500/50 shadow-2xl rounded-full px-5 py-2.5 flex items-center gap-5 z-[80]">
           <div className="flex items-center gap-2"><div className="bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold">{selectedItems.length}</div><span className="text-gray-300 text-xs font-semibold">Selected</span></div>
           <div className="w-[1px] h-5 bg-kartu-hover"></div>
+          <div className="relative">
+            <button onClick={() => setStatusMenu((v: boolean) => !v)} className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-white/5 rounded-full text-gray-300 text-xs font-bold"><Tag size={14} /> Set Status</button>
+            {statusMenu && (
+              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-kartu border border-white/10 rounded-xl shadow-2xl p-2 w-56 max-h-72 overflow-y-auto custom-scrollbar z-[90]">
+                {(columns || []).filter((c: any) => c.type === 'status').length === 0 && <div className="text-[11px] text-gray-500 px-2 py-1.5">Board ini belum punya kolom Status.</div>}
+                {(columns || []).filter((c: any) => c.type === 'status').map((col: any) => (
+                  <div key={col.id} className="mb-1">
+                    <div className="text-[10px] text-gray-500 font-bold uppercase px-2 py-1">{col.label}</div>
+                    {(labels[col.id] || []).map((l: any) => (
+                      <button key={l.id} onClick={() => { handleBulkSetStatus(selectedItems, col.id, l.text); setStatusMenu(false); }} className="flex items-center gap-2 w-full text-left px-2 py-1.5 hover:bg-white/5 rounded-lg text-xs text-gray-200"><span className={`w-3 h-3 rounded-sm shrink-0 ${l.color}`}></span><span className="truncate">{l.text}</span></button>
+                    ))}
+                    <button onClick={() => { handleBulkSetStatus(selectedItems, col.id, ''); setStatusMenu(false); }} className="text-left px-2 py-1.5 hover:bg-white/5 rounded-lg text-[11px] text-gray-500 w-full">— Kosongkan</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <button onClick={() => handleBulkDuplicate(selectedItems)} className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-white/5 rounded-full text-gray-300 text-xs font-bold"><Copy size={14} /> Duplicate</button>
           <button onClick={() => triggerConfirm('Bulk Delete', `Hapus ${selectedItems.length} item secara massal?`, () => handleBulkDelete(selectedItems))} className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-red-500/10 text-red-400 rounded-full text-xs font-bold"><Trash2 size={14} /> Delete</button>
           <button onClick={() => setSelectedItems([])} className="p-1 text-gray-500 hover:text-gray-300 rounded-full"><X size={16} /></button>

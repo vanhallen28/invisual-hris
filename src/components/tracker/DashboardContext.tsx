@@ -731,6 +731,26 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       })().catch((e:any) => pushToast('Gagal sisip sub-item di cloud: ' + (e?.message || e)));
     }
   };
+  // Ubah STATUS banyak item/subitem sekaligus (pilih beberapa baris berstatus
+  // sama → set ke status baru dalam satu klik). columnId = kolom bertipe status.
+  const handleBulkSetStatus = (ids: string[], columnId: string, value: any) => {
+    if (!ids.length || !columnId) return;
+    const idSet = new Set(ids);
+    setBoardData(boardData.map((g:any) => ({
+      ...g,
+      items: (g.items || []).map((it:any) => {
+        const base = idSet.has(it.id) ? { ...it, [columnId]: value } : it;
+        const subItems = (it.subItems || []).map((s:any) => idSet.has(s.id) ? { ...s, [columnId]: value } : s);
+        return { ...base, subItems };
+      }),
+    })));
+    pushToast(`Status ${ids.length} item diperbarui`);
+    if (cloudOn()) {
+      (async () => { for (const id of ids) await dbSetCellValue(supabase, id, columnId, 'status', value); })()
+        .catch((e:any) => pushToast('Gagal ubah status di cloud: ' + (e?.message || e)));
+    }
+  };
+
   const handleBulkDelete = (ids: string[]) => {
     setBoardData(boardData.map((g:any) => ({ ...g, items: g.items.filter((i:any) => !ids.includes(i.id)).map((i:any) => ({ ...i, subItems: i.subItems?.filter((s:any) => !ids.includes(s.id)) || [] })) })));
     setSelectedItems([]);
@@ -1016,7 +1036,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     dragOverColumn, setDragOverColumn, detailItem, setDetailItem,
     triggerConfirm, handleUpdateItem, handleUpdateSubItem, handleDeleteItem, handleDeleteSubItem,
     handleAddItem, handleAddSubItem, toggleGroupSelection,
-    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, addYear, addMonth, addBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, pushToast, HEX_COLORS, LABEL_COLORS,
+    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, addYear, addMonth, addBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, pushToast, HEX_COLORS, LABEL_COLORS,
     authUser, doLogout, isManager, currentUserRole, canContentHub, canAcc, refreshData, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase
   };
 
