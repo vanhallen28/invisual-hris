@@ -6,6 +6,7 @@ type SB = any;
 export type FullState = {
   workspaces: any[];
   boardsDataMap: Record<string, any>;
+  accountTargets: Record<string, Record<string, number>>;
   labels: Record<string, any[]>;
   teamMembers: any[];
   currentUserId: string | null;
@@ -41,7 +42,7 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
   const isAdminEmail = currentEmail.endsWith('@invisual.studio');
 
   // Semua tabel diambil dengan paginasi agar tak terpotong batas 1000 baris.
-  const [nodes, groups, columns, options, items, values, assignees, membersRows] = await Promise.all([
+  const [nodes, groups, columns, options, items, values, assignees, membersRows, accTargets] = await Promise.all([
     ambilSemua(supabase, 'tree_nodes'),
     ambilSemua(supabase, 'groups'),
     ambilSemua(supabase, 'columns'),
@@ -50,6 +51,7 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
     ambilSemua(supabase, 'item_values'),
     ambilSemua(supabase, 'item_assignees'),
     ambilSemua(supabase, 'members'),
+    ambilSemua(supabase, 'account_targets'),
   ]);
 
   const num = (x: any) => (typeof x === 'number' ? x : 0);
@@ -148,5 +150,14 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
   }))
   .filter((ws: any) => (allowedPatterns.length ? ws.years.length > 0 : true));
 
-  return { workspaces, boardsDataMap, labels, teamMembers, currentUserId, currentUserRole, canContentHub, canAcc };
+  // Target per akun per board (bulan) untuk Overview MARKETPLACE.
+  const accountTargets: Record<string, Record<string, number>> = {};
+  for (const r of (accTargets || [])) {
+    const bid = r.board_id, ak = r.akun;
+    if (!bid || ak == null) continue;
+    if (!accountTargets[bid]) accountTargets[bid] = {};
+    accountTargets[bid][ak] = Number(r.target) || 0;
+  }
+
+  return { workspaces, boardsDataMap, accountTargets, labels, teamMembers, currentUserId, currentUserRole, canContentHub, canAcc };
 }

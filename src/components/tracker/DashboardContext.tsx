@@ -7,7 +7,7 @@ import MemberView from '@/components/tracker/MemberView';
 import DocEditor from '@/components/tracker/DocEditor';
 import NotificationCenter from '@/components/tracker/NotificationCenter';
 import LoadingLogo from '@/components/LoadingLogo';
-import { dbUpdateItemName, dbSetItemMeta, dbSetCellValue, newId, dbAddItem, dbAddSubItem, dbDeleteItem, dbAddColumn, dbDeleteColumn, dbAddLabel, dbDeleteLabel, dbUpdateLabelColor, dbAddGroup, dbUpdateGroup, dbDeleteGroup, dbAddTreeNode, dbRenameTreeNode, dbDeleteTreeNode, dbUpdateColumnLabel, dbReindexColumns, dbReindexGroups, dbReindexItems, dbMoveItemsGroup } from '@/lib/tracker/sync';
+import { dbUpdateItemName, dbSetItemMeta, dbSetCellValue, newId, dbAddItem, dbAddSubItem, dbDeleteItem, dbAddColumn, dbDeleteColumn, dbAddLabel, dbDeleteLabel, dbUpdateLabelColor, dbAddGroup, dbUpdateGroup, dbDeleteGroup, dbAddTreeNode, dbRenameTreeNode, dbDeleteTreeNode, dbUpdateColumnLabel, dbReindexColumns, dbReindexGroups, dbReindexItems, dbMoveItemsGroup, dbSetAccountTarget } from '@/lib/tracker/sync';
 
 const LABEL_COLORS = ['bg-[#e2445c]', 'bg-primer-terang', 'bg-[#fdab3d]', 'bg-[#00c875]', 'bg-[#a25ddc]', 'bg-[#ff5ac4]', 'bg-[#9d99ff]', 'bg-emerald-500', 'bg-rose-400'];
 const HEX_COLORS = ['#e2445c', '#579bfc', '#fdab3d', '#00c875', '#a25ddc', '#ff5ac4', '#9d99ff'];
@@ -91,6 +91,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   
   const [activeWorkspaceId, setActiveWorkspaceId] = useState('ws-root'); 
   const [activeBoardId, setActiveBoardId] = useState<string | null>('b-1');
+  const [accountTargets, setAccountTargets] = useState<Record<string, Record<string, number>>>({}); // target per akun per board (bulan)
   // "You" exists by default so updates/assignments have a valid author from the start.
   const [currentUserId, setCurrentUserId] = useState<string>('me');
   const [currentUserRole, setCurrentUserRole] = useState<string>('member');
@@ -147,6 +148,11 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   const setBoardData = (newGroups: any[]) => { if(activeBoardId) setBoardsDataMap(p => ({ ...p, [activeBoardId]: { ...p[activeBoardId], groups: newGroups } })); };
   const setColumns = (newCols: any[]) => { if(activeBoardId) setBoardsDataMap(p => ({ ...p, [activeBoardId]: { ...p[activeBoardId], columns: newCols } })); };
   const setSubColumns = (newSubCols: any[]) => { if(activeBoardId) setBoardsDataMap(p => ({ ...p, [activeBoardId]: { ...p[activeBoardId], subColumns: newSubCols } })); };
+  // Simpan target sebuah akun untuk board (lokal + cloud).
+  const setAccountTarget = (boardId: string, akun: string, target: number) => {
+    setAccountTargets((p:any) => ({ ...p, [boardId]: { ...(p[boardId] || {}), [akun]: target } }));
+    if (cloudOn()) dbSetAccountTarget(supabase, boardId, akun, target).catch((e:any) => pushToast('Gagal simpan target: ' + (e?.message || e)));
+  };
   
   const [updatesData, setUpdatesData] = useState<Record<string, any[]>>({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -251,6 +257,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
         setWorkspaces(s.workspaces);
         setBoardsDataMap(ensureViews(s.boardsDataMap));
         setLabels(s.labels);
+        setAccountTargets(s.accountTargets || {});
         if (s.teamMembers.length) setTeamMembers(await mergeAvatars(supabase, s.teamMembers));
         if (s.currentUserId) setCurrentUserId(s.currentUserId);
         setCurrentUserRole(s.currentUserRole || 'member');
@@ -298,6 +305,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       setWorkspaces(s.workspaces);
       setBoardsDataMap(ensureViews(s.boardsDataMap));
       setLabels(s.labels);
+      setAccountTargets(s.accountTargets || {});
       if (s.teamMembers.length) setTeamMembers(await mergeAvatars(supabase, s.teamMembers));
       if (s.currentUserId) setCurrentUserId(s.currentUserId);
       setCurrentUserRole(s.currentUserRole || 'member');
@@ -1036,7 +1044,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     dragOverColumn, setDragOverColumn, detailItem, setDetailItem,
     triggerConfirm, handleUpdateItem, handleUpdateSubItem, handleDeleteItem, handleDeleteSubItem,
     handleAddItem, handleAddSubItem, toggleGroupSelection,
-    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, addYear, addMonth, addBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, pushToast, HEX_COLORS, LABEL_COLORS,
+    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, addYear, addMonth, addBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, accountTargets, setAccountTarget, pushToast, HEX_COLORS, LABEL_COLORS,
     authUser, doLogout, isManager, currentUserRole, canContentHub, canAcc, refreshData, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase
   };
 

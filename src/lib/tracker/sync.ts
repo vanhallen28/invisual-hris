@@ -191,3 +191,11 @@ export async function dbMoveItemsGroup(supabase: SB, ids: string[], groupId: str
   const { error } = await supabase.from('items').update({ group_id: groupId }).in('id', ids);
   if (error) throw new Error(error.message);
 }
+
+// Simpan target jumlah template sebuah AKUN untuk sebuah board (bulan).
+export async function dbSetAccountTarget(supabase: SB, boardId: string, akun: string, target: number) {
+  const { error } = await supabase
+    .from('account_targets')
+    .upsert({ board_id: boardId, akun, target }, { onConflict: 'board_id,akun' });
+  if (error) throw new Error(error.message);
+}

@@ -3,8 +3,22 @@ import React, { useState } from 'react';
 import { Activity, CheckCircle2, Clock, User } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 
+function InputTarget({ boardId, akun, nilai, onSimpan }: any) {
+  const [v, setV] = React.useState(String(nilai ?? 0));
+  React.useEffect(() => { setV(String(nilai ?? 0)); }, [nilai]);
+  return (
+    <input
+      type="number" min={0} value={v}
+      onChange={(e) => setV(e.target.value)}
+      onBlur={() => onSimpan(boardId, akun, parseInt(v) || 0)}
+      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+      className="w-20 bg-latar border border-white/10 rounded-md px-2 py-1 text-sm text-white text-right outline-none focus:border-blue-500"
+    />
+  );
+}
+
 export default function Overview() {
-  const { boardData, columns, labels, teamMembers, setDetailItem } = useDashboard();
+  const { boardData, columns, subColumns, labels, teamMembers, setDetailItem, activeBoardName, activeBoardId, accountTargets, setAccountTarget } = useDashboard();
   const [expanded, setExpanded] = useState<string | null>(null);
 
   // Resolve the dynamic Status / People columns by type (ids are generated).
@@ -25,6 +39,45 @@ export default function Overview() {
   const getTeamWorkload = () => teamMembers
     .map((m: any) => ({ ...m, count: teamKey ? allItems.filter((i: any) => i[teamKey]?.includes(m.id)).length : 0 }))
     .sort((a: any, b: any) => b.count - a.count);
+
+  // === PROGRES PER AKUN (khusus board MARKETPLACE) ===
+  const isMarketplace = /marketplace/i.test(activeBoardName || '');
+  const upper = (v: any) => String(v || '').toUpperCase();
+  const akunMainKey = columns.find((c: any) => upper(c.label) === 'AKUN')?.id;
+  const akunSubKey = subColumns.find((c: any) => upper(c.label) === 'AKUN')?.id;
+  const statMainKey = columns.find((c: any) => upper(c.label) === 'STATUS')?.id;
+  const statSubKey = subColumns.find((c: any) => upper(c.label) === 'STATUS')?.id;
+  const emberStatus = (v: any) => {
+    const n = String(v || '').toLowerCase().replace(/\s+/g, '');
+    if (n === 'done') return 'done';
+    if (n === 'inreview') return 'inreview';
+    if (n === 'approved') return 'approved';
+    if (n === 'rejected') return 'rejected';
+    return null;
+  };
+  const statAkun: Record<string, { done: number; inreview: number; approved: number; rejected: number }> = {};
+  const akunTerpakai = new Set<string>();
+  const catat = (akun: any, status: any) => {
+    const a = String(akun || '').trim();
+    if (a) akunTerpakai.add(a);
+    const b = emberStatus(status);
+    if (!a || !b) return;
+    if (!statAkun[a]) statAkun[a] = { done: 0, inreview: 0, approved: 0, rejected: 0 };
+    (statAkun[a] as any)[b]++;
+  };
+  if (isMarketplace) {
+    for (const g of boardData) for (const it of (g.items || [])) {
+      const akunItem = akunMainKey ? it[akunMainKey] : '';
+      catat(akunItem, statMainKey ? it[statMainKey] : '');
+      for (const sub of (it.subItems || [])) {
+        const akunSub = (akunSubKey && sub[akunSubKey]) ? sub[akunSubKey] : akunItem; // warisi induk
+        catat(akunSub, statSubKey ? sub[statSubKey] : '');
+      }
+    }
+  }
+  const targetBoard: Record<string, number> = (activeBoardId && accountTargets[activeBoardId]) || {};
+  Object.keys(targetBoard).forEach((a) => akunTerpakai.add(a));
+  const daftarAkun = [...akunTerpakai].sort((a, b) => a.localeCompare(b));
 
   const renderTaskList = (items: any[]) => (
     <div className="mt-2 ml-7 flex flex-col gap-0.5 border-l border-white/10 pl-3 py-1">
@@ -50,6 +103,44 @@ export default function Overview() {
           <div><p className="text-xs font-bold text-gray-500 uppercase mb-1">In Progress</p><h3 className="text-3xl font-black text-[#fdab3d]">{workingTasks}</h3></div><div className="w-10 h-10 rounded bg-amber-500/10 flex items-center justify-center text-[#fdab3d]"><Clock size={18}/></div>
         </div>
       </div>
+
+      {isMarketplace && (
+        <div className="bg-kartu-hover border border-white/10 rounded-xl p-6 shadow-xl">
+          <h3 className="text-sm font-bold text-white mb-1 uppercase tracking-wider flex items-center gap-2"><User size={16} className="text-blue-400" /> Progres per Akun</h3>
+          <p className="text-[11px] text-gray-500 mb-5">Target diinput manual. Sisa = Target − (Done + In Review + Approved). Rejected tak dikurangkan.</p>
+          {daftarAkun.length === 0 ? (
+            <p className="text-xs text-gray-600 italic">Belum ada akun. Isi kolom AKUN pada baris untuk memunculkan akun di sini.</p>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {daftarAkun.map((akun) => {
+                const c = statAkun[akun] || { done: 0, inreview: 0, approved: 0, rejected: 0 };
+                const target = targetBoard[akun] ?? 0;
+                const sisa = target - (c.done + c.inreview + c.approved);
+                const progress = target > 0 ? Math.min(100, Math.round((c.approved / target) * 100)) : 0;
+                return (
+                  <div key={akun} className="bg-kartu border border-white/10 rounded-lg p-4">
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <span className="font-bold text-white text-sm truncate">{akun}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-gray-500 uppercase font-bold">Target</span>
+                        <InputTarget boardId={activeBoardId} akun={akun} nilai={target} onSimpan={setAccountTarget} />
+                      </div>
+                    </div>
+                    <div className="h-2 bg-latar rounded-full overflow-hidden mb-3"><div className="h-full bg-emerald-500" style={{ width: `${progress}%` }} /></div>
+                    <div className="grid grid-cols-5 gap-2 text-center">
+                      <div><div className="text-lg font-black text-gray-300">{c.done}</div><div className="text-[9px] text-gray-500 uppercase font-bold">Done</div></div>
+                      <div><div className="text-lg font-black text-blue-300">{c.inreview}</div><div className="text-[9px] text-gray-500 uppercase font-bold">In Review</div></div>
+                      <div><div className="text-lg font-black text-emerald-400">{c.approved}</div><div className="text-[9px] text-gray-500 uppercase font-bold">Approved</div></div>
+                      <div><div className="text-lg font-black text-red-400">{c.rejected}</div><div className="text-[9px] text-gray-500 uppercase font-bold">Rejected</div></div>
+                      <div><div className={`text-lg font-black ${sisa < 0 ? 'text-amber-400' : 'text-white'}`}>{sisa}</div><div className="text-[9px] text-gray-500 uppercase font-bold">Sisa Target</div></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {statusKey && statusLabels.length > 0 && (
         <div className="bg-kartu-hover border border-white/10 rounded-xl p-6 shadow-xl max-w-xl">
