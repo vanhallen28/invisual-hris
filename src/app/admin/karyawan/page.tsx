@@ -44,7 +44,9 @@ export default function AdminKaryawanPage() {
     institusiMagang: "", tanggalSelesaiMagang: "",
     boardAccess: [] as string[], contentHub: true, corporateAccess: false,
     jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: "", tanggalLahir: "", accBrief: false,
-    tanggalBerakhirKontrak: ""
+    tanggalBerakhirKontrak: "",
+    tempatLahir: "", alamatKtp: "", domisiliSamaKtp: false,
+    pendidikanNama: "", pendidikanJurusan: "", pendidikanStatus: ""
   });
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); // user_id -> role Tracker
   const [allBoards, setAllBoards] = useState<string[]>([]); // nama board Daily Task untuk pembatasan akses
@@ -138,7 +140,9 @@ export default function AdminKaryawanPage() {
       institusiMagang: "", tanggalSelesaiMagang: "",
       boardAccess: [] as string[], contentHub: true, corporateAccess: false,
       jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: "", tanggalLahir: "", accBrief: false,
-      tanggalBerakhirKontrak: ""
+      tanggalBerakhirKontrak: "",
+      tempatLahir: "", alamatKtp: "", domisiliSamaKtp: false,
+      pendidikanNama: "", pendidikanJurusan: "", pendidikanStatus: ""
     });
     setShowModal(true);
   };
@@ -171,7 +175,9 @@ export default function AdminKaryawanPage() {
       boardAccess: [], contentHub: true, corporateAccess: false,
       jamMasuk: emp.jamMasuk || "09:00", jamKeluar: emp.jamKeluar || "17:00", fleksibel: emp.fleksibel === true,
       avatarUrl: emp.avatarUrl || "", tanggalLahir: emp.tanggalLahir || "", accBrief: false,
-      tanggalBerakhirKontrak: emp.tanggalBerakhirKontrak || ""
+      tanggalBerakhirKontrak: emp.tanggalBerakhirKontrak || "",
+      tempatLahir: emp.tempatLahir || "", alamatKtp: emp.alamatKtp || "", domisiliSamaKtp: emp.domisiliSamaKtp === true,
+      pendidikanNama: emp.pendidikanNama || "", pendidikanJurusan: emp.pendidikanJurusan || "", pendidikanStatus: emp.pendidikanStatus || ""
     });
     setShowModal(true);
   };
@@ -210,7 +216,13 @@ export default function AdminKaryawanPage() {
       noPonsel: formData.noPonsel || null,
       nikKtp: formData.nikKtp ? String(formData.nikKtp) : null,
       tanggalLahir: formData.tanggalLahir || null, 
-      alamatDomisili: formData.alamatDomisili || null,
+      alamatDomisili: formData.domisiliSamaKtp ? (formData.alamatKtp || null) : (formData.alamatDomisili || null),
+      tempatLahir: formData.tempatLahir || null,
+      alamatKtp: formData.alamatKtp || null,
+      domisiliSamaKtp: !!formData.domisiliSamaKtp,
+      pendidikanNama: formData.pendidikanNama || null,
+      pendidikanJurusan: formData.pendidikanJurusan || null,
+      pendidikanStatus: formData.pendidikanStatus || null,
       jabatan: formData.jabatan || null, 
       status: formData.status,
       tanggalBergabung: formData.tanggalBergabung ? formData.tanggalBergabung : null,
@@ -553,8 +565,20 @@ export default function AdminKaryawanPage() {
                     <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">No. Handphone / WA</p>
                     <p className="text-gray-200 font-medium">{selectedProfile.noPonsel || "— Belum diisi —"}</p>
                   </div>
+                  <div>
+                    <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">Tempat Lahir</p>
+                    <p className="text-gray-200 font-medium">{selectedProfile.tempatLahir || "— Belum diisi —"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">Pendidikan</p>
+                    <p className="text-gray-200 font-medium">{[selectedProfile.pendidikanNama, selectedProfile.pendidikanJurusan, selectedProfile.pendidikanStatus].filter(Boolean).join(" · ") || "— Belum diisi —"}</p>
+                  </div>
                   <div className="col-span-2">
-                    <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">Alamat Domisili Tetap</p>
+                    <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">Alamat KTP</p>
+                    <p className="text-gray-200 font-medium leading-relaxed bg-white/5 p-3 rounded-lg border border-white/10">📍 {selectedProfile.alamatKtp || "— Belum diisi —"}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">Alamat Domisili</p>
                     <p className="text-gray-200 font-medium leading-relaxed bg-white/5 p-3 rounded-lg border border-white/10">📍 {selectedProfile.alamatDomisili || "— Belum diisi —"}</p>
                   </div>
                 </div>
@@ -688,12 +712,43 @@ export default function AdminKaryawanPage() {
                     <input type="text" placeholder="16 Digit..." value={formData.nikKtp} onChange={(e) => setFormData({...formData, nikKtp: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none font-mono" />
                   </div>
                   <div>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Tempat Lahir</label>
+                    <input type="text" placeholder="Kota kelahiran..." value={formData.tempatLahir} onChange={(e) => setFormData({...formData, tempatLahir: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                  </div>
+                  <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Tanggal Lahir (KTP)</label>
                     <input type="date" value={formData.tanggalLahir} onChange={(e) => setFormData({...formData, tanggalLahir: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Alamat Domisili</label>
-                    <input type="text" placeholder="Alamat lengkap..." value={formData.alamatDomisili} onChange={(e) => setFormData({...formData, alamatDomisili: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Alamat KTP</label>
+                    <input type="text" placeholder="Alamat sesuai KTP..." value={formData.alamatKtp} onChange={(e) => setFormData({...formData, alamatKtp: e.target.value, ...(formData.domisiliSamaKtp ? { alamatDomisili: e.target.value } : {})})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[11px] font-bold text-gray-500 uppercase">Alamat Domisili</label>
+                      <label className="flex items-center gap-1.5 text-[10px] text-gray-400 cursor-pointer normal-case">
+                        <input type="checkbox" checked={formData.domisiliSamaKtp} onChange={(e) => setFormData({...formData, domisiliSamaKtp: e.target.checked, ...(e.target.checked ? { alamatDomisili: formData.alamatKtp } : {})})} className="rounded bg-input border-white/20 w-3 h-3" />
+                        Sama dengan KTP
+                      </label>
+                    </div>
+                    <input type="text" placeholder="Alamat domisili..." value={formData.alamatDomisili} disabled={formData.domisiliSamaKtp} onChange={(e) => setFormData({...formData, alamatDomisili: e.target.value})} className={`w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none ${formData.domisiliSamaKtp ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Pendidikan — Sekolah/Kampus</label>
+                    <input type="text" placeholder="Nama sekolah/kampus..." value={formData.pendidikanNama} onChange={(e) => setFormData({...formData, pendidikanNama: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Pendidikan — Jurusan</label>
+                    <input type="text" placeholder="Jurusan..." value={formData.pendidikanJurusan} onChange={(e) => setFormData({...formData, pendidikanJurusan: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Pendidikan — Status</label>
+                    <select value={formData.pendidikanStatus} onChange={(e) => setFormData({...formData, pendidikanStatus: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none">
+                      <option value="">— Pilih —</option>
+                      <option value="Lulus">Lulus</option>
+                      <option value="Sedang Menempuh">Sedang Menempuh</option>
+                      <option value="Tidak Selesai">Tidak Selesai</option>
+                    </select>
                   </div>
                 </div>
               </div>
