@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { TOLERANSI_TELAT_MENIT } from "@/lib/keterlambatan";
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
 
@@ -45,6 +46,7 @@ export default function UserDashboardPage() {
   const [cameraOn, setCameraOn] = useState(false);
   const [captureMode, setCaptureMode] = useState<"in" | "out" | null>(null);
   const [jamMasuk, setJamMasuk] = useState("09:00");
+  const [toleransiTelat, setToleransiTelat] = useState(TOLERANSI_TELAT_MENIT);
   // Diarahkan ke toast global standar. Tanda tangan lama (type, message)
   // dipertahankan agar semua pemanggilan showToast(...) tetap jalan.
   const showToast = (type: "success" | "error", message: string) => {
@@ -54,7 +56,7 @@ export default function UserDashboardPage() {
   const [isFlashing, setIsFlashing] = useState(false);
 
   const todayDate = new Date().toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const todayISO = new Date().toISOString().split('T')[0];
+  const todayISO = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(); // tanggal LOKAL (WIB), bukan UTC
 
   // Ambil tugas/brief yang ditugaskan ke saya. Terpisah & dibungkus try/catch
   // supaya kegagalan di sini tidak mengganggu absensi.
@@ -130,7 +132,7 @@ export default function UserDashboardPage() {
 
   const fetchDashboardData = async (safeId: string) => {
     try {
-      const { data: todayData } = await supabase.from("attendance").select("*").eq("idKaryawan", safeId).eq("tanggal", todayISO).single();
+      const { data: todayData } = await supabase.from("attendance").select("*").eq("idKaryawan", safeId).eq("tanggal", todayISO).maybeSingle();
       if (todayData) setTodayAttendance(todayData);
 
       const { data: absData } = await supabase.from("attendance").select("*").eq("idKaryawan", safeId).order("tanggal", { ascending: false }).limit(5);
@@ -139,8 +141,9 @@ export default function UserDashboardPage() {
       const { data: cutiData } = await supabase.from("approvals").select("*").eq("idKaryawan", safeId).order("id", { ascending: false }).limit(3);
       if (cutiData) setRecentLeaves(cutiData);
 
-      const { data: schedData } = await supabase.from("employees").select("jamMasuk").eq("idKaryawan", safeId).single();
+      const { data: schedData } = await supabase.from("employees").select("jamMasuk, toleransiTelat").eq("idKaryawan", safeId).single();
       if (schedData?.jamMasuk) setJamMasuk(schedData.jamMasuk);
+      if (schedData?.toleransiTelat != null) setToleransiTelat(Number(schedData.toleransiTelat));
     } catch (e) {
       console.error("Error fetching data dari Supabase:", e);
     }
@@ -212,9 +215,9 @@ export default function UserDashboardPage() {
     takePhoto();
 
     const now = new Date();
-    const timeString = now.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' });
+    const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const [schedH, schedM] = String(jamMasuk || "09:00").split(":").map(Number);
-    const isLate = (now.getHours() * 60 + now.getMinutes()) > ((schedH || 9) * 60 + (schedM || 0));
+    const isLate = (now.getHours() * 60 + now.getMinutes()) > ((schedH || 9) * 60 + (schedM || 0) + toleransiTelat);
     const statusKehadiran = isLate ? "Terlambat" : "Tepat Waktu";
 
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
@@ -233,7 +236,8 @@ export default function UserDashboardPage() {
       showToast("success", `Clock-In berhasil dicatat pada ${timeString} WIB.`);
       await fetchDashboardData(safeId);
     } catch (err: any) {
-      showToast("error", "Gagal merekam absensi: " + err.message);
+      if (err?.code === "23505") { showToast("info", "Anda sudah tercatat absen masuk hari ini."); await fetchDashboardData(safeId); }
+      else showToast("error", "Gagal merekam absensi: " + err.message);
     } finally {
       setIsActionLoading(false);
       setCaptureMode(null);
@@ -245,7 +249,8 @@ export default function UserDashboardPage() {
     setIsActionLoading(true);
     takePhoto();
 
-    const timeString = new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
     
     try {
@@ -455,10 +460,14 @@ export default function UserDashboardPage() {
                       <p className="text-[8px] md:text-[10px] text-gray-500 font-mono truncate">{att.lokasi}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-[10px] md:text-xs font-mono text-white mb-0.5">{att.waktuMasuk}</p>
-                      <span className={`text-[7px] md:text-[9px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase ${att.status === 'Terlambat' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-green-500/10 text-green-400'}`}>
-                        {att.status}
-                      </span>
+                      <p className="text-[10px] md:text-xs font-mono text-white mb-0.5">{att.waktuMasuk}{att.waktuKeluar ? ` – ${att.waktuKeluar}` : ""}</p>
+                      {!att.waktuKeluar && att.tanggal < todayISO ? (
+                        <span className="text-[7px] md:text-[9px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase bg-orange-500/10 text-orange-400">Lupa absen pulang</span>
+                      ) : (
+                        <span className={`text-[7px] md:text-[9px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase ${att.status === 'Terlambat' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-green-500/10 text-green-400'}`}>
+                          {att.status}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))

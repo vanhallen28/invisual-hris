@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { TOLERANSI_TELAT_MENIT } from "@/lib/keterlambatan";
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
 
@@ -27,6 +28,7 @@ export default function UserKehadiranPage() {
   const toast = useToast();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [jamMasuk, setJamMasuk] = useState("09:00");
+  const [toleransiTelat, setToleransiTelat] = useState(TOLERANSI_TELAT_MENIT);
   const [isFleksibel, setIsFleksibel] = useState(false);
   const [jamKeluar, setJamKeluar] = useState("17:00");
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
@@ -60,7 +62,7 @@ export default function UserKehadiranPage() {
   const [isFlashing, setIsFlashing] = useState(false);
 
   const todayDate = new Date().toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const todayISO = new Date().toISOString().split('T')[0];
+  const todayISO = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(); // tanggal LOKAL (WIB), bukan UTC
 
   // WFH/WFC hanya boleh dipilih saat absen kalau pengajuannya untuk hari
   // ini sudah disetujui. Tanggal pengajuan bisa satu hari ("2025-07-16")
@@ -119,7 +121,7 @@ export default function UserKehadiranPage() {
 
   const fetchDashboardData = async (safeId: string) => {
     try {
-      const { data: todayData } = await supabase.from("attendance").select("*").eq("idKaryawan", safeId).eq("tanggal", todayISO).single();
+      const { data: todayData } = await supabase.from("attendance").select("*").eq("idKaryawan", safeId).eq("tanggal", todayISO).maybeSingle();
       if (todayData) setTodayAttendance(todayData);
 
       const { data: absData } = await supabase.from("attendance").select("*").eq("idKaryawan", safeId).order("tanggal", { ascending: false }).limit(5);
@@ -128,10 +130,11 @@ export default function UserKehadiranPage() {
       const { data: reqData } = await supabase.from("approvals").select("*").eq("idKaryawan", safeId).order("id", { ascending: false });
       if (reqData) setPengajuanList(reqData);
 
-      const { data: schedData } = await supabase.from("employees").select("jamMasuk, jamKeluar, fleksibel").eq("idKaryawan", safeId).single();
+      const { data: schedData } = await supabase.from("employees").select("jamMasuk, jamKeluar, fleksibel, toleransiTelat").eq("idKaryawan", safeId).single();
       if (schedData?.jamMasuk) setJamMasuk(schedData.jamMasuk);
       if (schedData?.jamKeluar) setJamKeluar(schedData.jamKeluar);
       setIsFleksibel(schedData?.fleksibel === true);
+      if (schedData?.toleransiTelat != null) setToleransiTelat(Number(schedData.toleransiTelat));
     } catch (e) {
       console.error("Error fetching data:", e);
     }
@@ -250,10 +253,11 @@ export default function UserKehadiranPage() {
     takePhoto(); // ambil foto lalu kamera otomatis mati
 
     const now = new Date();
-    const timeString = now.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' });
+    const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const [schedH, schedM] = String(jamMasuk || "09:00").split(":").map(Number);
-    const isLate = (now.getHours() * 60 + now.getMinutes()) > ((schedH || 9) * 60 + (schedM || 0));
-    const statusKehadiran = (!isFleksibel && isLate) ? "Terlambat" : "Tepat Waktu";
+    const isLate = (now.getHours() * 60 + now.getMinutes()) > ((schedH || 9) * 60 + (schedM || 0) + toleransiTelat);
+    // WFH/WFC tidak dihitung terlambat (hanya mode Kantor); jam fleksibel juga tidak.
+    const statusKehadiran = (!isFleksibel && modeKerja === "Kantor" && isLate) ? "Terlambat" : "Tepat Waktu";
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
 
     try {
@@ -267,7 +271,8 @@ export default function UserKehadiranPage() {
       showToast("success", `Clock-In berhasil dicatat pada ${timeString} WIB.`);
       await fetchDashboardData(safeId);
     } catch (err: any) {
-      showToast("error", "Gagal merekam absensi: " + err.message);
+      if (err?.code === "23505") { showToast("info", "Anda sudah tercatat absen masuk hari ini."); await fetchDashboardData(safeId); }
+      else showToast("error", "Gagal merekam absensi: " + err.message);
     } finally {
       setIsActionLoading(false);
       setCaptureMode(null); // kembali ke tampilan tombol, kamera tetap mati
@@ -279,7 +284,8 @@ export default function UserKehadiranPage() {
     setIsActionLoading(true);
     takePhoto(); // ambil foto lalu kamera otomatis mati
 
-    const timeString = new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
     
     try {

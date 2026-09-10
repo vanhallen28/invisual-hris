@@ -52,17 +52,33 @@ export default function AdminKehadiranPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Ambil SEMUA absensi bulan terpilih dgn paginasi (hindari batas 1000 baris
+  // Supabase saat karyawan/hari banyak).
+  async function ambilAbsensiBulan(ym: string) {
+    const semua: any[] = [];
+    let dari = 0; const uk = 1000;
+    for (let put = 0; put < 100; put++) {
+      const { data, error } = await supabase.from("attendance").select("*").like("tanggal", `${ym}%`).range(dari, dari + uk - 1);
+      if (error) break;
+      const b = data || [];
+      semua.push(...b);
+      if (b.length < uk) break;
+      dari += uk;
+    }
+    return semua;
+  }
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [empRes, attRes, apprRes] = await Promise.all([
+      const [empRes, absensiSemua, apprRes] = await Promise.all([
         supabase.from("employees").select("*").order("nama", { ascending: true }),
-        supabase.from("attendance").select("*").like("tanggal", `${selectedYM}%`),
+        ambilAbsensiBulan(selectedYM),
         supabase.from("approvals").select("*").eq("status", "Disetujui"),
       ]);
       // Owner dikecualikan dari statistik operasional
       setEmployees(excludeOwners((empRes.data || []).filter((e: any) => e.isAktif !== false)));
-      setAttendance(attRes.data || []);
+      setAttendance(absensiSemua);
       setLeaves(
         (apprRes.data || [])
           .map((l: any) => ({ ...l, range: parseRange(l.tanggal) }))

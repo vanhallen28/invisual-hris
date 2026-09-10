@@ -84,7 +84,7 @@ export default function AdminDashboardPage() {
   const [anomalyList, setAnomalyList] = useState<any[]>([]);
 
   const todayDate = new Date().toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const todayISO = new Date().toISOString().split('T')[0];
+  const todayISO = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(); // tanggal LOKAL (WIB), bukan UTC
 
   useEffect(() => {
 
@@ -518,17 +518,23 @@ export default function AdminDashboardPage() {
               ) : (
                 <div className="space-y-3 max-h-[280px] overflow-y-auto custom-scrollbar pr-2">
                   {pendingApprovals.map((req) => (
-                    <div key={req.id} className="bg-white/[0.03] border border-white/5 p-3.5 rounded-xl flex justify-between items-center gap-4 transition-colors hover:border-white/15">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 shrink-0 rounded-full bg-primer-terang/20 flex items-center justify-center text-tint font-bold border border-primer-terang/30">{req.nama?.charAt(0).toUpperCase() || "?"}</div>
-                        <div className="min-w-0">
-                          <h4 className="font-bold text-white text-sm truncate">{req.nama}</h4>
-                          <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded font-bold uppercase mt-1 inline-block">{req.jenis}</span>
+                    <div key={req.id} className="bg-white/[0.03] border border-white/5 p-3.5 rounded-xl flex flex-col gap-2 transition-colors hover:border-white/15">
+                      <div className="flex justify-between items-center gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 shrink-0 rounded-full bg-primer-terang/20 flex items-center justify-center text-tint font-bold border border-primer-terang/30">{req.nama?.charAt(0).toUpperCase() || "?"}</div>
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-white text-sm truncate">{req.nama}</h4>
+                            <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded font-bold uppercase mt-1 inline-block">{req.jenis}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button onClick={() => handleApprovalAction(req.id, "Ditolak")} className="px-3 py-2 text-xs font-bold text-gray-400 hover:text-white relative z-30">Tolak</button>
+                          <button onClick={() => handleApprovalAction(req.id, "Disetujui")} className="px-4 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30">Setujui</button>
                         </div>
                       </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button onClick={() => handleApprovalAction(req.id, "Ditolak")} className="px-3 py-2 text-xs font-bold text-gray-400 hover:text-white relative z-30">Tolak</button>
-                        <button onClick={() => handleApprovalAction(req.id, "Disetujui")} className="px-4 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30">Setujui</button>
+                      <div className="pl-12">
+                        {req.tanggal && <p className="text-[10px] text-gray-500 font-mono">{req.tanggal}</p>}
+                        <p className="text-[11px] text-gray-300 mt-0.5 italic break-words whitespace-pre-wrap">{req.alasan ? `"${req.alasan}"` : "Tanpa keterangan"}</p>
                       </div>
                     </div>
                   ))}

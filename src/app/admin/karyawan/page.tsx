@@ -46,7 +46,8 @@ export default function AdminKaryawanPage() {
     jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: "", tanggalLahir: "", accBrief: false,
     tanggalBerakhirKontrak: "",
     tempatLahir: "", alamatKtp: "", domisiliSamaKtp: false,
-    pendidikanNama: "", pendidikanJurusan: "", pendidikanStatus: ""
+    pendidikanNama: "", pendidikanJurusan: "", pendidikanStatus: "",
+    toleransiTelat: 5
   });
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); // user_id -> role Tracker
   const [allBoards, setAllBoards] = useState<string[]>([]); // nama board Daily Task untuk pembatasan akses
@@ -142,7 +143,8 @@ export default function AdminKaryawanPage() {
       jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: "", tanggalLahir: "", accBrief: false,
       tanggalBerakhirKontrak: "",
       tempatLahir: "", alamatKtp: "", domisiliSamaKtp: false,
-      pendidikanNama: "", pendidikanJurusan: "", pendidikanStatus: ""
+      pendidikanNama: "", pendidikanJurusan: "", pendidikanStatus: "",
+      toleransiTelat: 5
     });
     setShowModal(true);
   };
@@ -177,7 +179,8 @@ export default function AdminKaryawanPage() {
       avatarUrl: emp.avatarUrl || "", tanggalLahir: emp.tanggalLahir || "", accBrief: false,
       tanggalBerakhirKontrak: emp.tanggalBerakhirKontrak || "",
       tempatLahir: emp.tempatLahir || "", alamatKtp: emp.alamatKtp || "", domisiliSamaKtp: emp.domisiliSamaKtp === true,
-      pendidikanNama: emp.pendidikanNama || "", pendidikanJurusan: emp.pendidikanJurusan || "", pendidikanStatus: emp.pendidikanStatus || ""
+      pendidikanNama: emp.pendidikanNama || "", pendidikanJurusan: emp.pendidikanJurusan || "", pendidikanStatus: emp.pendidikanStatus || "",
+      toleransiTelat: emp.toleransiTelat ?? 5
     });
     setShowModal(true);
   };
@@ -223,6 +226,7 @@ export default function AdminKaryawanPage() {
       pendidikanNama: formData.pendidikanNama || null,
       pendidikanJurusan: formData.pendidikanJurusan || null,
       pendidikanStatus: formData.pendidikanStatus || null,
+      toleransiTelat: Number.isFinite(Number(formData.toleransiTelat)) ? Number(formData.toleransiTelat) : 5,
       jabatan: formData.jabatan || null, 
       status: formData.status,
       tanggalBergabung: formData.tanggalBergabung ? formData.tanggalBergabung : null,
@@ -808,6 +812,11 @@ export default function AdminKaryawanPage() {
                     <div>
                       <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase">Jam Keluar</label>
                       <input type="time" disabled={formData.fleksibel} value={formData.jamKeluar} onChange={(e) => setFormData({...formData, jamKeluar: e.target.value})} className={`w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primer outline-none [color-scheme:dark] ${formData.fleksibel ? "opacity-40 cursor-not-allowed" : ""}`} />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase">Toleransi Keterlambatan (menit)</label>
+                      <input type="number" min={0} disabled={formData.fleksibel} value={formData.toleransiTelat} onChange={(e) => setFormData({...formData, toleransiTelat: e.target.value === "" ? "" : Number(e.target.value)})} placeholder="mis. 5" className={`w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primer outline-none ${formData.fleksibel ? "opacity-40 cursor-not-allowed" : ""}`} />
+                      <p className="text-[10px] text-gray-500 mt-1">Absen dianggap "Terlambat" hanya jika lewat jam masuk + toleransi ini. 0 = ketat. (Fleksibel = tak pernah telat.)</p>
                     </div>
                   </div>
 

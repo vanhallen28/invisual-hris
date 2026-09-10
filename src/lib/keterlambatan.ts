@@ -40,3 +40,10 @@ export function saringTerlambat(absensi: any[] | undefined, employees: any[] | u
   const f = fleksibelIds(employees);
   return (absensi || []).filter((a) => terlambat(a, f));
 }
+
+/**
+ * Toleransi keterlambatan (menit). Karyawan dianggap "Terlambat" hanya jika
+ * absen lebih dari (jam masuk + toleransi ini). Ubah angkanya di sini untuk
+ * menyesuaikan kebijakan perusahaan. 0 = tanpa toleransi (ketat).
+ */
+export const TOLERANSI_TELAT_MENIT = 5;
