@@ -14,6 +14,8 @@ const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const isoOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+// Periode tutup-buku: mulai tgl ini tiap bulan s/d (tgl ini - 1) bulan berikutnya.
+const TGL_MULAI_PERIODE = 21;
 
 // Ambil rentang tanggal dari string approvals ("2026-07-16" atau "2026-07-16 s/d 2026-07-20").
 function parseRange(t: string) {
@@ -32,7 +34,9 @@ function kindOf(jenis: string): "WFH" | "Cuti/Sakit" {
 export default function AdminKehadiranPage() {
   const today = new Date();
   const todayISO = isoOf(today);
-  const currentYM = `${today.getFullYear()}-${pad(today.getMonth() + 1)}`;
+  const _anchorM = today.getDate() >= TGL_MULAI_PERIODE ? today.getMonth() : today.getMonth() - 1;
+  const _anchorDate = new Date(today.getFullYear(), _anchorM, 1);
+  const currentYM = `${_anchorDate.getFullYear()}-${pad(_anchorDate.getMonth() + 1)}`;
 
   const [selectedYM, setSelectedYM] = useState(currentYM);
   const [employees, setEmployees] = useState<any[]>([]);
@@ -44,9 +48,11 @@ export default function AdminKehadiranPage() {
   // Pilihan bulan: 12 bulan terakhir
   const monthOptions = useMemo(() => {
     const out: { value: string; label: string }[] = [];
+    const anchorM = today.getDate() >= TGL_MULAI_PERIODE ? today.getMonth() : today.getMonth() - 1;
     for (let i = 0; i < 12; i++) {
-      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      out.push({ value: `${d.getFullYear()}-${pad(d.getMonth() + 1)}`, label: `${BULAN[d.getMonth()]} ${d.getFullYear()}` });
+      const s = new Date(today.getFullYear(), anchorM - i, TGL_MULAI_PERIODE);
+      const e = new Date(today.getFullYear(), anchorM - i + 1, TGL_MULAI_PERIODE - 1);
+      out.push({ value: `${s.getFullYear()}-${pad(s.getMonth() + 1)}`, label: `${TGL_MULAI_PERIODE} ${BULAN[s.getMonth()].slice(0, 3)} – ${TGL_MULAI_PERIODE - 1} ${BULAN[e.getMonth()].slice(0, 3)} ${e.getFullYear()}` });
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -54,11 +60,11 @@ export default function AdminKehadiranPage() {
 
   // Ambil SEMUA absensi bulan terpilih dgn paginasi (hindari batas 1000 baris
   // Supabase saat karyawan/hari banyak).
-  async function ambilAbsensiBulan(ym: string) {
+  async function ambilAbsensiPeriode(startISO: string, endISO: string) {
     const semua: any[] = [];
     let dari = 0; const uk = 1000;
     for (let put = 0; put < 100; put++) {
-      const { data, error } = await supabase.from("attendance").select("*").like("tanggal", `${ym}%`).range(dari, dari + uk - 1);
+      const { data, error } = await supabase.from("attendance").select("*").gte("tanggal", startISO).lte("tanggal", endISO).range(dari, dari + uk - 1);
       if (error) break;
       const b = data || [];
       semua.push(...b);
@@ -71,9 +77,12 @@ export default function AdminKehadiranPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
+      const [pY, pM] = selectedYM.split("-").map(Number);
+      const periodeStartISO = isoOf(new Date(pY, pM - 1, TGL_MULAI_PERIODE));
+      const periodeEndISO = isoOf(new Date(pY, pM - 1 + 1, TGL_MULAI_PERIODE - 1));
       const [empRes, absensiSemua, apprRes] = await Promise.all([
         supabase.from("employees").select("*").order("nama", { ascending: true }),
-        ambilAbsensiBulan(selectedYM),
+        ambilAbsensiPeriode(periodeStartISO, periodeEndISO),
         supabase.from("approvals").select("*").eq("status", "Disetujui"),
       ]);
       // Owner dikecualikan dari statistik operasional
@@ -98,7 +107,13 @@ export default function AdminKehadiranPage() {
   const [yearStr, monthStr] = selectedYM.split("-");
   const year = Number(yearStr);
   const monthIdx = Number(monthStr) - 1;
-  const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+  const periodeHari = useMemo(() => {
+    const arr: Date[] = [];
+    const s = new Date(year, monthIdx, TGL_MULAI_PERIODE);
+    const e = new Date(year, monthIdx + 1, TGL_MULAI_PERIODE - 1);
+    for (let dt = new Date(s); dt <= e; dt.setDate(dt.getDate() + 1)) arr.push(new Date(dt));
+    return arr;
+  }, [year, monthIdx]);
 
   // ── HEATMAP dari data nyata ──
   const heatmapData = useMemo(() => {
@@ -112,8 +127,7 @@ export default function AdminKehadiranPage() {
       const empLeaves = leaves.filter((l) => l.idKaryawan === emp.idKaryawan && l.jenis !== "Izin Terlambat");
 
       const dataHarian: StatusKehadiran[] = [];
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dateObj = new Date(year, monthIdx, d);
+      for (const dateObj of periodeHari) {
         const iso = isoOf(dateObj);
         const dow = dateObj.getDay();
 
@@ -128,7 +142,7 @@ export default function AdminKehadiranPage() {
 
       return { id: emp.idKaryawan, nama: rapikanNama(emp.nama), divisi: emp.jabatan || emp.organisasi || "-", dataHarian };
     });
-  }, [employees, attendance, leaves, year, monthIdx, daysInMonth, todayISO]);
+  }, [employees, attendance, leaves, periodeHari, todayISO]);
 
   // ── RINGKASAN BULAN INI ──
   const summary = useMemo(() => {
@@ -209,7 +223,7 @@ export default function AdminKehadiranPage() {
     }
   };
 
-  const monthLabel = `${BULAN[monthIdx]} ${year}`;
+  const monthLabel = `${TGL_MULAI_PERIODE} ${BULAN[monthIdx].slice(0, 3)} – ${TGL_MULAI_PERIODE - 1} ${BULAN[(monthIdx + 1) % 12].slice(0, 3)} ${new Date(year, monthIdx + 1, TGL_MULAI_PERIODE - 1).getFullYear()}`;
 
   return (
     <div className="max-w-[1400px] w-full flex flex-col gap-8 pb-10">
@@ -348,16 +362,16 @@ export default function AdminKehadiranPage() {
             <thead className="bg-latar border-b border-white/5">
               <tr>
                 <th className="px-6 py-4 font-semibold text-xs text-gray-400 uppercase tracking-widest sticky left-0 bg-latar z-20 shadow-[5px_0_10px_rgba(0,0,0,0.3)] w-64 border-r border-white/5">Karyawan</th>
-                {Array.from({ length: daysInMonth }).map((_, i) => (
-                  <th key={i} className="px-2 py-4 font-semibold text-[10px] text-gray-500 text-center border-l border-white/5">{i + 1}</th>
+                {periodeHari.map((dt, i) => (
+                  <th key={i} className="px-2 py-4 font-semibold text-[10px] text-gray-500 text-center border-l border-white/5">{dt.getDate()}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {isLoading ? (
-                <tr><td colSpan={daysInMonth + 1} className="px-6 py-10 text-center text-gray-500">Memuat data absensi…</td></tr>
+                <tr><td colSpan={periodeHari.length + 1} className="px-6 py-10 text-center text-gray-500">Memuat data absensi…</td></tr>
               ) : heatmapData.length === 0 ? (
-                <tr><td colSpan={daysInMonth + 1} className="px-6 py-10 text-center text-gray-500">Belum ada data karyawan aktif.</td></tr>
+                <tr><td colSpan={periodeHari.length + 1} className="px-6 py-10 text-center text-gray-500">Belum ada data karyawan aktif.</td></tr>
               ) : (
                 heatmapData.map((emp) => (
                   <tr key={emp.id} className="hover:bg-white/[0.02] transition-colors">
@@ -367,7 +381,7 @@ export default function AdminKehadiranPage() {
                     </td>
                     {emp.dataHarian.map((status: StatusKehadiran, index: number) => (
                       <td key={index} className="px-1 py-4 text-center border-l border-white/5 border-dashed">
-                        <div title={`${index + 1} ${BULAN[monthIdx]} — ${status === "-" ? "Tidak ada data" : status}`} className={`w-6 h-6 md:w-7 md:h-7 mx-auto rounded border opacity-90 hover:opacity-100 hover:scale-110 transition-all cursor-crosshair ${getColorByStatus(status)}`}></div>
+                        <div title={`${periodeHari[index] ? `${periodeHari[index].getDate()} ${BULAN[periodeHari[index].getMonth()]}` : ""} — ${status === "-" ? "Tidak ada data" : status}`} className={`w-6 h-6 md:w-7 md:h-7 mx-auto rounded border opacity-90 hover:opacity-100 hover:scale-110 transition-all cursor-crosshair ${getColorByStatus(status)}`}></div>
                       </td>
                     ))}
                   </tr>

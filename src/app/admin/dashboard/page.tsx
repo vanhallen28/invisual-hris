@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { saringTerlambat, fleksibelIds, terlambat } from "@/lib/keterlambatan";
+import { saringTerlambat, fleksibelIds, terlambat, tambahJamKe, JAM_KERJA_JAM } from "@/lib/keterlambatan";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { logAudit } from "@/lib/audit";
@@ -214,10 +214,28 @@ export default function AdminDashboardPage() {
 
   const totalAnomali = anomalyList.reduce((acc, current) => acc + current.issues.length, 0);
 
-  const handleApprovalAction = async (id: string, action: "Disetujui" | "Ditolak") => {
+  const handleApprovalAction = async (id: string, action: "Disetujui" | "Ditolak", keputusan?: "normal" | "sesuai_telat") => {
     try {
-      const { error } = await supabase.from("approvals").update({ status: action }).eq("id", id);
+      const { error } = await supabase.from("approvals").update({ status: action, ...(keputusan ? { keputusanPulang: keputusan } : {}) }).eq("id", id);
       if (error) throw error;
+      // Izin Terlambat disetujui → sesuaikan jam wajib pulang di absen hari itu.
+      if (action === "Disetujui" && keputusan) {
+        const req: any = pendingApprovals.find((r: any) => r.id === id);
+        if (req?.idKaryawan) {
+          const tgl = String(req.tanggal || "").slice(0, 10);
+          const { data: att } = await supabase.from("attendance").select("id, waktuMasuk").eq("idKaryawan", req.idKaryawan).eq("tanggal", tgl).maybeSingle();
+          if (att?.id) {
+            let jps = "18:00";
+            if (keputusan === "normal") {
+              const { data: emp } = await supabase.from("employees").select("jamKeluar").eq("idKaryawan", req.idKaryawan).maybeSingle();
+              jps = emp?.jamKeluar || "18:00";
+            } else {
+              jps = tambahJamKe(att.waktuMasuk || "09:00", JAM_KERJA_JAM);
+            }
+            await supabase.from("attendance").update({ jamPulangSeharusnya: jps }).eq("id", att.id);
+          }
+        }
+      }
       logAudit(action === "Disetujui" ? "Setujui Cuti/Izin" : "Tolak Cuti/Izin", `Pengajuan #${id}`);
       fetchDashboardData();
     } catch (err) {
@@ -527,9 +545,16 @@ export default function AdminDashboardPage() {
                             <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded font-bold uppercase mt-1 inline-block">{req.jenis}</span>
                           </div>
                         </div>
-                        <div className="flex gap-2 shrink-0">
+                        <div className="flex gap-2 shrink-0 flex-wrap justify-end">
                           <button onClick={() => handleApprovalAction(req.id, "Ditolak")} className="px-3 py-2 text-xs font-bold text-gray-400 hover:text-white relative z-30">Tolak</button>
-                          <button onClick={() => handleApprovalAction(req.id, "Disetujui")} className="px-4 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30">Setujui</button>
+                          {req.jenis === "Izin Terlambat" ? (
+                            <>
+                              <button onClick={() => handleApprovalAction(req.id, "Disetujui", "normal")} title="Keterlambatan dimaafkan — pulang jam normal" className="px-3 py-2 bg-green-600/90 hover:bg-green-600 text-white text-xs font-bold rounded-xl relative z-30">ACC pulang 18:00</button>
+                              <button onClick={() => handleApprovalAction(req.id, "Disetujui", "sesuai_telat")} title="Wajib ganti jam — pulang sesuai keterlambatan (clock-in + 9 jam)" className="px-3 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30">ACC pulang +jam</button>
+                            </>
+                          ) : (
+                            <button onClick={() => handleApprovalAction(req.id, "Disetujui")} className="px-4 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30">Setujui</button>
+                          )}
                         </div>
                       </div>
                       <div className="pl-12">

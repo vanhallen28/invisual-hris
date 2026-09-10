@@ -62,6 +62,8 @@ export default function PengaturanAkunPage() {
   const [name, setName] = useState("");
   const [nameBusy, setNameBusy] = useState(false);
   const [nameMsg, setNameMsg] = useState<any>(null);
+  const [blokirTelat, setBlokirTelat] = useState(false);
+  const [blokirBusy, setBlokirBusy] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -74,10 +76,23 @@ export default function PengaturanAkunPage() {
         const provs = (u.identities || []).map((i: any) => i.provider);
         setProviders(provs);
         setHasPassword(provs.includes("email"));
+        const { data: pgn } = await supabase.from("pengaturan").select("nilai").eq("kunci", "blokir_pulang_telat").maybeSingle();
+        setBlokirTelat(pgn?.nilai === "true");
       } catch { setEmailMsg({ t: "err", m: "Tidak dapat terhubung ke server." }); }
       setLoading(false);
     })();
   }, []);
+
+  const toggleBlokir = async () => {
+    const baru = !blokirTelat;
+    setBlokirBusy(true);
+    try {
+      const { error } = await supabase.from("pengaturan").upsert({ kunci: "blokir_pulang_telat", nilai: baru ? "true" : "false" }, { onConflict: "kunci" });
+      if (error) throw error;
+      setBlokirTelat(baru);
+    } catch { /* diamkan */ }
+    setBlokirBusy(false);
+  };
 
   const submitEmail = async (e: React.FormEvent) => {
     e.preventDefault(); setEmailMsg(null);
@@ -166,6 +181,19 @@ export default function PengaturanAkunPage() {
           <p className="text-sm font-bold text-white truncate">{name || "Admin"}</p>
           <p className="text-[11px] text-gray-500 truncate">{user?.email}</p>
         </div>
+      </div>
+
+      <div className="p-5 mb-5 rounded-xl border border-white/10 bg-white/[0.03]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-white">Kebijakan Absensi — Blokir Clock-Out Telat</h3>
+            <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">Jika aktif, karyawan yang datang telat <span className="text-tint font-bold">tidak bisa clock-out sebelum jam wajib pulang</span> (clock-in + 9 jam). Jika mati, jam wajib pulang hanya ditampilkan sebagai info.</p>
+          </div>
+          <button onClick={toggleBlokir} disabled={blokirBusy} className={`shrink-0 w-14 h-8 rounded-full border transition-colors relative ${blokirTelat ? "bg-primer-terang border-primer" : "bg-white/10 border-white/20"} ${blokirBusy ? "opacity-50" : ""}`}>
+            <span className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${blokirTelat ? "left-7" : "left-1"}`}></span>
+          </button>
+        </div>
+        <p className={`text-[11px] font-bold mt-3 ${blokirTelat ? "text-green-400" : "text-gray-500"}`}>{blokirTelat ? "AKTIF — clock-out diblokir sampai jam wajib pulang" : "MATI — clock-out tidak diblokir"}</p>
       </div>
 
       <div className="flex flex-col gap-3">

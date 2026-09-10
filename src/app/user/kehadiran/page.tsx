@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { TOLERANSI_TELAT_MENIT } from "@/lib/keterlambatan";
+import { TOLERANSI_TELAT_MENIT, jamPulangDariClockIn } from "@/lib/keterlambatan";
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
 
@@ -29,6 +29,7 @@ export default function UserKehadiranPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [jamMasuk, setJamMasuk] = useState("09:00");
   const [toleransiTelat, setToleransiTelat] = useState(TOLERANSI_TELAT_MENIT);
+  const [blokirPulangTelat, setBlokirPulangTelat] = useState(false);
   const [isFleksibel, setIsFleksibel] = useState(false);
   const [jamKeluar, setJamKeluar] = useState("17:00");
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
@@ -135,6 +136,8 @@ export default function UserKehadiranPage() {
       if (schedData?.jamKeluar) setJamKeluar(schedData.jamKeluar);
       setIsFleksibel(schedData?.fleksibel === true);
       if (schedData?.toleransiTelat != null) setToleransiTelat(Number(schedData.toleransiTelat));
+      const { data: pgn } = await supabase.from("pengaturan").select("nilai").eq("kunci", "blokir_pulang_telat").maybeSingle();
+      setBlokirPulangTelat(pgn?.nilai === "true");
     } catch (e) {
       console.error("Error fetching data:", e);
     }
@@ -258,6 +261,7 @@ export default function UserKehadiranPage() {
     const isLate = (now.getHours() * 60 + now.getMinutes()) > ((schedH || 9) * 60 + (schedM || 0) + toleransiTelat);
     // WFH/WFC tidak dihitung terlambat (hanya mode Kantor); jam fleksibel juga tidak.
     const statusKehadiran = (!isFleksibel && modeKerja === "Kantor" && isLate) ? "Terlambat" : "Tepat Waktu";
+    const jamPulang = isFleksibel ? null : jamPulangDariClockIn(timeString, jamMasuk, jamKeluar, toleransiTelat);
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
 
     try {
@@ -265,7 +269,8 @@ export default function UserKehadiranPage() {
         idKaryawan: safeId, nama: currentUser.nama, tanggal: todayISO,
         waktuMasuk: timeString, waktuKeluar: null,
         lokasi: modeKerja === "Kantor" ? "Kantor Invisual (Selfie)" : `${modeKerja} (Selfie)`,
-        mode_kerja: modeKerja, status: statusKehadiran
+        mode_kerja: modeKerja, status: statusKehadiran,
+        jamPulangSeharusnya: jamPulang
       }]);
       if (error) throw error;
       showToast("success", `Clock-In berhasil dicatat pada ${timeString} WIB.`);
@@ -281,6 +286,11 @@ export default function UserKehadiranPage() {
 
   const handleClockOut = async () => {
     if (hasCameraPermission === false) return showToast("error", "Izinkan akses kamera di browser Anda!");
+    if (blokirPulangTelat && todayAttendance?.jamPulangSeharusnya) {
+      const _n = new Date();
+      const _hhmm = `${String(_n.getHours()).padStart(2, '0')}:${String(_n.getMinutes()).padStart(2, '0')}`;
+      if (_hhmm < todayAttendance.jamPulangSeharusnya) return showToast("error", `Belum boleh clock-out. Jam wajib pulang Anda ${todayAttendance.jamPulangSeharusnya} WIB.`);
+    }
     setIsActionLoading(true);
     takePhoto(); // ambil foto lalu kamera otomatis mati
 
@@ -368,6 +378,14 @@ export default function UserKehadiranPage() {
             )}
           </h3>
           
+          {todayAttendance?.waktuMasuk && !isAttendanceComplete && todayAttendance?.jamPulangSeharusnya && (
+            <div className="mb-4 md:mb-5 -mt-1 flex items-center gap-2 text-[10px] md:text-xs bg-primer/10 border border-primer/20 rounded-lg px-3 py-2">
+              <span className="text-gray-400">Jam wajib pulang:</span>
+              <span className="text-tint font-bold font-mono">{todayAttendance.jamPulangSeharusnya} WIB</span>
+              {blokirPulangTelat && <span className="text-[9px] text-yellow-400 ml-auto text-right">Clock-out dikunci s/d jam ini</span>}
+            </div>
+          )}
+
           <div className="w-full aspect-video bg-black rounded-xl md:rounded-2xl border border-white/10 flex items-center justify-center relative overflow-hidden mb-4 md:mb-6">
             {isFlashing && <div className="absolute inset-0 bg-white z-50 animate-out fade-out duration-150"></div>}
 

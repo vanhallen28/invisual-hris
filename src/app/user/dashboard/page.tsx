@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { TOLERANSI_TELAT_MENIT } from "@/lib/keterlambatan";
+import { TOLERANSI_TELAT_MENIT, jamPulangDariClockIn } from "@/lib/keterlambatan";
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
 
@@ -47,6 +47,9 @@ export default function UserDashboardPage() {
   const [captureMode, setCaptureMode] = useState<"in" | "out" | null>(null);
   const [jamMasuk, setJamMasuk] = useState("09:00");
   const [toleransiTelat, setToleransiTelat] = useState(TOLERANSI_TELAT_MENIT);
+  const [jamKeluar, setJamKeluar] = useState("18:00");
+  const [isFleksibel, setIsFleksibel] = useState(false);
+  const [blokirPulangTelat, setBlokirPulangTelat] = useState(false);
   // Diarahkan ke toast global standar. Tanda tangan lama (type, message)
   // dipertahankan agar semua pemanggilan showToast(...) tetap jalan.
   const showToast = (type: "success" | "error", message: string) => {
@@ -141,9 +144,13 @@ export default function UserDashboardPage() {
       const { data: cutiData } = await supabase.from("approvals").select("*").eq("idKaryawan", safeId).order("id", { ascending: false }).limit(3);
       if (cutiData) setRecentLeaves(cutiData);
 
-      const { data: schedData } = await supabase.from("employees").select("jamMasuk, toleransiTelat").eq("idKaryawan", safeId).single();
+      const { data: schedData } = await supabase.from("employees").select("jamMasuk, toleransiTelat, jamKeluar, fleksibel").eq("idKaryawan", safeId).single();
       if (schedData?.jamMasuk) setJamMasuk(schedData.jamMasuk);
       if (schedData?.toleransiTelat != null) setToleransiTelat(Number(schedData.toleransiTelat));
+      if (schedData?.jamKeluar) setJamKeluar(schedData.jamKeluar);
+      setIsFleksibel(schedData?.fleksibel === true);
+      const { data: pgn } = await supabase.from("pengaturan").select("nilai").eq("kunci", "blokir_pulang_telat").maybeSingle();
+      setBlokirPulangTelat(pgn?.nilai === "true");
     } catch (e) {
       console.error("Error fetching data dari Supabase:", e);
     }
@@ -219,6 +226,7 @@ export default function UserDashboardPage() {
     const [schedH, schedM] = String(jamMasuk || "09:00").split(":").map(Number);
     const isLate = (now.getHours() * 60 + now.getMinutes()) > ((schedH || 9) * 60 + (schedM || 0) + toleransiTelat);
     const statusKehadiran = isLate ? "Terlambat" : "Tepat Waktu";
+    const jamPulang = isFleksibel ? null : jamPulangDariClockIn(timeString, jamMasuk, jamKeluar, toleransiTelat);
 
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
 
@@ -230,7 +238,8 @@ export default function UserDashboardPage() {
         waktuMasuk: timeString, 
         waktuKeluar: null, 
         lokasi: "Invisual Studio (Selfie)", 
-        status: statusKehadiran
+        status: statusKehadiran,
+        jamPulangSeharusnya: jamPulang
       }]);
       if (error) throw error;
       showToast("success", `Clock-In berhasil dicatat pada ${timeString} WIB.`);
@@ -246,6 +255,11 @@ export default function UserDashboardPage() {
 
   const handleClockOut = async () => {
     if (hasCameraPermission === false) return showToast("error", "Izinkan akses kamera di browser Anda!");
+    if (blokirPulangTelat && todayAttendance?.jamPulangSeharusnya) {
+      const _n = new Date();
+      const _hhmm = `${String(_n.getHours()).padStart(2, '0')}:${String(_n.getMinutes()).padStart(2, '0')}`;
+      if (_hhmm < todayAttendance.jamPulangSeharusnya) return showToast("error", `Belum boleh clock-out. Jam wajib pulang Anda ${todayAttendance.jamPulangSeharusnya} WIB.`);
+    }
     setIsActionLoading(true);
     takePhoto();
 
@@ -414,6 +428,9 @@ export default function UserDashboardPage() {
                 <div className="absolute right-0 top-0 w-8 h-8 md:w-12 md:h-12 bg-magenta/10 rounded-bl-full"></div>
                 <p className="text-[9px] md:text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-wider md:tracking-widest relative z-10 truncate">Pulang</p>
                 <p className="text-lg md:text-2xl font-mono font-bold text-white relative z-10 truncate">{todayAttendance?.waktuKeluar || "--:--"}</p>
+                {!todayAttendance?.waktuKeluar && todayAttendance?.jamPulangSeharusnya && (
+                  <p className="text-[8px] md:text-[10px] mt-1 font-bold uppercase tracking-wider relative z-10 truncate text-tint">Wajib: {todayAttendance.jamPulangSeharusnya}</p>
+                )}
               </div>
             </div>
           </div>

@@ -47,3 +47,28 @@ export function saringTerlambat(absensi: any[] | undefined, employees: any[] | u
  * menyesuaikan kebijakan perusahaan. 0 = tanpa toleransi (ketat).
  */
 export const TOLERANSI_TELAT_MENIT = 5;
+
+/** Jam kerja standar (jam). Telat → wajib pulang = clock-in + jam ini. */
+export const JAM_KERJA_JAM = 9;
+
+/** Tambah `jam` ke waktu "HH:MM" → "HH:MM" (24 jam, mod 24). */
+export function tambahJamKe(hhmm: string, jam: number): string {
+  const [h, m] = String(hhmm || "00:00").split(":").map(Number);
+  const t = ((h || 0) * 60 + (m || 0)) + Math.round(jam * 60);
+  const th = Math.floor(t / 60) % 24, tm = ((t % 60) + 60) % 60;
+  return `${String(th).padStart(2, "0")}:${String(tm).padStart(2, "0")}`;
+}
+
+/**
+ * Hitung jam wajib pulang dari jam clock-in.
+ * - Telat (clock-in > jam masuk + toleransi) → clock-in + JAM_KERJA_JAM (persis).
+ * - Tepat waktu → jam keluar normal.
+ */
+export function jamPulangDariClockIn(clockInHHMM: string, jamMasuk: string, jamKeluar: string, toleransiMenit: number): string {
+  const [cih, cim] = String(clockInHHMM || "00:00").split(":").map(Number);
+  const menitCI = (cih || 0) * 60 + (cim || 0);
+  const [mh, mm] = String(jamMasuk || "09:00").split(":").map(Number);
+  const menitMasuk = (mh || 9) * 60 + (mm || 0);
+  if (menitCI > menitMasuk + (toleransiMenit || 0)) return tambahJamKe(clockInHHMM, JAM_KERJA_JAM);
+  return jamKeluar || "18:00";
+}
