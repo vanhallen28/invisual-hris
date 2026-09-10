@@ -65,10 +65,10 @@ export async function disablePush(supabase: SB) {
 /** Kirim notifikasi ke sejumlah anggota (lewat server) */
 export async function pushNotify(
   supabase: SB,
-  payload: { memberIds: string[]; title: string; body: string; url?: string; tag?: string }
+  payload: { memberIds?: string[]; toAdmins?: boolean; title: string; body: string; url?: string; tag?: string }
 ) {
   try {
-    if (!payload.memberIds?.length) return;
+    if (!payload.memberIds?.length && !payload.toAdmins) return;
     const { data } = await supabase.auth.getSession();
     const token = data?.session?.access_token;
     if (!token) return;

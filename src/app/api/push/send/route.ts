@@ -29,10 +29,21 @@ export async function POST(req: Request) {
 
     // 2) Ambil target
     const body = await req.json();
-    const memberIds: string[] = (body?.memberIds || []).filter((id: string) => id && id !== senderId);
+    const admin = createClient(url, serviceRole, { auth: { persistSession: false } });
+
+    let memberIds: string[] = Array.isArray(body?.memberIds) ? body.memberIds.slice() : [];
+    // Opsi: kirim ke SEMUA admin (@invisual.studio) — di-resolve di server agar
+    // tak terhalang RLS saat pemanggilnya karyawan biasa.
+    if (body?.toAdmins) {
+      const { data: emps } = await admin.from('employees').select('user_id, email, emailLogin');
+      (emps || []).forEach((e: any) => {
+        const em = String(e.emailLogin || e.email || '').toLowerCase();
+        if (e.user_id && em.endsWith('@invisual.studio')) memberIds.push(e.user_id);
+      });
+    }
+    memberIds = Array.from(new Set(memberIds)).filter((id) => id && id !== senderId);
     if (!memberIds.length) return NextResponse.json({ ok: true, sent: 0 });
 
-    const admin = createClient(url, serviceRole, { auth: { persistSession: false } });
     const { data: subs } = await admin
       .from('push_subscriptions')
       .select('*')

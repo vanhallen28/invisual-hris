@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { TOLERANSI_TELAT_MENIT, jamPulangDariClockIn } from "@/lib/keterlambatan";
+import { pushNotify } from "@/lib/push";
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
 
@@ -243,6 +244,7 @@ export default function UserDashboardPage() {
       }]);
       if (error) throw error;
       showToast("success", `Clock-In berhasil dicatat pada ${timeString} WIB.`);
+      pushNotify(supabase, { toAdmins: true, title: "Absen Masuk", body: `${currentUser?.nama || "Karyawan"} clock-in ${timeString} (${statusKehadiran})`, url: "/admin/kehadiran", tag: "absen" });
       await fetchDashboardData(safeId);
     } catch (err: any) {
       if (err?.code === "23505") { showToast("info", "Anda sudah tercatat absen masuk hari ini."); await fetchDashboardData(safeId); }
@@ -271,6 +273,7 @@ export default function UserDashboardPage() {
       const { error } = await supabase.from("attendance").update({ waktuKeluar: timeString }).eq("id", todayAttendance.id);
       if (error) throw error;
       showToast("success", `Clock-Out berhasil dicatat pada ${timeString} WIB.`);
+      pushNotify(supabase, { toAdmins: true, title: "Absen Pulang", body: `${currentUser?.nama || "Karyawan"} clock-out ${timeString}`, url: "/admin/kehadiran", tag: "absen" });
       await fetchDashboardData(safeId);
     } catch (err: any) {
       showToast("error", "Gagal merekam jam pulang: " + err.message);

@@ -6,6 +6,7 @@ import { saringTerlambat, fleksibelIds, terlambat, tambahJamKe, JAM_KERJA_JAM } 
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { logAudit } from "@/lib/audit";
+import { pushNotify } from "@/lib/push";
 import { useToast } from "@/components/Toast";
 import { CorporateSummaryCard } from "@/components/admin/CorporateSummaryCard";
 import { ResetAbsensiCard } from "@/components/admin/ResetAbsensiCard";
@@ -236,6 +237,14 @@ export default function AdminDashboardPage() {
           }
         }
       }
+      // 🔔 beri tahu karyawan hasil pengajuannya
+      try {
+        const reqN: any = pendingApprovals.find((r: any) => r.id === id);
+        if (reqN?.idKaryawan) {
+          const { data: empN } = await supabase.from("employees").select("user_id").eq("idKaryawan", reqN.idKaryawan).maybeSingle();
+          if (empN?.user_id) pushNotify(supabase, { memberIds: [empN.user_id], title: `Pengajuan ${reqN.jenis}: ${action}`, body: action === "Disetujui" ? "Pengajuan Anda telah disetujui." : "Pengajuan Anda ditolak.", url: "/user/kehadiran", tag: "pengajuan" });
+        }
+      } catch { /* abaikan */ }
       logAudit(action === "Disetujui" ? "Setujui Cuti/Izin" : "Tolak Cuti/Izin", `Pengajuan #${id}`);
       fetchDashboardData();
     } catch (err) {
