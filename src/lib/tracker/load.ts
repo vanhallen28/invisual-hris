@@ -135,13 +135,18 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
   }
 
   const kids = (pid: any, kind: string) => nodes.filter((n: any) => n.parent_id === pid && n.kind === kind).slice().sort(byPos);
+  // Board bisa punya sub-board (bertingkat) — bangun rekursif.
+  const bangunBoard = (b: any): any => ({
+    id: b.id, name: b.name, isOpen: b.is_open ?? false,
+    boards: kids(b.id, 'board').filter((c: any) => boardAllowed(c.name)).map(bangunBoard),
+  });
   const workspaces = nodes.filter((n: any) => n.kind === 'workspace').slice().sort(byPos).map((ws: any) => ({
     id: ws.id, name: ws.name,
     years: kids(ws.id, 'year').map((y: any) => ({
       id: y.id, name: y.name, isOpen: y.is_open ?? false,
       months: kids(y.id, 'month').map((m: any) => ({
         id: m.id, name: m.name, isOpen: m.is_open ?? false,
-        boards: kids(m.id, 'board').filter((b: any) => boardAllowed(b.name)).map((b: any) => ({ id: b.id, name: b.name })),
+        boards: kids(m.id, 'board').filter((b: any) => boardAllowed(b.name)).map(bangunBoard),
       }))
       // Manajer terbatas: sembunyikan bulan yang tak punya board yang boleh diakses
       .filter((m: any) => (allowedPatterns.length ? m.boards.length > 0 : true)),

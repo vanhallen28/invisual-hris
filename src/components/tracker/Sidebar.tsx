@@ -9,7 +9,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
   const { 
     workspaces, setWorkspaces, activeWorkspaceId, activeBoardId, setActiveBoardId, inlineCreate, setInlineCreate, 
     inputValue, setInputValue, editingCell, setEditingCell, editValue, setEditValue, triggerConfirm, boardsDataMap, setBoardsDataMap, HEX_COLORS,
-    addYear, addMonth, addBoard, renameNode, deleteNode, supabase, refreshData, pushToast
+    addYear, addMonth, addBoard, toggleBoard, renameNode, deleteNode, supabase, refreshData, pushToast
   } = useDashboard();
 
   const [collapsed, setCollapsed] = useState(false);
@@ -76,6 +76,38 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
   const handleDeleteBoard = (monthId: string, boardId: string) => deleteNode('board', boardId);
 
   const openBoard = (boardId: string) => { setActiveBoardId(boardId); setMobileOpen?.(false); };
+
+  // Render board secara REKURSIF: board bisa punya sub-board (bertingkat).
+  const renderBoard = (board: any, depth: number, parentId: string): any => {
+    const punyaSub = (board.boards || []).length > 0;
+    return (
+      <div key={board.id} className="flex flex-col gap-0.5">
+        <div onClick={() => openBoard(board.id)} style={{ marginLeft: depth * 12 }} className={`flex items-center justify-between w-full text-left px-2 py-1.5 rounded text-xs font-medium tracking-wide transition-colors cursor-pointer group/board ${activeBoardId === board.id ? 'bg-primer text-blue-200 border-l-2 border-blue-500' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}>
+          {editingCell?.type === 'board' && editingCell?.id === board.id ? (
+            <input autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={saveSidebarEdit} onKeyDown={e => { if (e.key === 'Enter') saveSidebarEdit(); else if (e.key === 'Escape') setEditingCell(null); }} className="bg-kartu border border-blue-500 text-xs px-1 py-0.5 rounded w-full outline-none text-white" />
+          ) : (
+            <div className="flex items-center gap-1 truncate flex-1 py-0.5">
+              {punyaSub ? (
+                <button onClick={(e) => { e.stopPropagation(); toggleBoard(board.id); }} className="p-0.5 -ml-0.5 text-gray-500 hover:text-white shrink-0"><ChevronDown size={11} className={`transition-transform ${board.isOpen ? '' : '-rotate-90'}`} /></button>
+              ) : (<span className="inline-block w-[15px] shrink-0" />)}
+              <LayoutTemplate size={12} className={activeBoardId === board.id ? 'text-blue-400 shrink-0' : 'text-gray-500 shrink-0'} />
+              <span className="truncate">{board.name}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-0.5 opacity-0 group-hover/board:opacity-100 transition-opacity">
+            <button onClick={(e) => { e.stopPropagation(); setInlineCreate({ type: 'board', parentId: board.id }); setInputValue(''); if (!board.isOpen) toggleBoard(board.id); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors" title="Tambah sub-board"><Plus size={12} /></button>
+            <button onClick={(e) => { e.stopPropagation(); bukaDuplikat(board, parentId); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors" title="Duplikat papan"><Copy size={11} /></button>
+            <button onClick={(e) => { e.stopPropagation(); setEditingCell({ type: 'board', id: board.id }); setEditValue(board.name); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors"><Pencil size={11} /></button>
+            <button onClick={(e) => { e.stopPropagation(); triggerConfirm('Delete Project', `Hapus "${board.name}"?`, () => handleDeleteBoard(parentId, board.id)); }} className="p-1 text-gray-600 hover:text-red-400 transition-colors"><Trash2 size={11} /></button>
+          </div>
+        </div>
+        {board.isOpen && (board.boards || []).map((sb: any) => renderBoard(sb, depth + 1, board.id))}
+        {inlineCreate.type === 'board' && inlineCreate.parentId === board.id && (
+          <form onSubmit={submitInlineCreate} style={{ marginLeft: (depth + 1) * 12 }} className="mt-1 pl-3"><input autoFocus value={inputValue} onChange={e => setInputValue(e.target.value)} onBlur={() => setInlineCreate({ type: '', parentId: null })} placeholder="Sub-board name..." className="bg-latar border border-white/10 text-[11px] px-2 py-1 rounded w-full outline-none text-white shadow-inner" /></form>
+        )}
+      </div>
+    );
+  };
 
   // FILTER PENCARIAN: saat ada query, tampilkan hanya board yang cocok + paksa buka folder induknya
   const q = search.trim().toLowerCase();
@@ -178,20 +210,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
                       {month._open && (
                         <div className="flex flex-col gap-0.5 mt-0.5">
                           {/* LEVEL 3: BOARDS/PROJECTS */}
-                          {month.boards?.map((board: any) => (
-                            <div key={board.id} onClick={() => openBoard(board.id)} className={`flex items-center justify-between w-full text-left px-2 py-1.5 rounded text-xs font-medium tracking-wide transition-colors cursor-pointer group/board ${activeBoardId === board.id ? 'bg-primer text-blue-200 border-l-2 border-blue-500' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200 ml-[2px]'}`}>
-                              {editingCell?.type === 'board' && editingCell?.id === board.id ? (
-                                <input autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={saveSidebarEdit} onKeyDown={e => { if(e.key === 'Enter') saveSidebarEdit(); else if(e.key === 'Escape') setEditingCell(null); }} className="bg-kartu border border-blue-500 text-xs px-1 py-0.5 rounded w-full outline-none text-white" />
-                              ) : (
-                                <div className="flex items-center gap-2 truncate flex-1 py-0.5 pl-1"><LayoutTemplate size={12} className={activeBoardId === board.id ? 'text-blue-400' : 'text-gray-500'} /><span className="truncate">{board.name}</span></div>
-                              )}
-                              <div className="flex items-center gap-0.5 opacity-0 group-hover/board:opacity-100 transition-opacity">
-                                <button onClick={(e) => { e.stopPropagation(); bukaDuplikat(board, month.id); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors" title="Duplikat papan"><Copy size={11}/></button>
-                                <button onClick={(e) => { e.stopPropagation(); setEditingCell({ type: 'board', id: board.id }); setEditValue(board.name); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors"><Pencil size={11}/></button>
-                                <button onClick={(e) => { e.stopPropagation(); triggerConfirm('Delete Project', `Hapus "${board.name}"?`, () => handleDeleteBoard(month.id, board.id)); }} className="p-1 text-gray-600 hover:text-red-400 transition-colors"><Trash2 size={11} /></button>
-                              </div>
-                            </div>
-                          ))}
+                          {month.boards?.map((board: any) => renderBoard(board, 0, month.id))}
                           {inlineCreate.type === 'board' && inlineCreate.parentId === month.id && (
                             <form onSubmit={submitInlineCreate} className="mt-1 pl-3"><input autoFocus value={inputValue} onChange={e => setInputValue(e.target.value)} onBlur={() => setInlineCreate({type:'', parentId:null})} placeholder="Project name..." className="bg-latar border border-white/10 text-[11px] px-2 py-1 rounded w-full outline-none text-white shadow-inner"/></form>
                           )}

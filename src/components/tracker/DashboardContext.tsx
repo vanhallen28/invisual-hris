@@ -267,7 +267,8 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
         let saved: string | null = null;
         try { saved = localStorage.getItem('dwt_active_board'); } catch {}
         const boardIds = new Set<string>();
-        for (const w of s.workspaces) for (const y of (w.years || [])) for (const m of (y.months || [])) for (const b of (m.boards || [])) boardIds.add(b.id);
+        const kumpulBoardIds = (bs: any[]) => { for (const b of (bs || [])) { boardIds.add(b.id); kumpulBoardIds(b.boards); } };
+        for (const w of s.workspaces) for (const y of (w.years || [])) for (const m of (y.months || [])) kumpulBoardIds(m.boards);
         let firstBoard: string | null = null;
         for (const w of s.workspaces) {
           for (const y of (w.years || [])) {
@@ -462,17 +463,20 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     persistItemField('sub', sId, field, val);
   };
   const handleDeleteItem = (gId: string, iId: string) => {
+    tandaiTulisSendiri();
     setBoardData(boardData.map((g:any) => g.id === gId ? { ...g, items: g.items.filter((i:any) => i.id !== iId) } : g));
     pushToast('Item dihapus');
     if (cloudOn()) dbDeleteItem(supabase, iId).catch((e:any) => pushToast('Gagal hapus di cloud: ' + (e?.message || e)));
   };
   const handleDeleteSubItem = (gId: string, iId: string, sId: string) => {
+    tandaiTulisSendiri();
     setBoardData(boardData.map((g:any) => g.id !== gId ? g : { ...g, items: g.items.map((i:any) => i.id === iId ? { ...i, subItems: i.subItems.filter((s:any) => s.id !== sId) } : i) }));
     pushToast('Sub-item dihapus');
     if (cloudOn()) dbDeleteItem(supabase, sId).catch((e:any) => pushToast('Gagal hapus di cloud: ' + (e?.message || e)));
   };
   
   const handleAddItem = (gId: string) => {
+    tandaiTulisSendiri();
     const id = newId();
     const grp = boardData.find((g:any) => g.id === gId);
     const position = grp ? grp.items.length : 0;
@@ -480,6 +484,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     if (cloudOn()) dbAddItem(supabase, { id, groupId: gId, name: 'New item', position }).catch((e:any) => pushToast('Gagal tambah item di cloud: ' + (e?.message || e)));
   };
   const handleAddSubItem = (gId: string, iId: string) => {
+    tandaiTulisSendiri();
     const id = newId();
     const grp = boardData.find((g:any) => g.id === gId);
     const parent = grp?.items.find((i:any) => i.id === iId);
@@ -514,6 +519,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     pushToast('Anggota tim dihapus', () => setTeamMembers(snap));
   };
   const handleDeleteLabel = (field: string, labelId: string) => {
+    tandaiTulisSendiri();
     const deletedText = (labels[field] || []).find((l: any) => l.id === labelId)?.text;
     setLabels((prev: any) => ({ ...prev, [field]: (prev[field] || []).filter((l: any) => l.id !== labelId) }));
 
@@ -545,6 +551,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   };
   // Tambah opsi/label baru (dipakai context & TableCell) — id uuid + simpan ke cloud
   const addLabelOption = (columnId: string, text: string, color?: string) => {
+    tandaiTulisSendiri();
     const lbl = { id: newId(), text, color: color || LABEL_COLORS[Math.floor(Math.random() * LABEL_COLORS.length)] };
     const position = (labels[columnId]?.length || 0);
     setLabels((prev:any) => ({ ...prev, [columnId]: [...(prev[columnId] || []), lbl] }));
@@ -552,20 +559,24 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     return lbl;
   };
   const updateLabelColor = (columnId: string, labelId: string, color: string) => {
+    tandaiTulisSendiri();
     setLabels((prev:any) => ({ ...prev, [columnId]: (prev[columnId] || []).map((l:any) => l.id === labelId ? { ...l, color } : l) }));
     if (cloudOn()) dbUpdateLabelColor(supabase, labelId, color).catch((e:any) => pushToast('Gagal ubah warna label: ' + (e?.message || e)));
   };
   const handleDeleteColumn = (colId: string) => {
+    tandaiTulisSendiri();
     setColumns(columns.filter((c:any) => c.id !== colId));
     pushToast('Kolom dihapus');
     if (cloudOn()) dbDeleteColumn(supabase, colId).catch((e:any) => pushToast('Gagal hapus kolom di cloud: ' + (e?.message || e)));
   };
   const handleDeleteSubColumn = (colId: string) => {
+    tandaiTulisSendiri();
     setSubColumns(subColumns.filter((c:any) => c.id !== colId));
     pushToast('Kolom sub dihapus');
     if (cloudOn()) dbDeleteColumn(supabase, colId).catch((e:any) => pushToast('Gagal hapus kolom di cloud: ' + (e?.message || e)));
   };
   const handleAddGroup = () => {
+    tandaiTulisSendiri();
     if (!activeBoardId) return;
     const id = newId();
     const color = HEX_COLORS[Math.floor(Math.random() * HEX_COLORS.length)];
@@ -579,6 +590,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     if (cloudOn()) dbUpdateGroup(supabase, gId, patch).catch((e:any) => pushToast('Gagal simpan grup di cloud: ' + (e?.message || e)));
   };
   const handleDeleteGroup = (gId: string) => {
+    tandaiTulisSendiri();
     setBoardData(boardData.filter((g:any) => g.id !== gId));
     pushToast('Grup dihapus');
     if (cloudOn()) dbDeleteGroup(supabase, gId).catch((e:any) => pushToast('Gagal hapus grup di cloud: ' + (e?.message || e)));
@@ -586,6 +598,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
 
   // === POHON (year/month/board) — cloud-aware ===
   const addYear = (name: string) => {
+    tandaiTulisSendiri();
     const id = newId(); const nm = name.toUpperCase();
     const ws = workspaces.find((w:any) => w.id === activeWorkspaceId) || workspaces[0];
     if (!ws) {
@@ -605,46 +618,71 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     if (cloudOn()) dbAddTreeNode(supabase, { id, parentId: ws.id, kind: 'year', name: nm, position }).catch((e:any) => pushToast('Gagal tambah tahun di cloud: ' + (e?.message || e)));
   };
   const addMonth = (yearId: string, name: string) => {
+    tandaiTulisSendiri();
     const id = newId(); const nm = name.toUpperCase();
     let position = 0;
     for (const w of workspaces) { const y = (w.years || []).find((yy:any) => yy.id === yearId); if (y) position = (y.months?.length) || 0; }
     setWorkspaces(workspaces.map((w:any) => ({ ...w, years: (w.years || []).map((y:any) => y.id === yearId ? { ...y, isOpen: true, months: [...(y.months || []), { id, name: nm, isOpen: true, boards: [] }] } : y) })));
     if (cloudOn()) dbAddTreeNode(supabase, { id, parentId: yearId, kind: 'month', name: nm, position }).catch((e:any) => pushToast('Gagal tambah bulan di cloud: ' + (e?.message || e)));
   };
-  const addBoard = (monthId: string, name: string) => {
+  // === Helper rekursif pohon board (board bisa punya sub-board) ===
+  const petaBoards = (arr: any[], id: string, ubah: (b: any) => any): any[] =>
+    (arr || []).map((b: any) => b.id === id ? ubah({ ...b, boards: b.boards || [] }) : { ...b, boards: petaBoards(b.boards || [], id, ubah) });
+  const hapusBoards = (arr: any[], id: string): any[] =>
+    (arr || []).filter((b: any) => b.id !== id).map((b: any) => ({ ...b, boards: hapusBoards(b.boards || [], id) }));
+  const cariBoard = (arr: any[], id: string): any => {
+    for (const b of (arr || [])) { if (b.id === id) return b; const f = cariBoard(b.boards || [], id); if (f) return f; }
+    return null;
+  };
+  const petaSemuaBoards = (ws: any[], id: string, ubah: (b: any) => any): any[] =>
+    (ws || []).map((w: any) => ({ ...w, years: (w.years || []).map((y: any) => ({ ...y, months: (y.months || []).map((m: any) => ({ ...m, boards: petaBoards(m.boards || [], id, ubah) })) })) }));
+  const cariBoardWs = (id: string) => { for (const w of workspaces) for (const y of (w.years || [])) for (const m of (y.months || [])) { const f = cariBoard(m.boards || [], id); if (f) return f; } return null; };
+  const adalahBulanId = (id: string) => { for (const w of workspaces) for (const y of (w.years || [])) if ((y.months || []).some((m: any) => m.id === id)) return true; return false; };
+
+  // parentId bisa BULAN atau BOARD (untuk sub-board).
+  const addBoard = (parentId: string, name: string) => {
+    tandaiTulisSendiri();
     const id = newId(); const groupId = newId();
     const color = HEX_COLORS[Math.floor(Math.random() * HEX_COLORS.length)];
     let position = 0;
-    for (const w of workspaces) for (const y of (w.years || [])) { const m = (y.months || []).find((mm:any) => mm.id === monthId); if (m) position = (m.boards?.length) || 0; }
-    setWorkspaces(workspaces.map((w:any) => ({ ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).map((m:any) => m.id === monthId ? { ...m, isOpen: true, boards: [...(m.boards || []), { id, name }] } : m) })) })));
+    if (adalahBulanId(parentId)) {
+      for (const w of workspaces) for (const y of (w.years || [])) { const m = (y.months || []).find((mm:any) => mm.id === parentId); if (m) position = (m.boards?.length) || 0; }
+      setWorkspaces(workspaces.map((w:any) => ({ ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).map((m:any) => m.id === parentId ? { ...m, isOpen: true, boards: [...(m.boards || []), { id, name, isOpen: false, boards: [] }] } : m) })) })));
+    } else {
+      position = (cariBoardWs(parentId)?.boards?.length) || 0;
+      setWorkspaces(petaSemuaBoards(workspaces, parentId, (b:any) => ({ ...b, isOpen: true, boards: [...(b.boards || []), { id, name, isOpen: false, boards: [] }] })));
+    }
     setBoardsDataMap((prev:any) => ({ ...prev, [id]: { groups: [{ id: groupId, title: 'New Group', color, isCollapsed: false, itemLabel: 'Item Name', subItemLabel: 'Subitem', items: [] }], columns: [], subColumns: [], views: makeDefaultViews() } }));
     setActiveBoardId(id);
     if (cloudOn()) {
-      dbAddTreeNode(supabase, { id, parentId: monthId, kind: 'board', name, position })
+      dbAddTreeNode(supabase, { id, parentId, kind: 'board', name, position })
         .then(() => dbAddGroup(supabase, { id: groupId, boardId: id, title: 'New Group', color, position: 0 }))
         .catch((e:any) => pushToast('Gagal tambah board di cloud: ' + (e?.message || e)));
     }
     return id;
   };
   const renameNode = (kind: 'year'|'month'|'board', nodeId: string, name: string) => {
+    tandaiTulisSendiri();
     const nm = kind === 'board' ? name : name.toUpperCase();
     setWorkspaces(workspaces.map((w:any) => {
       if (kind === 'year') return { ...w, years: (w.years || []).map((y:any) => y.id === nodeId ? { ...y, name: nm } : y) };
       if (kind === 'month') return { ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).map((m:any) => m.id === nodeId ? { ...m, name: nm } : m) })) };
-      return { ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).map((m:any) => ({ ...m, boards: (m.boards || []).map((b:any) => b.id === nodeId ? { ...b, name: nm } : b) })) })) };
+      return { ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).map((m:any) => ({ ...m, boards: petaBoards(m.boards || [], nodeId, (b:any) => ({ ...b, name: nm })) })) })) };
     }));
     if (cloudOn()) dbRenameTreeNode(supabase, nodeId, nm).catch((e:any) => pushToast('Gagal rename di cloud: ' + (e?.message || e)));
   };
   const deleteNode = (kind: 'year'|'month'|'board', nodeId: string) => {
+    tandaiTulisSendiri();
     setWorkspaces(workspaces.map((w:any) => {
       if (kind === 'year') return { ...w, years: (w.years || []).filter((y:any) => y.id !== nodeId) };
       if (kind === 'month') return { ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).filter((m:any) => m.id !== nodeId) })) };
-      return { ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).map((m:any) => ({ ...m, boards: (m.boards || []).filter((b:any) => b.id !== nodeId) })) })) };
+      return { ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).map((m:any) => ({ ...m, boards: hapusBoards(m.boards || [], nodeId) })) })) };
     }));
     if (kind === 'board') { const nm = { ...boardsDataMap }; delete nm[nodeId]; setBoardsDataMap(nm); if (activeBoardId === nodeId) setActiveBoardId(null); }
     pushToast((kind === 'year' ? 'Tahun' : kind === 'month' ? 'Bulan' : 'Board') + ' dihapus');
     if (cloudOn()) dbDeleteTreeNode(supabase, nodeId).catch((e:any) => pushToast('Gagal hapus di cloud: ' + (e?.message || e)));
   };
+  const toggleBoard = (boardId: string) => setWorkspaces((ws:any) => petaSemuaBoards(ws, boardId, (b:any) => ({ ...b, isOpen: !b.isOpen })));
 
   // === REORDER + INSERT-BELOW + RENAME KOLOM (cloud-aware) ===
   const updateColumnLabel = (colId: string, label: string) => {
@@ -682,6 +720,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     if (cloudOn()) dbReindexColumns(supabase, arr.map((c:any) => c.id)).catch((e:any) => pushToast('Gagal simpan urutan kolom: ' + (e?.message || e)));
   };
   const reorderGroups = (fromId: string, toId: string) => {
+    tandaiTulisSendiri();
     if (!fromId || fromId === toId) return;
     const arr = [...boardData];
     const fromIdx = arr.findIndex((g:any) => g.id === fromId);
@@ -692,6 +731,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     if (cloudOn()) dbReindexGroups(supabase, arr.map((g:any) => g.id)).catch((e:any) => pushToast('Gagal simpan urutan grup: ' + (e?.message || e)));
   };
   const moveItem = (dgId: string, diId: string, tgId: string, tiId: string) => {
+    tandaiTulisSendiri();
     if (!diId || (dgId === tgId && diId === tiId)) return;
     const newData = [...boardData];
     const sGIdx = newData.findIndex((g:any) => g.id === dgId), tGIdx = newData.findIndex((g:any) => g.id === tgId);
@@ -726,6 +766,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     }
   };
   const insertItemBelow = (gId: string, afterItemId: string) => {
+    tandaiTulisSendiri();
     const id = newId();
     const grp = boardData.find((g:any) => g.id === gId); if (!grp) return;
     const items = [...grp.items];
@@ -741,6 +782,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     }
   };
   const insertSubBelow = (gId: string, itemId: string, afterSubId: string) => {
+    tandaiTulisSendiri();
     const id = newId();
     const grp = boardData.find((g:any) => g.id === gId); if (!grp) return;
     const parent = grp.items.find((i:any) => i.id === itemId); if (!parent) return;
@@ -777,6 +819,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   };
 
   const handleBulkDelete = (ids: string[]) => {
+    tandaiTulisSendiri();
     setBoardData(boardData.map((g:any) => ({ ...g, items: g.items.filter((i:any) => !ids.includes(i.id)).map((i:any) => ({ ...i, subItems: i.subItems?.filter((s:any) => !ids.includes(s.id)) || [] })) })));
     setSelectedItems([]);
     pushToast(`${ids.length} item dihapus`);
@@ -788,6 +831,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   };
 
   const handleBulkDuplicate = (ids: string[]) => {
+    tandaiTulisSendiri();
     if (!ids.length) return;
     const idSet = new Set(ids);
     const clones: { clone: any; groupId: string }[] = [];
@@ -1061,7 +1105,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     dragOverColumn, setDragOverColumn, detailItem, setDetailItem,
     triggerConfirm, handleUpdateItem, handleUpdateSubItem, handleDeleteItem, handleDeleteSubItem,
     handleAddItem, handleAddSubItem, toggleGroupSelection, toggleAllSubItems,
-    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, addYear, addMonth, addBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, accountTargets, setAccountTarget, pushToast, HEX_COLORS, LABEL_COLORS,
+    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, addYear, addMonth, addBoard, toggleBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, accountTargets, setAccountTarget, pushToast, HEX_COLORS, LABEL_COLORS,
     authUser, doLogout, isManager, currentUserRole, canContentHub, canAcc, refreshData, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase
   };
 

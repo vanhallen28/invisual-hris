@@ -11,6 +11,7 @@ import { KeuanganProvider } from '@/lib/keuangan/konteks';
 const TABS = [
   { href: '/admin/keuangan', label: 'Ringkasan', tepat: true },
   { href: '/admin/keuangan/transaksi', label: 'Transaksi' },
+  { href: '/admin/keuangan/pendapatan', label: 'Pendapatan' },
   { href: '/admin/keuangan/anggaran', label: 'Anggaran' },
   { href: '/admin/keuangan/kategori', label: 'Kategori' },
   { href: '/admin/keuangan/laporan', label: 'Laporan' },
