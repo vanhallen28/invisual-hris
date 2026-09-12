@@ -31,6 +31,7 @@ export default function PendapatanPage() {
   const [service, setService] = useState<ServiceRow[]>([]);
 
   const [kategori, setKategori] = useState<Kategori[]>([]);
+  const [pemilikAkun, setPemilikAkun] = useState<Record<string, { pemilik: string; persentasi: number; biaya_operasional: number }>>({});
   const [akun, setAkun] = useState<Akun[]>([]);
 
   const [modalCatat, setModalCatat] = useState(false);
@@ -58,6 +59,9 @@ export default function PendapatanPage() {
         (hrg || []).forEach((r: any) => { petaHarga[String(r.marketplace).toUpperCase()] = Number(r.harga_usd) || 0; });
 
         const { data: pgn } = await supabase.from('pengaturan').select('nilai').eq('kunci', 'kurs_usd_idr').maybeSingle();
+        const { data: pa } = await supabase.from('pemilik_akun').select('*');
+        const petaPemilik: Record<string, any> = {};
+        (pa || []).forEach((r: any) => { petaPemilik[r.akun] = { pemilik: r.pemilik || '', persentasi: Number(r.persentasi) || 0, biaya_operasional: Number(r.biaya_operasional) || 0 }; });
 
         if (!hidup) return;
         setBoardMap(fs.boardsDataMap || {});
@@ -66,6 +70,7 @@ export default function PendapatanPage() {
         setHarga(petaHarga);
         setKurs(Number(pgn?.nilai) || 16000);
         setKategori((kats || []).filter((k: any) => k.kind === 'in'));
+        setPemilikAkun(petaPemilik);
         setAkun(akns || []);
       } catch (e: any) {
         if (hidup) setGalat(e?.message || 'Gagal memuat data.');
@@ -115,6 +120,10 @@ export default function PendapatanPage() {
   const marketplaceIdr = rincian.totalUsd * kurs;
   const serviceTotalIdr = serviceUsd * kurs + serviceIdr;
   const grandTotalIdr = marketplaceIdr + serviceTotalIdr;
+  const pendapatanPemilikAkun = (a: { nama: string; usd: number }) => {
+    const pa: any = pemilikAkun[a.nama] || { persentasi: 0, biaya_operasional: 0 };
+    return (a.usd * kurs - (Number(pa.biaya_operasional) || 0)) * ((Number(pa.persentasi) || 0) / 100);
+  };
 
   // ---- persist ----
   const simpanHarga = async (mkt: string, val: number) => {
@@ -126,6 +135,12 @@ export default function PendapatanPage() {
     setKurs(val);
     try { await supabase.from('pengaturan').upsert({ kunci: 'kurs_usd_idr', nilai: String(val) }, { onConflict: 'kunci' }); }
     catch { toast.gagal('Gagal menyimpan kurs.'); }
+  };
+  const simpanPemilik = async (akun: string, patch: Partial<{ pemilik: string; persentasi: number; biaya_operasional: number }>) => {
+    const merged = { pemilik: '', persentasi: 0, biaya_operasional: 0, ...(pemilikAkun[akun] || {}), ...patch };
+    setPemilikAkun((p) => ({ ...p, [akun]: merged }));
+    try { await supabase.from('pemilik_akun').upsert({ akun, pemilik: merged.pemilik, persentasi: merged.persentasi, biaya_operasional: merged.biaya_operasional }, { onConflict: 'akun' }); }
+    catch { toast.gagal('Gagal menyimpan data pemilik.'); }
   };
   const tambahService = async () => {
     const baris: ServiceRow = { id: 'svc-' + Date.now(), board_id: boardId, keterangan: '', jumlah: 0, mata_uang: 'IDR' };
@@ -246,26 +261,47 @@ export default function PendapatanPage() {
                   <thead>
                     <tr className="text-left text-[11px] uppercase text-gray-500 border-b border-white/5">
                       <th className="px-4 py-2 font-semibold">Akun</th>
+                      <th className="px-4 py-2 font-semibold">Data</th>
+                      <th className="px-4 py-2 font-semibold text-center">Persentasi</th>
+                      <th className="px-4 py-2 font-semibold text-right">Biaya Ops (Rp)</th>
                       <th className="px-4 py-2 font-semibold text-center">Approved</th>
                       <th className="px-4 py-2 font-semibold text-right">Estimasi (USD)</th>
                       <th className="px-4 py-2 font-semibold text-right">Estimasi (Rp)</th>
+                      <th className="px-4 py-2 font-semibold text-right">Pendapatan Pemilik (Rp)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {m.akun.map((a) => (
+                    {m.akun.map((a) => {
+                      const pa = pemilikAkun[a.nama] || { pemilik: '', persentasi: 0, biaya_operasional: 0 };
+                      return (
                       <tr key={a.nama} className="border-b border-white/5 last:border-0">
-                        <td className="px-4 py-2.5 text-white">{a.nama}</td>
+                        <td className="px-4 py-2.5 text-white whitespace-nowrap">{a.nama}</td>
+                        <td className="px-4 py-2.5">
+                          <input type="text" defaultValue={pa.pemilik} onBlur={(e) => simpanPemilik(a.nama, { pemilik: e.target.value })} placeholder="—" className="w-28 bg-input border border-white/10 rounded px-2 py-1 text-sm text-white outline-none focus:border-primer" />
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <span className="inline-flex items-center gap-1">
+                            <input type="number" min={0} max={100} defaultValue={pa.persentasi} onBlur={(e) => simpanPemilik(a.nama, { persentasi: Number(e.target.value) || 0 })} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} className="w-16 bg-input border border-white/10 rounded px-2 py-1 text-sm text-white text-right outline-none focus:border-primer" />
+                            <span className="text-gray-500 text-xs">%</span>
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <input type="number" min={0} defaultValue={pa.biaya_operasional} onBlur={(e) => simpanPemilik(a.nama, { biaya_operasional: Number(e.target.value) || 0 })} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} className="w-28 bg-input border border-white/10 rounded px-2 py-1 text-sm text-white text-right outline-none focus:border-primer" />
+                        </td>
                         <td className="px-4 py-2.5 text-center font-mono text-emerald-400">{a.approved}</td>
                         <td className="px-4 py-2.5 text-right font-mono text-white">{usd(a.usd)}</td>
                         <td className="px-4 py-2.5 text-right font-mono text-gray-400">{rp(a.usd * kurs)}</td>
+                        <td className="px-4 py-2.5 text-right font-mono font-bold text-tint">{rp(pendapatanPemilikAkun(a))}</td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                   <tfoot>
                     <tr className="bg-white/[0.03]">
-                      <td className="px-4 py-2.5 font-bold text-white" colSpan={2}>Subtotal {m.marketplace}</td>
+                      <td className="px-4 py-2.5 font-bold text-white" colSpan={5}>Subtotal {m.marketplace}</td>
                       <td className="px-4 py-2.5 text-right font-mono font-bold text-white">{usd(m.totalUsd)}</td>
                       <td className="px-4 py-2.5 text-right font-mono font-bold text-tint">{rp(m.totalUsd * kurs)}</td>
+                      <td className="px-4 py-2.5 text-right font-mono font-bold text-tint">{rp(m.akun.reduce((s, a) => s + pendapatanPemilikAkun(a), 0))}</td>
                     </tr>
                   </tfoot>
                 </table>
