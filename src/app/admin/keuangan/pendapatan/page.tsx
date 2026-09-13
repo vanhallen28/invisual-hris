@@ -6,7 +6,7 @@ import LoadingLogo from '@/components/LoadingLogo';
 import { useToast } from '@/components/Toast';
 import { supabase } from '@/lib/supabase';
 import { loadFullState } from '@/lib/tracker/load';
-import { hitungPerMarketplaceAkun, type HitunganMarketplace } from '@/lib/tracker/pendapatan';
+import { hitungAkunBoardDanSub, type HitunganMarketplace } from '@/lib/tracker/pendapatan';
 import { rp } from '@/lib/keuangan/format';
 import { ambilKategori, ambilAkun, simpanTransaksi } from '@/lib/keuangan/data';
 import type { Kategori, Akun } from '@/lib/keuangan/tipe';
@@ -24,6 +24,7 @@ export default function PendapatanPage() {
 
   const [boards, setBoards] = useState<BoardOpt[]>([]);
   const [boardMap, setBoardMap] = useState<Record<string, any>>({});
+  const [workspaces, setWorkspaces] = useState<any[]>([]);
   const [boardId, setBoardId] = useState('');
 
   const [harga, setHarga] = useState<Record<string, number>>({}); // MARKETPLACE -> harga USD
@@ -65,6 +66,7 @@ export default function PendapatanPage() {
 
         if (!hidup) return;
         setBoardMap(fs.boardsDataMap || {});
+        setWorkspaces(fs.workspaces || []);
         setBoards(opts);
         setBoardId(opts[0]?.id || '');
         setHarga(petaHarga);
@@ -94,10 +96,10 @@ export default function PendapatanPage() {
 
   // ---- hitung per marketplace -> akun ----
   const hitung: HitunganMarketplace = useMemo(() => {
-    const bd = boardMap[boardId];
-    if (!bd) return {};
-    return hitungPerMarketplaceAkun(bd.groups || [], bd.columns || [], bd.subColumns || []);
-  }, [boardMap, boardId]);
+    if (!boardId) return {};
+    // Board terpilih + SEMUA sub-board-nya ikut dihitung.
+    return hitungAkunBoardDanSub(boardMap, workspaces, boardId);
+  }, [boardMap, workspaces, boardId]);
 
   const rincian = useMemo(() => {
     const perMkt: { marketplace: string; hargaUsd: number; akun: { nama: string; approved: number; usd: number }[]; totalUsd: number }[] = [];

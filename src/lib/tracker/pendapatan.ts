@@ -64,3 +64,39 @@ export function hitungPerMarketplaceAkun(boardData: Any[], columns: Any[], subCo
   }
   return hasil;
 }
+
+/** Kumpulkan id board + SEMUA sub-board (rekursif) dari pohon workspaces. */
+export function kumpulkanIdBoardDanSub(workspaces: Any[], boardId: string): string[] {
+  const hasil: string[] = [];
+  const kumpulSemua = (b: Any) => { hasil.push(b.id); for (const sb of (b?.boards || [])) kumpulSemua(sb); };
+  const telusuri = (b: Any): boolean => {
+    if (b?.id === boardId) { kumpulSemua(b); return true; }
+    for (const sb of (b?.boards || [])) if (telusuri(sb)) return true;
+    return false;
+  };
+  for (const w of (workspaces || [])) for (const y of (w?.years || [])) for (const m of (y?.months || [])) for (const b of (m?.boards || [])) if (telusuri(b)) return hasil;
+  return hasil.length ? hasil : [boardId];
+}
+
+/** Gabungkan beberapa hasil hitungan per-marketplace-per-akun (jumlahkan). */
+export function gabungHitungan(list: HitunganMarketplace[]): HitunganMarketplace {
+  const out: HitunganMarketplace = {};
+  for (const h of (list || [])) for (const mkt of Object.keys(h || {})) for (const akun of Object.keys(h[mkt] || {})) {
+    if (!out[mkt]) out[mkt] = {};
+    if (!out[mkt][akun]) out[mkt][akun] = { done: 0, inreview: 0, approved: 0, rejected: 0 };
+    const s = h[mkt][akun];
+    out[mkt][akun].done += s.done; out[mkt][akun].inreview += s.inreview;
+    out[mkt][akun].approved += s.approved; out[mkt][akun].rejected += s.rejected;
+  }
+  return out;
+}
+
+/** Hitung per-marketplace-per-akun untuk sebuah board + SEMUA sub-board-nya. */
+export function hitungAkunBoardDanSub(boardsDataMap: Record<string, Any>, workspaces: Any[], boardId: string): HitunganMarketplace {
+  const ids = kumpulkanIdBoardDanSub(workspaces, boardId);
+  const list = ids.map((id) => {
+    const bd = boardsDataMap?.[id];
+    return bd ? hitungPerMarketplaceAkun(bd.groups || [], bd.columns || [], bd.subColumns || []) : {};
+  });
+  return gabungHitungan(list);
+}

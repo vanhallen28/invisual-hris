@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Activity, CheckCircle2, Clock, User } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
+import { kumpulkanIdBoardDanSub } from '@/lib/tracker/pendapatan';
 
 function InputTarget({ boardId, akun, nilai, onSimpan }: any) {
   const [v, setV] = React.useState(String(nilai ?? 0));
@@ -18,7 +19,7 @@ function InputTarget({ boardId, akun, nilai, onSimpan }: any) {
 }
 
 export default function Overview() {
-  const { boardData, columns, subColumns, labels, teamMembers, setDetailItem, activeBoardName, activeBoardId, accountTargets, setAccountTarget } = useDashboard();
+  const { boardData, columns, subColumns, labels, teamMembers, setDetailItem, activeBoardName, activeBoardId, accountTargets, setAccountTarget, boardsDataMap, workspaces } = useDashboard();
   const [expanded, setExpanded] = useState<string | null>(null);
 
   // Resolve the dynamic Status / People columns by type (ids are generated).
@@ -43,10 +44,6 @@ export default function Overview() {
   // === PROGRES PER AKUN (khusus board MARKETPLACE) ===
   const isMarketplace = /marketplace/i.test(activeBoardName || '');
   const upper = (v: any) => String(v || '').toUpperCase();
-  const akunMainKey = columns.find((c: any) => upper(c.label) === 'AKUN')?.id;
-  const akunSubKey = subColumns.find((c: any) => upper(c.label) === 'AKUN')?.id;
-  const statMainKey = columns.find((c: any) => upper(c.label) === 'STATUS')?.id;
-  const statSubKey = subColumns.find((c: any) => upper(c.label) === 'STATUS')?.id;
   const emberStatus = (v: any) => {
     const n = String(v || '').toLowerCase().replace(/\s+/g, '');
     if (n === 'done') return 'done';
@@ -66,12 +63,24 @@ export default function Overview() {
     (statAkun[a] as any)[b]++;
   };
   if (isMarketplace) {
-    for (const g of boardData) for (const it of (g.items || [])) {
-      const akunItem = akunMainKey ? it[akunMainKey] : '';
-      catat(akunItem, statMainKey ? it[statMainKey] : '');
-      for (const sub of (it.subItems || [])) {
-        const akunSub = (akunSubKey && sub[akunSubKey]) ? sub[akunSubKey] : akunItem; // warisi induk
-        catat(akunSub, statSubKey ? sub[statSubKey] : '');
+    // Ikutkan board aktif + SEMUA sub-board-nya (tiap board pakai kolomnya sendiri).
+    const idsBoard = kumpulkanIdBoardDanSub(workspaces, activeBoardId || '');
+    const papanList = idsBoard.map((id: string) => id === activeBoardId
+      ? { groups: boardData, columns, subColumns }
+      : (boardsDataMap[id] ? { groups: boardsDataMap[id].groups || [], columns: boardsDataMap[id].columns || [], subColumns: boardsDataMap[id].subColumns || [] } : null)
+    ).filter(Boolean) as any[];
+    for (const papan of papanList) {
+      const aMain = papan.columns.find((c: any) => upper(c.label) === 'AKUN')?.id;
+      const aSub = papan.subColumns.find((c: any) => upper(c.label) === 'AKUN')?.id;
+      const sMain = papan.columns.find((c: any) => upper(c.label) === 'STATUS')?.id;
+      const sSub = papan.subColumns.find((c: any) => upper(c.label) === 'STATUS')?.id;
+      for (const g of (papan.groups || [])) for (const it of (g.items || [])) {
+        const akunItem = aMain ? it[aMain] : '';
+        catat(akunItem, sMain ? it[sMain] : '');
+        for (const sub of (it.subItems || [])) {
+          const akunSub = (aSub && sub[aSub]) ? sub[aSub] : akunItem; // warisi induk
+          catat(akunSub, sSub ? sub[sSub] : '');
+        }
       }
     }
   }
