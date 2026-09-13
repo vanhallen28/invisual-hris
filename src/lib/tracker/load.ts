@@ -114,8 +114,19 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
     return it;
   };
 
+  // Sub-board mewarisi izin induknya: sebuah board boleh tampil bila namanya cocok
+  // pola izin, ATAU salah satu board induknya (naik ke atas) cocok. Ini membuat
+  // manager yang boleh melihat MARKETPLACE juga melihat semua sub-board di bawahnya.
+  const petaNode = new Map((nodes || []).map((n: any) => [n.id, n]));
+  const boardBolehDenganInduk = (node: any): boolean => {
+    if (!node) return false;
+    if (boardAllowed(node.name)) return true;
+    const induk = petaNode.get(node.parent_id);
+    return !!induk && induk.kind === 'board' && boardBolehDenganInduk(induk);
+  };
+
   const boardsDataMap: Record<string, any> = {};
-  const boardNodes = nodes.filter((n: any) => n.kind === 'board' && boardAllowed(n.name));
+  const boardNodes = nodes.filter((n: any) => n.kind === 'board' && boardBolehDenganInduk(n));
   for (const bn of boardNodes) {
     const bcols = (colsByBoard[bn.id] || []).slice().sort(byPos);
     const mainCols = bcols.filter((c: any) => c.scope === 'main').map(toCol);
@@ -138,7 +149,7 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
   // Board bisa punya sub-board (bertingkat) — bangun rekursif.
   const bangunBoard = (b: any): any => ({
     id: b.id, name: b.name, isOpen: b.is_open ?? false,
-    boards: kids(b.id, 'board').filter((c: any) => boardAllowed(c.name)).map(bangunBoard),
+    boards: kids(b.id, 'board').filter((c: any) => boardBolehDenganInduk(c)).map(bangunBoard),
   });
   const workspaces = nodes.filter((n: any) => n.kind === 'workspace').slice().sort(byPos).map((ws: any) => ({
     id: ws.id, name: ws.name,
@@ -146,7 +157,7 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
       id: y.id, name: y.name, isOpen: y.is_open ?? false,
       months: kids(y.id, 'month').map((m: any) => ({
         id: m.id, name: m.name, isOpen: m.is_open ?? false,
-        boards: kids(m.id, 'board').filter((b: any) => boardAllowed(b.name)).map(bangunBoard),
+        boards: kids(m.id, 'board').filter((b: any) => boardBolehDenganInduk(b)).map(bangunBoard),
       }))
       // Manajer terbatas: sembunyikan bulan yang tak punya board yang boleh diakses
       .filter((m: any) => (allowedPatterns.length ? m.boards.length > 0 : true)),
