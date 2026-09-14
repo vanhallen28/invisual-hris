@@ -20,15 +20,17 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
   const [dupName, setDupName] = useState('');
   const [dupMode, setDupMode] = useState<ModeDuplikat>('struktur');
   const [dupPilihOpen, setDupPilihOpen] = useState(false);
-  const [dupBulan, setDupBulan] = useState('');            // bulan tujuan
+  const [dupBulan, setDupBulan] = useState('');            // tujuan: bulan (board atas) / board induk (sub-board)
+  const [dupSub, setDupSub] = useState(false);            // true bila yang diduplikat adalah sub-board
   const [dupBulanOpen, setDupBulanOpen] = useState(false);
   const [dupBusy, setDupBusy] = useState(false);
 
-  const bukaDuplikat = (board: any, monthId: string) => {
+  const bukaDuplikat = (board: any, parentId: string, isSub: boolean) => {
     setDupBoard(board);
     setDupName(`Salinan ${board.name}`);
     setDupMode('struktur');
-    setDupBulan(monthId);
+    setDupBulan(parentId);
+    setDupSub(!!isSub);
     setDupPilihOpen(false);
     setDupBulanOpen(false);
   };
@@ -96,7 +98,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
           )}
           <div className="flex items-center gap-0.5 opacity-0 group-hover/board:opacity-100 transition-opacity">
             <button onClick={(e) => { e.stopPropagation(); setInlineCreate({ type: 'board', parentId: board.id }); setInputValue(''); if (!board.isOpen) toggleBoard(board.id); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors" title="Tambah sub-board"><Plus size={12} /></button>
-            <button onClick={(e) => { e.stopPropagation(); bukaDuplikat(board, parentId); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors" title="Duplikat papan"><Copy size={11} /></button>
+            <button onClick={(e) => { e.stopPropagation(); bukaDuplikat(board, parentId, depth > 0); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors" title="Duplikat papan"><Copy size={11} /></button>
             <button onClick={(e) => { e.stopPropagation(); setEditingCell({ type: 'board', id: board.id }); setEditValue(board.name); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors"><Pencil size={11} /></button>
             <button onClick={(e) => { e.stopPropagation(); triggerConfirm('Delete Project', `Hapus "${board.name}"?`, () => handleDeleteBoard(parentId, board.id)); }} className="p-1 text-gray-600 hover:text-red-400 transition-colors"><Trash2 size={11} /></button>
           </div>
@@ -249,6 +251,9 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
               className="w-full bg-latar border border-white/10 focus:border-blue-500 rounded-lg px-3 py-2.5 text-sm text-white outline-none transition-colors mb-5"
             />
 
+            {dupSub ? (
+              <p className="text-[12px] text-gray-400 bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2.5 mb-5">Salinan diletakkan <span className="text-tint font-semibold">di dalam board induk yang sama</span>.</p>
+            ) : (<>
             <label className="block text-xs font-semibold text-gray-300 mb-1.5">Simpan ke bulan</label>
             <div className="relative mb-5">
               <button
@@ -273,6 +278,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
                 </div>
               )}
             </div>
+            </>)}
 
             <label className="block text-xs font-semibold text-gray-300 mb-1.5">Pilih yang ikut disalin</label>
             <div className="relative">
