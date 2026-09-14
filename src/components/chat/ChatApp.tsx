@@ -33,6 +33,7 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
   const [priv, setPriv] = useState(!!channel?.is_private);
   const [ann, setAnn] = useState(!!channel?.is_announcement);
   const [voice, setVoice] = useState(!!channel?.is_voice);
+  const [freelance, setFreelance] = useState(!!channel?.allow_freelancer);
   const [sel, setSel] = useState<string[]>(members || []);
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);
@@ -49,13 +50,13 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
       if (isNew) {
         const row = await createChannel(supabase, {
           name: nm, category: category.trim().toUpperCase() || 'UMUM', description: desc.trim() || null,
-          is_private: priv, is_announcement: ann, is_voice: voice, created_by: currentUserId,
+          is_private: priv, is_announcement: ann, is_voice: voice, allow_freelancer: freelance, created_by: currentUserId,
         });
         id = row.id;
       } else {
         await updateChannel(supabase, id, {
           name: nm, category: category.trim().toUpperCase() || 'UMUM',
-          description: desc.trim() || null, is_private: priv, is_announcement: ann, is_voice: voice,
+          description: desc.trim() || null, is_private: priv, is_announcement: ann, is_voice: voice, allow_freelancer: freelance,
         });
       }
       if (priv) await setChannelMembers(supabase, id, sel);
@@ -116,6 +117,10 @@ function ChannelModal({ channel, members, onClose, onSaved }: any) {
               <Volume2 size={12} className="text-emerald-400" />
               <span className="text-xs text-gray-300">Channel suara — voice & video call</span>
             </label>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input type="checkbox" checked={freelance} onChange={(e) => setFreelance(e.target.checked)} className="accent-blue-500" />
+              <span className="text-xs text-gray-300">Boleh diakses <span className="font-semibold text-blue-300">freelancer</span></span>
+            </label>
           </div>
 
           {priv && (
@@ -164,6 +169,7 @@ export default function ChatApp() {
   const backHref = pathname && pathname.startsWith('/admin') ? '/admin/dashboard' : '/user/dashboard';
 
   const [channels, setChannels] = useState<any[]>([]);
+  const [sayaFreelancer, setSayaFreelancer] = useState(false);
   const [chMembers, setChMembers] = useState<any[]>([]);
   const [active, setActive] = useState<any>(null);
   const [unread, setUnread] = useState<Record<string, number>>({});
@@ -206,6 +212,17 @@ export default function ChatApp() {
     () => teamMembers.find((m: any) => m.id === currentUserId),
     [teamMembers, currentUserId],
   );
+
+  // Apakah user saat ini freelancer? (akses chat dibatasi)
+  useEffect(() => {
+    if (!supabase || !currentUserId) return;
+    let hidup = true;
+    (async () => {
+      const { data } = await supabase.from('employees').select('isFreelancer').eq('user_id', currentUserId).maybeSingle();
+      if (hidup) setSayaFreelancer(data?.isFreelancer === true);
+    })();
+    return () => { hidup = false; };
+  }, [supabase, currentUserId]);
 
   // `pushToast` dari DashboardContext dibuat ulang setiap kali provider
   // render (bukan useCallback). Kalau dipakai langsung sebagai dependensi,
@@ -360,9 +377,10 @@ export default function ChatApp() {
 
   const grouped = useMemo(() => {
     const g: Record<string, any[]> = {};
-    channels.forEach((c) => { (g[c.category || 'UMUM'] = g[c.category || 'UMUM'] || []).push(c); });
+    const daftar = sayaFreelancer ? channels.filter((c: any) => c.allow_freelancer) : channels;
+    daftar.forEach((c) => { (g[c.category || 'UMUM'] = g[c.category || 'UMUM'] || []).push(c); });
     return g;
-  }, [channels]);
+  }, [channels, sayaFreelancer]);
 
   const membersOfActive = active
     ? (active.is_private
@@ -383,7 +401,7 @@ export default function ChatApp() {
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-3 px-2">
-          {!chLoading && (
+          {!chLoading && !sayaFreelancer && (
             <button onClick={bukaSetoran}
               className={`w-full flex items-center gap-1.5 px-2 py-1.5 mb-2 rounded-lg transition-colors ${setoranOpen ? 'bg-white/5 text-white' : setoranUnread > 0 ? 'text-white hover:bg-white/5' : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'}`}>
               <Camera size={14} className="shrink-0 text-amber-400/80" />

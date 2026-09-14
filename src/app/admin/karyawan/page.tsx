@@ -47,7 +47,8 @@ export default function AdminKaryawanPage() {
     tanggalBerakhirKontrak: "",
     tempatLahir: "", alamatKtp: "", domisiliSamaKtp: false,
     pendidikanNama: "", pendidikanJurusan: "", pendidikanStatus: "",
-    toleransiTelat: 5
+    toleransiTelat: 5,
+    isFreelancer: false
   });
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); // user_id -> role Tracker
   const [allBoards, setAllBoards] = useState<string[]>([]); // nama board Daily Task untuk pembatasan akses
@@ -144,7 +145,8 @@ export default function AdminKaryawanPage() {
       tanggalBerakhirKontrak: "",
       tempatLahir: "", alamatKtp: "", domisiliSamaKtp: false,
       pendidikanNama: "", pendidikanJurusan: "", pendidikanStatus: "",
-      toleransiTelat: 5
+      toleransiTelat: 5,
+      isFreelancer: false
     });
     setShowModal(true);
   };
@@ -180,7 +182,8 @@ export default function AdminKaryawanPage() {
       tanggalBerakhirKontrak: emp.tanggalBerakhirKontrak || "",
       tempatLahir: emp.tempatLahir || "", alamatKtp: emp.alamatKtp || "", domisiliSamaKtp: emp.domisiliSamaKtp === true,
       pendidikanNama: emp.pendidikanNama || "", pendidikanJurusan: emp.pendidikanJurusan || "", pendidikanStatus: emp.pendidikanStatus || "",
-      toleransiTelat: emp.toleransiTelat ?? 5
+      toleransiTelat: emp.toleransiTelat ?? 5,
+      isFreelancer: emp.isFreelancer === true
     });
     setShowModal(true);
   };
@@ -227,6 +230,7 @@ export default function AdminKaryawanPage() {
       pendidikanJurusan: formData.pendidikanJurusan || null,
       pendidikanStatus: formData.pendidikanStatus || null,
       toleransiTelat: Number.isFinite(Number(formData.toleransiTelat)) ? Number(formData.toleransiTelat) : 5,
+      isFreelancer: formData.isFreelancer === true,
       jabatan: formData.jabatan || null, 
       status: formData.status,
       tanggalBergabung: formData.tanggalBergabung ? formData.tanggalBergabung : null,
@@ -804,6 +808,15 @@ export default function AdminKaryawanPage() {
                       {formData.fleksibel && (
                         <p className="text-[10px] text-tint-redup mt-2 bg-primer/10 border border-primer/20 rounded-lg px-2.5 py-1.5">Jam kerja fleksibel aktif — karyawan ini <span className="font-bold">tidak pernah dihitung terlambat</span> saat absen.</p>
                       )}
+                    </div>
+                    <div className="col-span-2">
+                      <label className="flex items-start justify-between gap-3 cursor-pointer">
+                        <div>
+                          <p className="text-[11px] font-bold text-tint-redup uppercase">Freelancer</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">Akses dibatasi — hanya bisa membuka channel chat yang ditandai untuk freelancer.</p>
+                        </div>
+                        <input type="checkbox" checked={!!formData.isFreelancer} onChange={(e) => setFormData({ ...formData, isFreelancer: e.target.checked })} className="accent-primer w-4 h-4 shrink-0 mt-0.5" />
+                      </label>
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase">Jam Masuk</label>
