@@ -219,7 +219,7 @@ export default function ChatApp() {
     let hidup = true;
     (async () => {
       const { data } = await supabase.from('employees').select('isFreelancer').eq('user_id', currentUserId).maybeSingle();
-      if (hidup) setSayaFreelancer(data?.isFreelancer === true);
+      if (hidup) { const f = data?.isFreelancer === true; setSayaFreelancer(f); if (f) setSetoranOpen(false); }
     })();
     return () => { hidup = false; };
   }, [supabase, currentUserId]);
@@ -486,7 +486,7 @@ export default function ChatApp() {
 
       {/* ══ RUANG CHAT ══ */}
       <div className={`${mobileRoom ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0 min-h-0`}>
-        {setoranOpen ? (
+        {(setoranOpen && !sayaFreelancer) ? (
           <SetoranRoom onBack={() => setMobileRoom(false)} />
         ) : voiceCh && voiceCh.id === active?.id ? (
           <VoiceRoom channel={voiceCh} onLeave={() => setVoiceCh(null)} />
