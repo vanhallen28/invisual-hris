@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { TOLERANSI_TELAT_MENIT, jamPulangDariClockIn } from "@/lib/keterlambatan";
+import { jarakMeter, ambilPosisi } from "@/lib/lokasi";
 import { pushNotify } from "@/lib/push";
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
@@ -51,6 +52,10 @@ export default function UserDashboardPage() {
   const [jamKeluar, setJamKeluar] = useState("18:00");
   const [isFleksibel, setIsFleksibel] = useState(false);
   const [blokirPulangTelat, setBlokirPulangTelat] = useState(false);
+  const [geofenceAktif, setGeofenceAktif] = useState(false);
+  const [kantorLat, setKantorLat] = useState(NaN);
+  const [kantorLng, setKantorLng] = useState(NaN);
+  const [kantorRadius, setKantorRadius] = useState(150);
   // Diarahkan ke toast global standar. Tanda tangan lama (type, message)
   // dipertahankan agar semua pemanggilan showToast(...) tetap jalan.
   const showToast = (type: "success" | "error", message: string) => {
@@ -152,6 +157,10 @@ export default function UserDashboardPage() {
       setIsFleksibel(schedData?.fleksibel === true);
       const { data: pgn } = await supabase.from("pengaturan").select("nilai").eq("kunci", "blokir_pulang_telat").maybeSingle();
       setBlokirPulangTelat(pgn?.nilai === "true");
+      const { data: geo } = await supabase.from("pengaturan").select("kunci, nilai").in("kunci", ["geofence_aktif", "kantor_lat", "kantor_lng", "kantor_radius"]);
+      const gmap: Record<string, string> = {}; (geo || []).forEach((r: any) => { gmap[r.kunci] = r.nilai; });
+      setGeofenceAktif(gmap.geofence_aktif === "true");
+      setKantorLat(parseFloat(gmap.kantor_lat)); setKantorLng(parseFloat(gmap.kantor_lng)); setKantorRadius(Number(gmap.kantor_radius) || 150);
     } catch (e) {
       console.error("Error fetching data dari Supabase:", e);
     }
@@ -219,6 +228,17 @@ export default function UserDashboardPage() {
 
   const handleClockIn = async () => {
     if (hasCameraPermission === false) return showToast("error", "Izinkan akses kamera di browser Anda!");
+    // Geofence: absen dari dashboard = mode Kantor → wajib di lokasi kantor.
+    if (geofenceAktif) {
+      if (!isFinite(kantorLat) || !isFinite(kantorLng)) return showToast("error", "Lokasi kantor belum diatur admin. Hubungi HRD.");
+      try {
+        const pos = await ambilPosisi();
+        const jarak = jarakMeter(pos.lat, pos.lng, kantorLat, kantorLng);
+        if (jarak > kantorRadius) return showToast("error", `Anda ~${Math.round(jarak)} m dari kantor (batas ${kantorRadius} m). Absen kantor hanya di lokasi kantor.`);
+      } catch (e: any) {
+        return showToast("error", (e?.message || "Gagal cek lokasi.") + " Absen butuh izin lokasi.");
+      }
+    }
     setIsActionLoading(true);
     takePhoto();
 

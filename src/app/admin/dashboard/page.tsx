@@ -177,7 +177,10 @@ export default function AdminDashboardPage() {
       // kartu "Sakit/cuti"; sekarang kerja remote punya kartunya sendiri.
       const menutupiHariIni = (approvedData || []).filter((a: any) => coversToday(a.tanggal, todayISO));
       const isRemote = (j: string) => /WFH|WFC|Work From/i.test(String(j || ""));
-      setApprovedLeaves(menutupiHariIni.filter((a: any) => !isRemote(a.jenis)));
+      // Kalau karyawan SUDAH clock-in hari ini, dia HADIR — jangan ikut dihitung
+      // sebagai "izin" (perbaikan: yang datang tepat waktu kadang muncul di izin).
+      const sudahAbsenIds = new Set((uniqueAttendances || []).map((a: any) => a.idKaryawan));
+      setApprovedLeaves(menutupiHariIni.filter((a: any) => !isRemote(a.jenis) && !sudahAbsenIds.has(a.idKaryawan)));
       setRemoteToday(menutupiHariIni.filter((a: any) => isRemote(a.jenis)));
       setTodayAttendances(uniqueAttendances);
 
@@ -546,29 +549,27 @@ export default function AdminDashboardPage() {
                 <div className="space-y-3 max-h-[280px] overflow-y-auto custom-scrollbar pr-2">
                   {pendingApprovals.map((req) => (
                     <div key={req.id} className="bg-white/[0.03] border border-white/5 p-3.5 rounded-xl flex flex-col gap-2 transition-colors hover:border-white/15">
-                      <div className="flex justify-between items-center gap-4">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 shrink-0 rounded-full bg-primer-terang/20 flex items-center justify-center text-tint font-bold border border-primer-terang/30">{req.nama?.charAt(0).toUpperCase() || "?"}</div>
-                          <div className="min-w-0">
-                            <h4 className="font-bold text-white text-sm truncate">{req.nama}</h4>
-                            <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded font-bold uppercase mt-1 inline-block">{req.jenis}</span>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 shrink-0 flex-wrap justify-end">
-                          <button onClick={() => handleApprovalAction(req.id, "Ditolak")} className="px-3 py-2 text-xs font-bold text-gray-400 hover:text-white relative z-30">Tolak</button>
-                          {req.jenis === "Izin Terlambat" ? (
-                            <>
-                              <button onClick={() => handleApprovalAction(req.id, "Disetujui", "normal")} title="Keterlambatan dimaafkan — pulang jam normal" className="px-3 py-2 bg-green-600/90 hover:bg-green-600 text-white text-xs font-bold rounded-xl relative z-30">ACC pulang 18:00</button>
-                              <button onClick={() => handleApprovalAction(req.id, "Disetujui", "sesuai_telat")} title="Wajib ganti jam — pulang sesuai keterlambatan (clock-in + 9 jam)" className="px-3 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30">ACC pulang +jam</button>
-                            </>
-                          ) : (
-                            <button onClick={() => handleApprovalAction(req.id, "Disetujui")} className="px-4 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30">Setujui</button>
-                          )}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 shrink-0 rounded-full bg-primer-terang/20 flex items-center justify-center text-tint font-bold border border-primer-terang/30">{req.nama?.charAt(0).toUpperCase() || "?"}</div>
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-white text-sm truncate">{req.nama}</h4>
+                          <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded font-bold uppercase mt-1 inline-block">{req.jenis}</span>
                         </div>
                       </div>
                       <div className="pl-12">
                         {req.tanggal && <p className="text-[10px] text-gray-500 font-mono">{req.tanggal}</p>}
                         <p className="text-[11px] text-gray-300 mt-0.5 italic break-words whitespace-pre-wrap">{req.alasan ? `"${req.alasan}"` : "Tanpa keterangan"}</p>
+                      </div>
+                      <div className="flex gap-2 flex-wrap justify-end pt-1">
+                        <button onClick={() => handleApprovalAction(req.id, "Ditolak")} className="px-3 py-2 text-xs font-bold text-gray-400 hover:text-white relative z-30">Tolak</button>
+                        {req.jenis === "Izin Terlambat" ? (
+                          <>
+                            <button onClick={() => handleApprovalAction(req.id, "Disetujui", "normal")} title="Keterlambatan dimaafkan — pulang jam normal" className="px-3 py-2 bg-green-600/90 hover:bg-green-600 text-white text-xs font-bold rounded-xl relative z-30">ACC pulang 18:00</button>
+                            <button onClick={() => handleApprovalAction(req.id, "Disetujui", "sesuai_telat")} title="Wajib ganti jam — pulang sesuai keterlambatan (clock-in + 9 jam)" className="px-3 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30">ACC pulang +jam</button>
+                          </>
+                        ) : (
+                          <button onClick={() => handleApprovalAction(req.id, "Disetujui")} className="px-4 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30">Setujui</button>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { ambilPosisi } from "@/lib/lokasi";
 import LoadingLogo from "@/components/LoadingLogo";
 import ResetKaryawanLogin from "@/components/admin/ResetKaryawanLogin";
 
@@ -64,6 +65,12 @@ export default function PengaturanAkunPage() {
   const [nameMsg, setNameMsg] = useState<any>(null);
   const [blokirTelat, setBlokirTelat] = useState(false);
   const [blokirBusy, setBlokirBusy] = useState(false);
+  const [geoAktif, setGeoAktif] = useState(false);
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geoLat, setGeoLat] = useState("");
+  const [geoLng, setGeoLng] = useState("");
+  const [geoRadius, setGeoRadius] = useState("150");
+  const [geoMsg, setGeoMsg] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -78,6 +85,10 @@ export default function PengaturanAkunPage() {
         setHasPassword(provs.includes("email"));
         const { data: pgn } = await supabase.from("pengaturan").select("nilai").eq("kunci", "blokir_pulang_telat").maybeSingle();
         setBlokirTelat(pgn?.nilai === "true");
+        const { data: geo } = await supabase.from("pengaturan").select("kunci, nilai").in("kunci", ["geofence_aktif", "kantor_lat", "kantor_lng", "kantor_radius"]);
+        const gm: Record<string, string> = {}; (geo || []).forEach((r: any) => { gm[r.kunci] = r.nilai; });
+        setGeoAktif(gm.geofence_aktif === "true");
+        setGeoLat(gm.kantor_lat || ""); setGeoLng(gm.kantor_lng || ""); setGeoRadius(gm.kantor_radius || "150");
       } catch { setEmailMsg({ t: "err", m: "Tidak dapat terhubung ke server." }); }
       setLoading(false);
     })();
@@ -92,6 +103,28 @@ export default function PengaturanAkunPage() {
       setBlokirTelat(baru);
     } catch { /* diamkan */ }
     setBlokirBusy(false);
+  };
+
+  const simpanGeo = async (kunci: string, nilai: string) => {
+    try { await supabase.from("pengaturan").upsert({ kunci, nilai }, { onConflict: "kunci" }); } catch { /* diamkan */ }
+  };
+  const toggleGeofence = async () => {
+    const baru = !geoAktif;
+    setGeoBusy(true);
+    await simpanGeo("geofence_aktif", baru ? "true" : "false");
+    setGeoAktif(baru);
+    setGeoBusy(false);
+  };
+  const pakaiLokasiSaya = async () => {
+    setGeoBusy(true); setGeoMsg("");
+    try {
+      const pos = await ambilPosisi();
+      const la = String(pos.lat), ln = String(pos.lng);
+      setGeoLat(la); setGeoLng(ln);
+      await simpanGeo("kantor_lat", la); await simpanGeo("kantor_lng", ln);
+      setGeoMsg("Lokasi kantor diperbarui dari posisi Anda sekarang.");
+    } catch (e: any) { setGeoMsg(e?.message || "Gagal ambil lokasi."); }
+    setGeoBusy(false);
   };
 
   const submitEmail = async (e: React.FormEvent) => {
@@ -194,6 +227,37 @@ export default function PengaturanAkunPage() {
           </button>
         </div>
         <p className={`text-[11px] font-bold mt-3 ${blokirTelat ? "text-green-400" : "text-gray-500"}`}>{blokirTelat ? "AKTIF — clock-out diblokir sampai jam wajib pulang" : "MATI — clock-out tidak diblokir"}</p>
+      </div>
+
+      <div className="p-5 mb-5 rounded-xl border border-white/10 bg-white/[0.03]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-white">Lokasi Absen (Geofence)</h3>
+            <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">Jika aktif, absen <span className="text-tint font-bold">mode Kantor</span> hanya bisa di lokasi kantor. WFH/WFC yang sudah disetujui tetap bisa absen di mana saja.</p>
+          </div>
+          <button onClick={toggleGeofence} disabled={geoBusy} className={`shrink-0 w-14 h-8 rounded-full border transition-colors relative ${geoAktif ? "bg-primer-terang border-primer" : "bg-white/10 border-white/20"} ${geoBusy ? "opacity-50" : ""}`}>
+            <span className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${geoAktif ? "left-7" : "left-1"}`}></span>
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Latitude Kantor</label>
+            <input value={geoLat} onChange={(e) => setGeoLat(e.target.value)} onBlur={(e) => simpanGeo("kantor_lat", e.target.value.trim())} placeholder="-6.9xxxx" className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Longitude Kantor</label>
+            <input value={geoLng} onChange={(e) => setGeoLng(e.target.value)} onBlur={(e) => simpanGeo("kantor_lng", e.target.value.trim())} placeholder="107.6xxxx" className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Radius (meter)</label>
+            <input type="number" min={20} value={geoRadius} onChange={(e) => setGeoRadius(e.target.value)} onBlur={(e) => simpanGeo("kantor_radius", e.target.value.trim() || "150")} className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer" />
+          </div>
+          <div className="flex items-end">
+            <button onClick={pakaiLokasiSaya} disabled={geoBusy} className="w-full bg-primer/20 border border-primer/40 hover:bg-primer/30 text-tint text-xs font-bold rounded-lg px-3 py-2 disabled:opacity-50">{geoBusy ? "..." : "Gunakan lokasi saya"}</button>
+          </div>
+        </div>
+        {geoMsg && <p className="text-[11px] text-amber-400 mt-2">{geoMsg}</p>}
+        <p className={`text-[11px] font-bold mt-3 ${geoAktif ? "text-green-400" : "text-gray-500"}`}>{geoAktif ? "AKTIF — absen Kantor wajib di lokasi kantor" : "MATI — lokasi tidak dicek"}</p>
       </div>
 
       <div className="flex flex-col gap-3">

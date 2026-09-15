@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { TOLERANSI_TELAT_MENIT, jamPulangDariClockIn } from "@/lib/keterlambatan";
+import { jarakMeter, ambilPosisi } from "@/lib/lokasi";
 import { pushNotify } from "@/lib/push";
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
@@ -31,6 +32,10 @@ export default function UserKehadiranPage() {
   const [jamMasuk, setJamMasuk] = useState("09:00");
   const [toleransiTelat, setToleransiTelat] = useState(TOLERANSI_TELAT_MENIT);
   const [blokirPulangTelat, setBlokirPulangTelat] = useState(false);
+  const [geofenceAktif, setGeofenceAktif] = useState(false);
+  const [kantorLat, setKantorLat] = useState(NaN);
+  const [kantorLng, setKantorLng] = useState(NaN);
+  const [kantorRadius, setKantorRadius] = useState(150);
   const [isFleksibel, setIsFleksibel] = useState(false);
   const [jamKeluar, setJamKeluar] = useState("17:00");
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
@@ -139,6 +144,10 @@ export default function UserKehadiranPage() {
       if (schedData?.toleransiTelat != null) setToleransiTelat(Number(schedData.toleransiTelat));
       const { data: pgn } = await supabase.from("pengaturan").select("nilai").eq("kunci", "blokir_pulang_telat").maybeSingle();
       setBlokirPulangTelat(pgn?.nilai === "true");
+      const { data: geo } = await supabase.from("pengaturan").select("kunci, nilai").in("kunci", ["geofence_aktif", "kantor_lat", "kantor_lng", "kantor_radius"]);
+      const gmap: Record<string, string> = {}; (geo || []).forEach((r: any) => { gmap[r.kunci] = r.nilai; });
+      setGeofenceAktif(gmap.geofence_aktif === "true");
+      setKantorLat(parseFloat(gmap.kantor_lat)); setKantorLng(parseFloat(gmap.kantor_lng)); setKantorRadius(Number(gmap.kantor_radius) || 150);
     } catch (e) {
       console.error("Error fetching data:", e);
     }
@@ -254,6 +263,17 @@ export default function UserKehadiranPage() {
 
   const handleClockIn = async () => {
     if (hasCameraPermission === false) return showToast("error", "Izinkan akses kamera di browser Anda!");
+    // Geofence: mode Kantor wajib di lokasi kantor. WFH/WFC (sudah disetujui) dilewati.
+    if (geofenceAktif && modeKerja === "Kantor") {
+      if (!isFinite(kantorLat) || !isFinite(kantorLng)) return showToast("error", "Lokasi kantor belum diatur admin. Hubungi HRD.");
+      try {
+        const pos = await ambilPosisi();
+        const jarak = jarakMeter(pos.lat, pos.lng, kantorLat, kantorLng);
+        if (jarak > kantorRadius) return showToast("error", `Anda ~${Math.round(jarak)} m dari kantor (batas ${kantorRadius} m). Absen kantor hanya di lokasi kantor. Untuk WFH/WFC, ajukan lalu pilih modenya.`);
+      } catch (e: any) {
+        return showToast("error", (e?.message || "Gagal cek lokasi.") + " Absen kantor butuh izin lokasi.");
+      }
+    }
     setIsActionLoading(true);
     takePhoto(); // ambil foto lalu kamera otomatis mati
 
