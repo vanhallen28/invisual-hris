@@ -6,7 +6,7 @@ import LoadingLogo from '@/components/LoadingLogo';
 import { useToast } from '@/components/Toast';
 import { supabase } from '@/lib/supabase';
 import { loadFullState } from '@/lib/tracker/load';
-import { hitungAkunBoardDanSub, type HitunganMarketplace } from '@/lib/tracker/pendapatan';
+import { hitungAkunBoardDanSub, gabungHitungan, type HitunganMarketplace } from '@/lib/tracker/pendapatan';
 import { rp } from '@/lib/keuangan/format';
 import { ambilKategori, ambilAkun, simpanTransaksi } from '@/lib/keuangan/data';
 import type { Kategori, Akun } from '@/lib/keuangan/tipe';
@@ -14,7 +14,7 @@ import type { Kategori, Akun } from '@/lib/keuangan/tipe';
 const usd = (n: number) =>
   '$' + (Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-type BoardOpt = { id: string; label: string };
+type BoardOpt = { id: string; label: string; boardIds: string[] };
 type ServiceRow = { id: string; board_id: string; keterangan: string; jumlah: number; mata_uang: string };
 
 export default function PendapatanPage() {
@@ -51,9 +51,12 @@ export default function PendapatanPage() {
         const opts: BoardOpt[] = [];
         for (const ws of (fs.workspaces || []))
           for (const y of (ws.years || []))
-            for (const m of (y.months || []))
-              for (const b of (m.boards || []))
-                if (/marketplace/i.test(b.name || '')) opts.push({ id: b.id, label: `${m.name} ${y.name}` });
+            for (const m of (y.months || [])) {
+              // Satu entri per BULAN yang punya board marketplace; kumpulkan
+              // semua board marketplace di bulan itu (sub-board diurus saat hitung).
+              const mp = (m.boards || []).filter((b: any) => /marketplace/i.test(b.name || ''));
+              if (mp.length) opts.push({ id: m.id, label: `${m.name} ${y.name}`.trim(), boardIds: mp.map((b: any) => b.id) });
+            }
 
         const { data: hrg } = await supabase.from('harga_template_marketplace').select('*');
         const petaHarga: Record<string, number> = {};
@@ -96,10 +99,12 @@ export default function PendapatanPage() {
 
   // ---- hitung per marketplace -> akun ----
   const hitung: HitunganMarketplace = useMemo(() => {
-    if (!boardId) return {};
-    // Board terpilih + SEMUA sub-board-nya ikut dihitung.
-    return hitungAkunBoardDanSub(boardMap, workspaces, boardId);
-  }, [boardMap, workspaces, boardId]);
+    const opt = boards.find((o) => o.id === boardId);
+    if (!opt) return {};
+    // Gabungan semua board marketplace (+ sub-board) di bawah BULAN terpilih.
+    const list = opt.boardIds.map((bid) => hitungAkunBoardDanSub(boardMap, workspaces, bid));
+    return gabungHitungan(list);
+  }, [boards, boardMap, workspaces, boardId]);
 
   const rincian = useMemo(() => {
     const perMkt: { marketplace: string; hargaUsd: number; akun: { nama: string; approved: number; usd: number }[]; totalUsd: number }[] = [];

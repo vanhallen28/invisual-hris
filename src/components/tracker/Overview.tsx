@@ -19,7 +19,7 @@ function InputTarget({ boardId, akun, nilai, onSimpan }: any) {
 }
 
 export default function Overview() {
-  const { boardData, columns, subColumns, labels, teamMembers, setDetailItem, activeBoardName, activeBoardId, accountTargets, setAccountTarget, boardsDataMap, workspaces } = useDashboard();
+  const { boardData, columns, subColumns, labels, teamMembers, setDetailItem, activeBoardName, activeBoardId, accountTargets, setAccountTarget, hapusAccountTarget, boardsDataMap, workspaces } = useDashboard();
   const [expanded, setExpanded] = useState<string | null>(null);
 
   // Resolve the dynamic Status / People columns by type (ids are generated).
@@ -84,6 +84,7 @@ export default function Overview() {
       }
     }
   }
+  const akunDariItem = new Set(akunTerpakai); // akun yang benar-benar punya item di board ini
   const targetBoard: Record<string, number> = (activeBoardId && accountTargets[activeBoardId]) || {};
   Object.keys(targetBoard).forEach((a) => akunTerpakai.add(a));
   const daftarAkun = [...akunTerpakai].sort((a, b) => a.localeCompare(b));
@@ -129,7 +130,12 @@ export default function Overview() {
                 return (
                   <div key={akun} className="bg-kartu border border-white/10 rounded-lg p-4">
                     <div className="flex items-center justify-between gap-3 mb-3">
-                      <span className="font-bold text-white text-sm truncate">{akun}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-bold text-white text-sm truncate">{akun}</span>
+                        {!akunDariItem.has(akun) && (
+                          <button onClick={() => hapusAccountTarget(activeBoardId, akun)} title="Akun ini tak punya item di board — hapus dari Overview" className="shrink-0 text-[10px] font-bold text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/50 rounded px-1.5 py-0.5">Hapus</button>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-[10px] text-gray-500 uppercase font-bold">Target</span>
                         <InputTarget boardId={activeBoardId} akun={akun} nilai={target} onSimpan={setAccountTarget} />

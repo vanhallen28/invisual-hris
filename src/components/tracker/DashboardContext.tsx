@@ -7,7 +7,7 @@ import MemberView from '@/components/tracker/MemberView';
 import DocEditor from '@/components/tracker/DocEditor';
 import NotificationCenter from '@/components/tracker/NotificationCenter';
 import LoadingLogo from '@/components/LoadingLogo';
-import { dbUpdateItemName, dbSetItemMeta, dbSetCellValue, newId, dbAddItem, dbAddSubItem, dbDeleteItem, dbAddColumn, dbDeleteColumn, dbAddLabel, dbDeleteLabel, dbUpdateLabelColor, dbAddGroup, dbUpdateGroup, dbDeleteGroup, dbAddTreeNode, dbRenameTreeNode, dbDeleteTreeNode, dbUpdateColumnLabel, dbReindexColumns, dbReindexGroups, dbReindexItems, dbMoveItemsGroup, dbSetAccountTarget } from '@/lib/tracker/sync';
+import { dbUpdateItemName, dbSetItemMeta, dbSetCellValue, newId, dbAddItem, dbAddSubItem, dbDeleteItem, dbAddColumn, dbDeleteColumn, dbAddLabel, dbDeleteLabel, dbUpdateLabelColor, dbAddGroup, dbUpdateGroup, dbDeleteGroup, dbAddTreeNode, dbRenameTreeNode, dbDeleteTreeNode, dbUpdateColumnLabel, dbReindexColumns, dbReindexGroups, dbReindexItems, dbMoveItemsGroup, dbSetAccountTarget, dbHapusAccountTarget } from '@/lib/tracker/sync';
 
 const LABEL_COLORS = ['bg-[#e2445c]', 'bg-primer-terang', 'bg-[#fdab3d]', 'bg-[#00c875]', 'bg-[#a25ddc]', 'bg-[#ff5ac4]', 'bg-[#9d99ff]', 'bg-emerald-500', 'bg-rose-400'];
 const HEX_COLORS = ['#e2445c', '#579bfc', '#fdab3d', '#00c875', '#a25ddc', '#ff5ac4', '#9d99ff'];
@@ -152,6 +152,10 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   const setAccountTarget = (boardId: string, akun: string, target: number) => {
     setAccountTargets((p:any) => ({ ...p, [boardId]: { ...(p[boardId] || {}), [akun]: target } }));
     if (cloudOn()) dbSetAccountTarget(supabase, boardId, akun, target).catch((e:any) => pushToast('Gagal simpan target: ' + (e?.message || e)));
+  };
+  const hapusAccountTarget = (boardId: string, akun: string) => {
+    setAccountTargets((p:any) => { const b = { ...(p[boardId] || {}) }; delete b[akun]; return { ...p, [boardId]: b }; });
+    if (cloudOn()) dbHapusAccountTarget(supabase, boardId, akun).catch((e:any) => pushToast('Gagal hapus akun: ' + (e?.message || e)));
   };
   
   const [updatesData, setUpdatesData] = useState<Record<string, any[]>>({});
@@ -1105,7 +1109,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     dragOverColumn, setDragOverColumn, detailItem, setDetailItem,
     triggerConfirm, handleUpdateItem, handleUpdateSubItem, handleDeleteItem, handleDeleteSubItem,
     handleAddItem, handleAddSubItem, toggleGroupSelection, toggleAllSubItems,
-    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, addYear, addMonth, addBoard, toggleBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, accountTargets, setAccountTarget, pushToast, HEX_COLORS, LABEL_COLORS,
+    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, addYear, addMonth, addBoard, toggleBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, accountTargets, setAccountTarget, hapusAccountTarget, pushToast, HEX_COLORS, LABEL_COLORS,
     authUser, doLogout, isManager, currentUserRole, canContentHub, canAcc, refreshData, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase
   };
 

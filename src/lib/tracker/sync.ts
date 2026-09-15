@@ -199,3 +199,8 @@ export async function dbSetAccountTarget(supabase: SB, boardId: string, akun: st
     .upsert({ board_id: boardId, akun, target }, { onConflict: 'board_id,akun' });
   if (error) throw new Error(error.message);
 }
+
+export async function dbHapusAccountTarget(supabase: SB, boardId: string, akun: string) {
+  const { error } = await supabase.from('account_targets').delete().eq('board_id', boardId).eq('akun', akun);
+  if (error) throw new Error(error.message);
+}
