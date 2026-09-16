@@ -71,13 +71,10 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
   // Pembatasan board per-manajer (tabel board_access).
   // Manajer TANPA baris di board_access → akses semua board (perilaku default).
   // Manajer DENGAN baris → hanya board yang namanya cocok salah satu pola.
-  let allowedPatterns: string[] = [];
-  if (currentUserRole === 'manager' && currentUserId) {
-    try {
-      const { data: ba } = await supabase.from('board_access').select('board_pattern').eq('member_id', currentUserId);
-      allowedPatterns = (ba || []).map((r: any) => String(r.board_pattern || '').trim().toLowerCase()).filter(Boolean);
-    } catch { /* tabel belum ada → tanpa pembatasan */ }
-  }
+  // KEBIJAKAN BARU: semua manager melihat & mengedit SEMUA board daily-task.
+  // Pembatasan per-pola (tabel board_access) dinonaktifkan → allowedPatterns kosong
+  // sehingga boardAllowed() selalu true untuk semua orang yang mengakses.
+  const allowedPatterns: string[] = [];
   const boardAllowed = (name: any) => {
     if (!allowedPatterns.length) return true;
     const n = String(name || '').toLowerCase();
