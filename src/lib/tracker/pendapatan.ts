@@ -44,11 +44,11 @@ export function hitungPerMarketplaceAkun(boardData: Any[], columns: Any[], subCo
   const hasil: HitunganMarketplace = {};
   const tambah = (mkt: string, akun: Any, status: Any) => {
     const a = String(akun || '').trim();
-    const b = emberStatus(status);
-    if (!a || !b) return;
+    if (!a) return; // cukup ada AKUN; status boleh kosong — akun tetap didaftar (sama seperti Overview)
     if (!hasil[mkt]) hasil[mkt] = {};
     if (!hasil[mkt][a]) hasil[mkt][a] = { done: 0, inreview: 0, approved: 0, rejected: 0 };
-    (hasil[mkt][a] as Any)[b]++;
+    const b = emberStatus(status);
+    if (b) (hasil[mkt][a] as Any)[b]++;
   };
 
   for (const g of (boardData || [])) {
