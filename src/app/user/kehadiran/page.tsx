@@ -48,6 +48,9 @@ export default function UserKehadiranPage() {
 
   // STATE FORMULIR PENGAJUAN
   const [showForm, setShowForm] = useState(false);
+  const [promptTelat, setPromptTelat] = useState(false);
+  const [alasanTelat, setAlasanTelat] = useState("");
+  const [menyimpanTelat, setMenyimpanTelat] = useState(false);
   const [jenisIzin, setJenisIzin] = useState("Cuti Tahunan");
   const [tanggalMulai, setTanggalMulai] = useState("");
   const [tanggalSelesai, setTanggalSelesai] = useState("");
@@ -261,6 +264,32 @@ export default function UserKehadiranPage() {
     }
   };
 
+  const ajukanIzinTelat = async () => {
+    if (!currentUser) return;
+    setMenyimpanTelat(true);
+    const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
+    const req = {
+      id: "req-" + Date.now().toString(),
+      nama: currentUser.nama || "Karyawan Invisual",
+      idKaryawan: safeId,
+      jenis: "Izin Terlambat",
+      tanggal: todayISO,
+      alasan: alasanTelat.trim() || "Terlambat",
+      status: "Menunggu",
+    };
+    try {
+      const { error } = await supabase.from("approvals").insert([req]);
+      if (error) throw error;
+      showToast("success", "Izin keterlambatan diajukan. Menunggu persetujuan.");
+      pushNotify(supabase, { toAdmins: true, title: "Izin Terlambat", body: `${currentUser?.nama || "Karyawan"} mengajukan izin terlambat${alasanTelat ? " — " + alasanTelat : ""}`, url: "/admin/dashboard", tag: "pengajuan" });
+      setPromptTelat(false); setAlasanTelat("");
+    } catch (e: any) {
+      showToast("error", "Gagal mengajukan: " + (e?.message || e));
+    } finally {
+      setMenyimpanTelat(false);
+    }
+  };
+
   const handleClockIn = async () => {
     if (hasCameraPermission === false) return showToast("error", "Izinkan akses kamera di browser Anda!");
     // Geofence: mode Kantor wajib di lokasi kantor. WFH/WFC (sudah disetujui) dilewati.
@@ -297,6 +326,7 @@ export default function UserKehadiranPage() {
       if (error) throw error;
       showToast("success", `Clock-In berhasil dicatat pada ${timeString} WIB.`);
       pushNotify(supabase, { toAdmins: true, title: "Absen Masuk", body: `${currentUser?.nama || "Karyawan"} clock-in ${timeString} (${statusKehadiran})`, url: "/admin/kehadiran", tag: "absen" });
+      if (statusKehadiran === "Terlambat") setPromptTelat(true);
       await fetchDashboardData(safeId);
     } catch (err: any) {
       if (err?.code === "23505") { showToast("info", "Anda sudah tercatat absen masuk hari ini."); await fetchDashboardData(safeId); }
@@ -657,6 +687,20 @@ export default function UserKehadiranPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {promptTelat && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4" onClick={() => !menyimpanTelat && setPromptTelat(false)}>
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-kartu p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-white">Anda tercatat terlambat</h3>
+            <p className="mt-1.5 text-[12px] text-gray-400 leading-relaxed">Ajukan izin keterlambatan agar atasan bisa menyetujui <span className="text-tint font-semibold">pulang jam normal (18:00)</span>. Tanpa izin yang disetujui, jam pulang wajib mengikuti +9 jam dari clock-in.</p>
+            <textarea value={alasanTelat} onChange={(e) => setAlasanTelat(e.target.value)} rows={3} placeholder="Alasan keterlambatan (mis. macet, ada urusan keluarga)…" className="mt-3 w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer resize-none" />
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => { setPromptTelat(false); setAlasanTelat(""); }} disabled={menyimpanTelat} className="rounded-lg px-4 py-2 text-sm font-bold text-gray-400 hover:text-white disabled:opacity-50">Lewati</button>
+              <button onClick={ajukanIzinTelat} disabled={menyimpanTelat} className="rounded-lg bg-primer px-4 py-2 text-sm font-bold text-white hover:bg-primer-terang disabled:opacity-50">{menyimpanTelat ? "Mengirim…" : "Ajukan Izin Terlambat"}</button>
+            </div>
           </div>
         </div>
       )}
