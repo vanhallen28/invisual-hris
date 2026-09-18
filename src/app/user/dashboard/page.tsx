@@ -47,6 +47,8 @@ export default function UserDashboardPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [cameraOn, setCameraOn] = useState(false);
   const [captureMode, setCaptureMode] = useState<"in" | "out" | null>(null);
+  const [wajibTelat, setWajibTelat] = useState(false);
+  const [alasanWajibTelat, setAlasanWajibTelat] = useState("");
   const [jamMasuk, setJamMasuk] = useState("09:00");
   const [toleransiTelat, setToleransiTelat] = useState(TOLERANSI_TELAT_MENIT);
   const [jamKeluar, setJamKeluar] = useState("18:00");
@@ -239,6 +241,27 @@ export default function UserDashboardPage() {
         return showToast("error", (e?.message || "Gagal cek lokasi.") + " Absen butuh izin lokasi.");
       }
     }
+    // Cek terlambat SEBELUM selfie. Terlambat & belum ada izin telat hari ini → WAJIB isi alasan (modal, tak bisa dilewati).
+    const nowCek = new Date();
+    const [sHc, sMc] = String(jamMasuk || "09:00").split(":").map(Number);
+    const telatCek = (nowCek.getHours() * 60 + nowCek.getMinutes()) > ((sHc || 9) * 60 + (sMc || 0) + toleransiTelat);
+    const safeIdCek = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
+    if (!isFleksibel && telatCek) {
+      const sudahIzin = await cekSudahAdaIzinTelat(safeIdCek);
+      if (!sudahIzin) { setWajibTelat(true); return; } // tahan clock-in; buka modal wajib alasan
+    }
+    await lakukanClockIn(""); // tepat waktu / sudah ada izin → langsung
+  };
+
+  const cekSudahAdaIzinTelat = async (safeId: string) => {
+    try {
+      const { data } = await supabase.from("approvals").select("id").eq("idKaryawan", safeId).eq("tanggal", todayISO).eq("jenis", "Izin Terlambat").limit(1);
+      return !!(data && data.length > 0);
+    } catch { return false; }
+  };
+
+  const lakukanClockIn = async (alasanTelatWajib: string) => {
+    if (!currentUser) return;
     setIsActionLoading(true);
     takePhoto();
 
@@ -265,6 +288,20 @@ export default function UserDashboardPage() {
       if (error) throw error;
       showToast("success", `Clock-In berhasil dicatat pada ${timeString} WIB.`);
       pushNotify(supabase, { toAdmins: true, title: "Absen Masuk", body: `${currentUser?.nama || "Karyawan"} clock-in ${timeString} (${statusKehadiran})`, url: "/admin/kehadiran", tag: "absen" });
+      // Terlambat + alasan wajib terisi → otomatis buat pengajuan Izin Terlambat (Menunggu) → masuk antrean manajer.
+      if (statusKehadiran === "Terlambat" && alasanTelatWajib.trim()) {
+        const req = {
+          id: "req-" + Date.now().toString(),
+          nama: currentUser.nama || "Karyawan Invisual",
+          idKaryawan: safeId,
+          jenis: "Izin Terlambat",
+          tanggal: todayISO,
+          alasan: alasanTelatWajib.trim(),
+          status: "Menunggu",
+        };
+        const { error: e2 } = await supabase.from("approvals").insert([req]);
+        if (!e2) pushNotify(supabase, { toAdmins: true, title: "Izin Terlambat", body: `${currentUser?.nama || "Karyawan"} clock-in terlambat ${timeString} — ${alasanTelatWajib.trim()}`, url: "/admin/dashboard", tag: "pengajuan" });
+      }
       await fetchDashboardData(safeId);
     } catch (err: any) {
       if (err?.code === "23505") { showToast("info", "Anda sudah tercatat absen masuk hari ini."); await fetchDashboardData(safeId); }
@@ -272,6 +309,7 @@ export default function UserDashboardPage() {
     } finally {
       setIsActionLoading(false);
       setCaptureMode(null);
+      setAlasanWajibTelat("");
     }
   };
 
@@ -547,6 +585,24 @@ export default function UserDashboardPage() {
       </div>
 
 
+
+      {/* WAJIB: clock-in dalam kondisi terlambat harus isi alasan (tak bisa dilewati) */}
+      {wajibTelat && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-amber-500/30 bg-kartu p-5 shadow-2xl">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-amber-400"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+              Anda Terlambat
+            </h3>
+            <p className="mt-1.5 text-[12px] text-gray-400 leading-relaxed">Absen masuk Anda melewati jam masuk. <span className="text-amber-300 font-semibold">Alasan keterlambatan wajib diisi</span> untuk melanjutkan clock-in. Pengajuan izin terlambat otomatis dibuat dan jam wajib pulang mengikuti +9 jam dari sekarang (atasan dapat menyetujui pulang jam normal).</p>
+            <textarea value={alasanWajibTelat} onChange={(e) => setAlasanWajibTelat(e.target.value)} rows={3} autoFocus placeholder="Alasan keterlambatan (mis. macet, ada urusan keluarga)…" className="mt-3 w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer resize-none" />
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => { setWajibTelat(false); setAlasanWajibTelat(""); setCaptureMode(null); }} disabled={isActionLoading} className="rounded-lg px-4 py-2 text-sm font-bold text-gray-400 hover:text-white disabled:opacity-50">Batal</button>
+              <button onClick={async () => { if (!alasanWajibTelat.trim()) return showToast("error", "Alasan keterlambatan wajib diisi."); setWajibTelat(false); await lakukanClockIn(alasanWajibTelat); }} disabled={isActionLoading || !alasanWajibTelat.trim()} className="rounded-lg bg-primer px-4 py-2 text-sm font-bold text-white hover:bg-primer-terang disabled:opacity-50">{isActionLoading ? "Memproses…" : "Clock-In & Ajukan Izin"}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

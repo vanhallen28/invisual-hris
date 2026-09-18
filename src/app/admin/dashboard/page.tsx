@@ -209,6 +209,24 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Auto-refresh RINGAN antrean persetujuan (tanpa flash loading): pengajuan baru
+  // (mis. Izin Terlambat) muncul otomatis tiap 20 dtk & saat tab difokuskan,
+  // tanpa perlu reload halaman.
+  useEffect(() => {
+    const segarkanPending = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      try {
+        const { data } = await supabase.from("approvals").select("*").eq("status", "Menunggu").order("id", { ascending: false });
+        setPendingApprovals(data || []);
+      } catch { /* diamkan */ }
+    };
+    const iv = setInterval(segarkanPending, 20000);
+    window.addEventListener('focus', segarkanPending);
+    document.addEventListener('visibilitychange', segarkanPending);
+    return () => { clearInterval(iv); window.removeEventListener('focus', segarkanPending); document.removeEventListener('visibilitychange', segarkanPending); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (anomalyList.length > 0 && !isLoading && !hasShownAnomaly) {
       setShowAnomalyPopup(true);
