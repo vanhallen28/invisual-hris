@@ -12,6 +12,20 @@ import { dbUpdateItemName, dbSetItemMeta, dbSetCellValue, newId, dbAddItem, dbAd
 const LABEL_COLORS = ['bg-[#e2445c]', 'bg-primer-terang', 'bg-[#fdab3d]', 'bg-[#00c875]', 'bg-[#a25ddc]', 'bg-[#ff5ac4]', 'bg-[#9d99ff]', 'bg-emerald-500', 'bg-rose-400'];
 const HEX_COLORS = ['#e2445c', '#579bfc', '#fdab3d', '#00c875', '#a25ddc', '#ff5ac4', '#9d99ff'];
 
+// ── Cache state tracker (di MEMORI tab, BUKAN localStorage) ──────────────────
+// Tujuan: buka-tutup Daily/Chat tak mengulang loadFullState (9 tabel) tiap kali.
+// AMAN: dikunci per-ID pengguna (akun beda takkan memakai cache akun lain) &
+// dibersihkan saat logout. Hilang otomatis saat tab di-reload/tutup. HANYA
+// membaca (tak ada tulisan DB / SQL). Jika gagal, alur jatuh ke muat biasa.
+let _cacheTrackerState: { uid: string; state: any } | null = null;
+function bersihkanCacheTracker() { _cacheTrackerState = null; }
+async function loadFullStateCached(supabase: any, uid: string): Promise<{ s: any; fromCache: boolean }> {
+  if (uid && _cacheTrackerState && _cacheTrackerState.uid === uid) return { s: _cacheTrackerState.state, fromCache: true };
+  const s = await loadFullState(supabase);
+  if (uid) _cacheTrackerState = { uid, state: s };
+  return { s, fromCache: false };
+}
+
 // Set view default tiap board (Table, Kanban, Gantt, Chart) — sama seperti tab lama
 export const makeDefaultViews = (seedHidden: string[] = []) => {
   const ts = Date.now();
@@ -256,7 +270,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     let active = true;
     (async () => {
       try {
-        const s = await loadFullState(supabase);
+        const { s, fromCache } = await loadFullStateCached(supabase, authUser?.id || '');
         if (!active) return;
         setWorkspaces(s.workspaces);
         setBoardsDataMap(ensureViews(s.boardsDataMap));
@@ -295,6 +309,9 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
         setActiveWorkspaceId(wsActive);
         setActiveBoardId(chosen);
         setIsLoaded(true);
+        // Data dari cache → segarkan diam-diam di latar (pakai jalur refresh yang SUDAH ada;
+        // board aktif & sidebar tak diganggu karena refreshData tak menyentuhnya).
+        if (fromCache) { void refreshData(); }
       } catch (e: any) {
         if (active) setLoadError(e?.message || 'Gagal memuat data dari Supabase');
       }
@@ -1161,6 +1178,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   const doLogout = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
+    bersihkanCacheTracker(); // buang cache agar tak terbawa ke akun berikutnya
     setAuthUser(null); setIsLoaded(false); setLoadError(null);
   };
 
