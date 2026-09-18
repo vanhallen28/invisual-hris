@@ -397,6 +397,10 @@ export default function AdminDashboardPage() {
 
   const onTimeToday = todayAttendances.filter(a => a.status === "Tepat Waktu");
   const lateToday = saringTerlambat(todayAttendances, employees);
+  // Keterlambatan yang izinnya belum di-ACC (semua tanggal) → untuk kartu penanda.
+  const telatMenungguKeputusan = pendingApprovals.filter((r: any) => r.jenis === "Izin Terlambat");
+  const jamMasukPetaHariIni: Record<string, string> = {};
+  todayAttendances.forEach((a: any) => { if (a.idKaryawan) jamMasukPetaHariIni[a.idKaryawan] = a.waktuMasuk; });
   // Turunan untuk cincin kehadiran (tampilan saja)
   const hadirTotal = onTimeToday.length + lateToday.length;
   const persenHadir = employees.length ? Math.round((hadirTotal / employees.length) * 100) : 0;
@@ -456,6 +460,46 @@ export default function AdminDashboardPage() {
             <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 flex items-center gap-4 shadow-lg relative z-20">
               <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 shrink-0"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" /></svg></div>
               <div><p className="text-sm font-bold text-green-400">Database & Karyawan Sinkron</p><p className="text-xs text-green-400/70 mt-0.5">Seluruh berkas karyawan bersih dan tervalidasi 100% aman.</p></div>
+            </div>
+          )}
+
+          {/* Penanda: keterlambatan yang izinnya belum di-ACC (aditif; juga tampil di antrean di bawah) */}
+          {!isLoading && telatMenungguKeputusan.length > 0 && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.07] p-4 md:p-5 shadow-lg relative z-20">
+              <div className="flex items-center justify-between gap-3 mb-3 border-b border-amber-500/20 pb-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-amber-300">Keterlambatan menunggu keputusan pulang</p>
+                    <p className="text-[11px] text-amber-200/70 mt-0.5">Tentukan jam pulang tiap karyawan yang clock-in terlambat. Juga tampil di antrean di bawah.</p>
+                  </div>
+                </div>
+                <span className="shrink-0 bg-amber-500/20 text-amber-300 text-xs font-bold px-3 py-1.5 rounded-full border border-amber-500/30">{telatMenungguKeputusan.length}</span>
+              </div>
+              <div className="space-y-2.5 max-h-[300px] overflow-y-auto custom-scrollbar pr-1">
+                {telatMenungguKeputusan.map((req: any) => (
+                  <div key={req.id} className="bg-black/20 border border-amber-500/15 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-2.5">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-9 h-9 shrink-0 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-300 font-bold border border-amber-500/30">{req.nama?.charAt(0).toUpperCase() || "?"}</div>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-white text-sm truncate">{req.nama}</h4>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          {req.tanggal && <span className="text-[10px] text-gray-400 font-mono">{req.tanggal}</span>}
+                          {jamMasukPetaHariIni[req.idKaryawan] && <span className="text-[10px] text-amber-300 font-mono">Clock-in {jamMasukPetaHariIni[req.idKaryawan]}</span>}
+                        </div>
+                        <p className="text-[11px] text-gray-300 italic break-words whitespace-pre-wrap mt-0.5">{req.alasan ? `"${req.alasan}"` : "Tanpa keterangan"}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-wrap justify-end shrink-0">
+                      <button onClick={() => handleApprovalAction(req.id, "Ditolak")} className="px-3 py-2 text-xs font-bold text-gray-400 hover:text-white relative z-30">Tolak</button>
+                      <button onClick={() => handleApprovalAction(req.id, "Disetujui", "normal")} title="Keterlambatan dimaafkan — pulang jam normal" className="px-3 py-2 bg-green-600/90 hover:bg-green-600 text-white text-xs font-bold rounded-xl relative z-30 whitespace-nowrap">ACC pulang 18:00</button>
+                      <button onClick={() => handleApprovalAction(req.id, "Disetujui", "sesuai_telat")} title="Wajib ganti jam — pulang sesuai keterlambatan (clock-in + 9 jam)" className="px-3 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30 whitespace-nowrap">ACC pulang +jam</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
