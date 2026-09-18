@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, ChevronDown, EyeOff, X, Trash2, Check, Filter, Inbox, GripVertical, Copy } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Plus, Search, ChevronDown, EyeOff, X, Trash2, Check, Filter, Inbox, GripVertical, Copy, FolderInput } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import InlineEdit from './InlineEdit';
 import ColumnCenterMenu from './ColumnCenter';
@@ -11,11 +11,23 @@ export default function MainTable() {
     boardData, setBoardData, columns, setColumns, subColumns, hiddenColumns, setHiddenColumns, 
     searchQuery, setSearchQuery, sortConfig, setSortConfig, teamMembers, labels,
     isHideMenuOpen, setIsHideMenuOpen, triggerConfirm, handleDeleteColumn, HEX_COLORS,
-    toggleGroupSelection, handleAddItem, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, reorderColumns, reorderGroups, updateColumnLabel, openDropdown,
-    activeBoardId, supabase
+    toggleGroupSelection, handleAddItem, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, moveGroupToBoard, reorderColumns, reorderGroups, updateColumnLabel, openDropdown,
+    activeBoardId, workspaces, supabase
   } = useDashboard();
 
   const [addColMenuTarget, setAddColMenuTarget] = useState<{ type: 'main'|'sub', id: string } | null>(null);
+  const [movePicker, setMovePicker] = useState<string | null>(null);
+  const [moveSearch, setMoveSearch] = useState('');
+  const daftarBoardPindah = useMemo(() => {
+    const out: { id: string; label: string }[] = [];
+    const walk = (b: any, prefix: string) => {
+      const full = prefix + (b?.name || 'Board');
+      out.push({ id: b.id, label: full });
+      (b?.boards || []).forEach((sb: any) => walk(sb, full + ' › '));
+    };
+    for (const w of (workspaces || [])) for (const y of (w?.years || [])) for (const m of (y?.months || [])) (m?.boards || []).forEach((b: any) => walk(b, `${m?.name} › `));
+    return out.filter((o) => o.id !== activeBoardId);
+  }, [workspaces, activeBoardId]);
   // Grup yang baris ITEM-nya sedang dilipat (chevron di header ITEM NAME).
   const [rowsTutup, setRowsTutup] = useState<Set<string>>(() => new Set());
   const toggleRows = (gid: string) => setRowsTutup((s) => { const n = new Set(s); if (n.has(gid)) n.delete(gid); else n.add(gid); return n; });
@@ -213,6 +225,8 @@ export default function MainTable() {
                 )}
                 <button onClick={() => duplicateGroup(group.id)} title="Duplikat grup beserta isinya"
                   className="opacity-0 group-hover/board:opacity-100 text-gray-600 hover:text-blue-400 p-1 transition-opacity"><Copy size={14}/></button>
+                <button onClick={() => { setMovePicker(group.id); setMoveSearch(''); }} title="Pindahkan grup ke board / sub-board lain"
+                  className="opacity-0 group-hover/board:opacity-100 text-gray-600 hover:text-emerald-400 p-1 transition-opacity"><FolderInput size={14}/></button>
                 <button onClick={() => triggerConfirm('Hapus Grup', 'Hapus grup ini?', () => handleDeleteGroup(group.id))} className="opacity-0 group-hover/board:opacity-100 text-gray-600 hover:text-red-400 p-1 transition-opacity"><Trash2 size={14}/></button>
               </div>
 
@@ -310,6 +324,28 @@ export default function MainTable() {
         })}
         <button onClick={handleAddGroup} className="flex items-center gap-2 px-4 py-2 border border-white/10 hover:border-white/10 text-gray-400 hover:text-white rounded-md w-fit bg-kartu-hover font-bold text-xs transition-colors shadow-sm"><Plus size={14} /> Add New Group</button>
       </div>
+
+      {movePicker && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(0,0,0,0.72)' }} onClick={() => setMovePicker(null)}>
+          <div style={{ width: '100%', maxWidth: '30rem', background: '#181818', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 24px 60px rgba(0,0,0,0.65)', padding: '16px', display: 'flex', flexDirection: 'column', maxHeight: '80vh' }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', margin: '0 0 4px' }}>Pindahkan grup ke…</h3>
+            <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 12px', lineHeight: 1.5 }}>Grup beserta semua item &amp; datanya ikut pindah. Kolom yang belum ada di board tujuan dibuat otomatis.</p>
+            <input autoFocus value={moveSearch} onChange={(e) => setMoveSearch(e.target.value)} placeholder="Cari board / sub-board…" style={{ marginBottom: '8px', width: '100%', boxSizing: 'border-box', background: '#111111', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '9px 12px', fontSize: '14px', color: '#ffffff', outline: 'none' }} />
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', paddingRight: '2px' }}>
+              {daftarBoardPindah.filter((o) => o.label.toLowerCase().includes(moveSearch.toLowerCase())).map((o) => (
+                <button key={o.id} onClick={() => { moveGroupToBoard(movePicker, o.id); setMovePicker(null); }}
+                  style={{ flex: '0 0 auto', display: 'block', width: '100%', boxSizing: 'border-box', textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, color: '#f1f5f9', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.3, cursor: 'pointer' }}
+                  onMouseEnter={(e) => { const t = e.currentTarget as HTMLButtonElement; t.style.background = 'rgba(43,92,213,0.4)'; t.style.color = '#ffffff'; }}
+                  onMouseLeave={(e) => { const t = e.currentTarget as HTMLButtonElement; t.style.background = 'rgba(255,255,255,0.05)'; t.style.color = '#f1f5f9'; }}>{o.label}</button>
+              ))}
+              {daftarBoardPindah.filter((o) => o.label.toLowerCase().includes(moveSearch.toLowerCase())).length === 0 && (
+                <p style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '#6b7280' }}>Tak ada board lain.</p>
+              )}
+            </div>
+            <button onClick={() => setMovePicker(null)} style={{ marginTop: '12px', alignSelf: 'flex-end', borderRadius: '8px', padding: '8px 16px', fontSize: '14px', fontWeight: 700, color: '#9ca3af', background: 'transparent', border: 'none', cursor: 'pointer' }}>Batal</button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

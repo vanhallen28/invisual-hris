@@ -128,6 +128,12 @@ export async function dbDeleteGroup(supabase: SB, groupId: string) {
   if (error) throw new Error(error.message);
 }
 
+// Pindahkan grup ke board lain (item ikut lewat group_id)
+export async function dbMoveGroup(supabase: SB, groupId: string, boardId: string) {
+  const { error } = await supabase.from('groups').update({ board_id: boardId }).eq('id', groupId);
+  if (error) throw new Error(error.message);
+}
+
 // Tambah node pohon (year/month/board). parentId null untuk workspace.
 export async function dbAddTreeNode(supabase: SB, p: { id: string; parentId: string | null; kind: string; name: string; position: number }) {
   const { error } = await supabase.from('tree_nodes').insert({ id: p.id, parent_id: p.parentId, kind: p.kind, name: p.name, position: p.position, is_open: true });

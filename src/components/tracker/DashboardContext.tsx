@@ -7,7 +7,7 @@ import MemberView from '@/components/tracker/MemberView';
 import DocEditor from '@/components/tracker/DocEditor';
 import NotificationCenter from '@/components/tracker/NotificationCenter';
 import LoadingLogo from '@/components/LoadingLogo';
-import { dbUpdateItemName, dbSetItemMeta, dbSetCellValue, newId, dbAddItem, dbAddSubItem, dbDeleteItem, dbAddColumn, dbDeleteColumn, dbAddLabel, dbDeleteLabel, dbUpdateLabelColor, dbAddGroup, dbUpdateGroup, dbDeleteGroup, dbAddTreeNode, dbRenameTreeNode, dbDeleteTreeNode, dbUpdateColumnLabel, dbReindexColumns, dbReindexGroups, dbReindexItems, dbMoveItemsGroup, dbSetAccountTarget, dbHapusAccountTarget } from '@/lib/tracker/sync';
+import { dbUpdateItemName, dbSetItemMeta, dbSetCellValue, newId, dbAddItem, dbAddSubItem, dbDeleteItem, dbAddColumn, dbDeleteColumn, dbAddLabel, dbDeleteLabel, dbUpdateLabelColor, dbAddGroup, dbUpdateGroup, dbDeleteGroup, dbAddTreeNode, dbRenameTreeNode, dbDeleteTreeNode, dbUpdateColumnLabel, dbReindexColumns, dbReindexGroups, dbReindexItems, dbMoveItemsGroup, dbSetAccountTarget, dbHapusAccountTarget, dbMoveGroup } from '@/lib/tracker/sync';
 
 const LABEL_COLORS = ['bg-[#e2445c]', 'bg-primer-terang', 'bg-[#fdab3d]', 'bg-[#00c875]', 'bg-[#a25ddc]', 'bg-[#ff5ac4]', 'bg-[#9d99ff]', 'bg-emerald-500', 'bg-rose-400'];
 const HEX_COLORS = ['#e2445c', '#579bfc', '#fdab3d', '#00c875', '#a25ddc', '#ff5ac4', '#9d99ff'];
@@ -896,6 +896,84 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
    * bukan milik grup, jadi salinannya otomatis memakai kolom yang sama.
    * Menyalinnya justru akan menggandakan kolom di seluruh papan.
    */
+  // Pindahkan grup ke board/sub-board lain, SEKALIGUS membawa nilai kolomnya
+  // (kolom dipetakan via label; kolom yang belum ada di board tujuan dibuat).
+  const moveGroupToBoard = (groupId: string, targetBoardId: string) => {
+    if (!targetBoardId || targetBoardId === activeBoardId) return;
+    tandaiTulisSendiri();
+    const src = boardsDataMap[activeBoardId];
+    const tgt = boardsDataMap[targetBoardId];
+    if (!src || !tgt) { pushToast('Board tujuan tak ditemukan.'); return; }
+    const grup = (src.groups || []).find((g: any) => g.id === groupId);
+    if (!grup) return;
+
+    const upper = (v: any) => String(v || '').trim().toUpperCase();
+    const kolomBaru: any[] = [];
+    const setNilai: { itemId: string; colId: string; type: string; val: any }[] = [];
+
+    const bangunPeta = (srcCols: any[], tgtCols: any[], scope: 'main' | 'sub') => {
+      const peta: Record<string, { id: string; type: string }> = {};
+      const byLabel: Record<string, any> = {};
+      (tgtCols || []).forEach((c: any) => { byLabel[upper(c.label)] = c; });
+      let pos = (tgtCols || []).length;
+      (srcCols || []).forEach((sc: any) => {
+        const match = byLabel[upper(sc.label)];
+        if (match) { peta[sc.id] = { id: match.id, type: match.type }; }
+        else {
+          const nid = newId();
+          const kol = { id: nid, label: sc.label, type: sc.type || 'text', width: sc.width || '130px' };
+          kolomBaru.push({ ...kol, scope, position: pos++ });
+          byLabel[upper(sc.label)] = kol;
+          peta[sc.id] = { id: nid, type: kol.type };
+        }
+      });
+      return peta;
+    };
+    const petaMain = bangunPeta(src.columns || [], tgt.columns || [], 'main');
+    const petaSub = bangunPeta(src.subColumns || [], tgt.subColumns || [], 'sub');
+
+    const remapSub = (sub: any) => {
+      const baru: any = { id: sub.id, name: sub.name };
+      Object.keys(petaSub).forEach((sid) => {
+        const v = sub[sid];
+        if (v !== undefined && v !== null && v !== '') { baru[petaSub[sid].id] = v; setNilai.push({ itemId: sub.id, colId: petaSub[sid].id, type: petaSub[sid].type, val: v }); }
+      });
+      return baru;
+    };
+    const remapItem = (it: any) => {
+      const baru: any = { id: it.id, name: it.name, isSubItemsOpen: it.isSubItemsOpen, description: it.description, subItems: (it.subItems || []).map(remapSub) };
+      Object.keys(petaMain).forEach((sid) => {
+        const v = it[sid];
+        if (v !== undefined && v !== null && v !== '') { baru[petaMain[sid].id] = v; setNilai.push({ itemId: it.id, colId: petaMain[sid].id, type: petaMain[sid].type, val: v }); }
+      });
+      return baru;
+    };
+    const grupBaru = { ...grup, items: (grup.items || []).map(remapItem) };
+
+    setBoardsDataMap((prev: any) => {
+      const s0 = prev[activeBoardId], t0 = prev[targetBoardId];
+      if (!s0 || !t0) return prev;
+      const tCols = [...(t0.columns || [])];
+      const tSub = [...(t0.subColumns || [])];
+      kolomBaru.forEach((k) => { const c = { id: k.id, label: k.label, type: k.type, width: k.width }; if (k.scope === 'sub') tSub.push(c); else tCols.push(c); });
+      return {
+        ...prev,
+        [activeBoardId]: { ...s0, groups: (s0.groups || []).filter((g: any) => g.id !== groupId) },
+        [targetBoardId]: { ...t0, columns: tCols, subColumns: tSub, groups: [...(t0.groups || []), grupBaru] },
+      };
+    });
+
+    if (cloudOn()) {
+      (async () => {
+        try {
+          for (const k of kolomBaru) await dbAddColumn(supabase, { id: k.id, boardId: targetBoardId, scope: k.scope, label: k.label, type: k.type, width: k.width, position: k.position });
+          await dbMoveGroup(supabase, groupId, targetBoardId);
+          for (const v of setNilai) await dbSetCellValue(supabase, v.itemId, v.colId, v.type, v.val);
+        } catch (e: any) { pushToast('Gagal pindah grup di cloud: ' + (e?.message || e)); }
+      })();
+    }
+  };
+
   const duplicateGroup = (gId: string) => {
     const asli = boardData.find((g:any) => g.id === gId);
     if (!asli) return;
@@ -1109,7 +1187,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     dragOverColumn, setDragOverColumn, detailItem, setDetailItem,
     triggerConfirm, handleUpdateItem, handleUpdateSubItem, handleDeleteItem, handleDeleteSubItem,
     handleAddItem, handleAddSubItem, toggleGroupSelection, toggleAllSubItems,
-    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, addYear, addMonth, addBoard, toggleBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, accountTargets, setAccountTarget, hapusAccountTarget, pushToast, HEX_COLORS, LABEL_COLORS,
+    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, moveGroupToBoard, addYear, addMonth, addBoard, toggleBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, accountTargets, setAccountTarget, hapusAccountTarget, pushToast, HEX_COLORS, LABEL_COLORS,
     authUser, doLogout, isManager, currentUserRole, canContentHub, canAcc, refreshData, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase
   };
 
