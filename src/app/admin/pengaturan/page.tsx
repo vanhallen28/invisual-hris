@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { ambilPosisi } from "@/lib/lokasi";
+import { ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
 import LoadingLogo from "@/components/LoadingLogo";
 import ResetKaryawanLogin from "@/components/admin/ResetKaryawanLogin";
 
@@ -65,7 +65,7 @@ export default function PengaturanAkunPage() {
   const [nameMsg, setNameMsg] = useState<any>(null);
   const [blokirTelat, setBlokirTelat] = useState(false);
   const [blokirBusy, setBlokirBusy] = useState(false);
-  const [geoAktif, setGeoAktif] = useState(false);
+  const [geoAktif, setGeoAktif] = useState(true); // DIPAKSA aktif
   const [geoBusy, setGeoBusy] = useState(false);
   const [geoLat, setGeoLat] = useState("");
   const [geoLng, setGeoLng] = useState("");
@@ -87,8 +87,8 @@ export default function PengaturanAkunPage() {
         setBlokirTelat(pgn?.nilai === "true");
         const { data: geo } = await supabase.from("pengaturan").select("kunci, nilai").in("kunci", ["geofence_aktif", "kantor_lat", "kantor_lng", "kantor_radius"]);
         const gm: Record<string, string> = {}; (geo || []).forEach((r: any) => { gm[r.kunci] = r.nilai; });
-        setGeoAktif(gm.geofence_aktif === "true");
-        setGeoLat(gm.kantor_lat || ""); setGeoLng(gm.kantor_lng || ""); setGeoRadius(gm.kantor_radius || "150");
+        setGeoAktif(true); // dipaksa aktif — abaikan on/off dari DB
+        setGeoLat(gm.kantor_lat || String(KANTOR_DEFAULT.lat)); setGeoLng(gm.kantor_lng || String(KANTOR_DEFAULT.lng)); setGeoRadius(gm.kantor_radius || String(KANTOR_DEFAULT.radius));
       } catch { setEmailMsg({ t: "err", m: "Tidak dapat terhubung ke server." }); }
       setLoading(false);
     })();
@@ -233,10 +233,10 @@ export default function PengaturanAkunPage() {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h3 className="text-sm font-bold text-white">Lokasi Absen (Geofence)</h3>
-            <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">Jika aktif, absen <span className="text-tint font-bold">mode Kantor</span> hanya bisa di lokasi kantor. WFH/WFC yang sudah disetujui tetap bisa absen di mana saja.</p>
+            <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">Absen <span className="text-tint font-bold">mode Kantor</span> wajib di lokasi kantor — <span className="text-green-400 font-bold">selalu aktif</span>, tak bisa dimatikan. WFH/WFC yang sudah disetujui tetap bisa absen di mana saja. Default = kantor Invisual; ubah koordinat di bawah bila perlu.</p>
           </div>
-          <button onClick={toggleGeofence} disabled={geoBusy} className={`shrink-0 w-14 h-8 rounded-full border transition-colors relative ${geoAktif ? "bg-primer-terang border-primer" : "bg-white/10 border-white/20"} ${geoBusy ? "opacity-50" : ""}`}>
-            <span className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${geoAktif ? "left-7" : "left-1"}`}></span>
+          <button disabled title="Lokasi wajib — selalu aktif (dipaksa sistem)" className="shrink-0 w-14 h-8 rounded-full border transition-colors relative bg-primer-terang border-primer opacity-70 cursor-not-allowed">
+            <span className="absolute top-1 w-6 h-6 rounded-full bg-white left-7"></span>
           </button>
         </div>
         <div className="grid grid-cols-2 gap-2 mt-4">
@@ -257,7 +257,7 @@ export default function PengaturanAkunPage() {
           </div>
         </div>
         {geoMsg && <p className="text-[11px] text-amber-400 mt-2">{geoMsg}</p>}
-        <p className={`text-[11px] font-bold mt-3 ${geoAktif ? "text-green-400" : "text-gray-500"}`}>{geoAktif ? "AKTIF — absen Kantor wajib di lokasi kantor" : "MATI — lokasi tidak dicek"}</p>
+        <p className="text-[11px] font-bold mt-3 text-green-400">AKTIF (wajib) — absen Kantor hanya di lokasi kantor</p>
       </div>
 
       <div className="flex flex-col gap-3">

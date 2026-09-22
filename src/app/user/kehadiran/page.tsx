@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { TOLERANSI_TELAT_MENIT, jamPulangDariClockIn } from "@/lib/keterlambatan";
-import { jarakMeter, ambilPosisi } from "@/lib/lokasi";
+import { jarakMeter, ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
 import { pushNotify } from "@/lib/push";
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
@@ -32,10 +32,10 @@ export default function UserKehadiranPage() {
   const [jamMasuk, setJamMasuk] = useState("09:00");
   const [toleransiTelat, setToleransiTelat] = useState(TOLERANSI_TELAT_MENIT);
   const [blokirPulangTelat, setBlokirPulangTelat] = useState(false);
-  const [geofenceAktif, setGeofenceAktif] = useState(false);
-  const [kantorLat, setKantorLat] = useState(NaN);
-  const [kantorLng, setKantorLng] = useState(NaN);
-  const [kantorRadius, setKantorRadius] = useState(150);
+  const [geofenceAktif, setGeofenceAktif] = useState(true); // DIPAKSA aktif: enforcement lokasi tak bisa dimatikan
+  const [kantorLat, setKantorLat] = useState(KANTOR_DEFAULT.lat);
+  const [kantorLng, setKantorLng] = useState(KANTOR_DEFAULT.lng);
+  const [kantorRadius, setKantorRadius] = useState(KANTOR_DEFAULT.radius);
   const [isFleksibel, setIsFleksibel] = useState(false);
   const [jamKeluar, setJamKeluar] = useState("17:00");
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
@@ -151,8 +151,10 @@ export default function UserKehadiranPage() {
       setBlokirPulangTelat(pgn?.nilai === "true");
       const { data: geo } = await supabase.from("pengaturan").select("kunci, nilai").in("kunci", ["geofence_aktif", "kantor_lat", "kantor_lng", "kantor_radius"]);
       const gmap: Record<string, string> = {}; (geo || []).forEach((r: any) => { gmap[r.kunci] = r.nilai; });
-      setGeofenceAktif(gmap.geofence_aktif === "true");
-      setKantorLat(parseFloat(gmap.kantor_lat)); setKantorLng(parseFloat(gmap.kantor_lng)); setKantorRadius(Number(gmap.kantor_radius) || 150);
+      // Geofence DIPAKSA aktif → tak membaca on/off dari DB. Koordinat DB hanya MENIMPA default Invisual bila valid.
+      const _la = parseFloat(gmap.kantor_lat); if (isFinite(_la)) setKantorLat(_la);
+      const _ln = parseFloat(gmap.kantor_lng); if (isFinite(_ln)) setKantorLng(_ln);
+      const _ra = Number(gmap.kantor_radius); if (_ra > 0) setKantorRadius(_ra);
     } catch (e) {
       console.error("Error fetching data:", e);
     }

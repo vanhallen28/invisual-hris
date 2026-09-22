@@ -1,5 +1,8 @@
 // src/lib/lokasi.ts — util lokasi untuk absen (geofence).
 
+/** Koordinat kantor Invisual = DEFAULT geofence absen. Bisa ditimpa admin lewat Pengaturan. */
+export const KANTOR_DEFAULT = { lat: -6.914764366993911, lng: 107.67126202481019, radius: 150 };
+
 /** Jarak dua koordinat dalam METER (haversine). */
 export function jarakMeter(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;

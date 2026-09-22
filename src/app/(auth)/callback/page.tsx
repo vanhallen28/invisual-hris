@@ -11,7 +11,8 @@ export default function AuthCallbackPage() {
   const router = useRouter();
   const [statusText, setStatusText] = useState("Memverifikasi akun Google Anda...");
 
-  // DAFTAR PUTIH EMAIL ADMIN (WHITELIST) - Harus sama dengan yang di halaman login
+  // (Tidak lagi dipakai sbg gerbang) — dulu whitelist admin. Sekarang semua
+  // @invisual.studio = admin. Disimpan hanya sbg catatan email inti.
   const ADMIN_EMAILS = [
     "business@invisual.studio",
     "hr@invisual.studio",
@@ -52,9 +53,10 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        // 3. Filter Peran (Role) menggunakan Whitelist
+        // 3. Peran (Role): SEMUA email @invisual.studio = admin penuh (samakan dgn login email/password).
+        //    Syarat aman tetap: harus terdaftar sbg karyawan & aktif (dicek di langkah 2).
         const userEmail = emp.email.toLowerCase();
-        const isAdmin = ADMIN_EMAILS.includes(userEmail);
+        const isAdmin = userEmail.endsWith("@invisual.studio");
         const role = isAdmin ? "admin" : "karyawan";
 
         // 4. Simpan sesi terenkripsi ke lokal browser agar halaman lain tahu siapa yang sedang login
