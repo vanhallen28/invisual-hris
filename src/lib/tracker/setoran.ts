@@ -59,18 +59,77 @@ export async function tandaiSetoranDicek(supabase: SB, userId: string) {
   if (error) throw new Error(error.message);
 }
 
+// Kompres gambar SEBELUM upload: sisi terpanjang maks 1280px + JPEG kualitas 0.72.
+// Foto 3–5 MB dari HP → biasanya ~200–400 KB → hemat storage & bandwidth ~80–90%.
+// FAIL-SAFE penuh: kalau bukan gambar, browser tak dukung, hasil tak lebih kecil,
+// atau error apa pun → kembalikan file ASLI apa adanya. Jadi upload TAK PERNAH gagal
+// gara-gara langkah ini (nol risiko terhadap alur yang sudah jalan).
+async function kompresGambar(file: File): Promise<File> {
+  try {
+    if (typeof document === 'undefined') return file;         // bukan lingkungan browser
+    if (!file.type.startsWith('image/')) return file;         // PDF/lainnya → lewati
+    if (file.type === 'image/gif') return file;               // animasi → jangan dirusak
+    if (file.size <= 300 * 1024) return file;                 // sudah kecil → tak perlu
+
+    const MAKS = 1280;
+    let w = 0, h = 0, sumber: CanvasImageSource | null = null;
+    let bitmap: ImageBitmap | null = null;
+
+    if (typeof createImageBitmap === 'function') {
+      bitmap = await createImageBitmap(file).catch(() => null);
+    }
+    if (bitmap) {
+      w = bitmap.width; h = bitmap.height; sumber = bitmap;
+    } else {
+      // Fallback lewat <img> untuk browser tanpa createImageBitmap.
+      const url = URL.createObjectURL(file);
+      try {
+        const img = await new Promise<HTMLImageElement>((res, rej) => {
+          const im = new Image();
+          im.onload = () => res(im);
+          im.onerror = () => rej(new Error('gagal muat gambar'));
+          im.src = url;
+        });
+        w = img.naturalWidth; h = img.naturalHeight; sumber = img;
+      } finally { URL.revokeObjectURL(url); }
+    }
+    if (!w || !h || !sumber) return file;
+
+    const skala = Math.min(1, MAKS / Math.max(w, h));
+    const tw = Math.max(1, Math.round(w * skala));
+    const th = Math.max(1, Math.round(h * skala));
+    const canvas = document.createElement('canvas');
+    canvas.width = tw; canvas.height = th;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) { bitmap?.close?.(); return file; }
+    ctx.drawImage(sumber, 0, 0, tw, th);
+    bitmap?.close?.();
+
+    const blob = await new Promise<Blob | null>((res) => {
+      try { canvas.toBlob((b) => res(b), 'image/jpeg', 0.72); } catch { res(null); }
+    });
+    if (!blob || blob.size >= file.size) return file;         // tak lebih kecil → pakai asli
+
+    const namaBaru = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+    return new File([blob], namaBaru, { type: 'image/jpeg', lastModified: Date.now() });
+  } catch {
+    return file;                                              // apa pun gagal → file asli
+  }
+}
+
 // Berkas boleh kosong — setoran tanpa gambar dipakai sebagai catatan QC.
 export async function uploadSetoran(supabase: SB, file: File | null, userId: string, caption?: string) {
   let imageUrl: string | null = null;
   let path: string | null = null;
 
   if (file) {
-    const aman = file.name.replace(/[^\w.\-]/g, '_');
+    const fileUp = await kompresGambar(file);                 // kompres dulu (fail-safe ke file asli)
+    const aman = fileUp.name.replace(/[^\w.\-]/g, '_');
     path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${aman}`;
 
     const { error: upErr } = await supabase.storage
       .from(SETORAN_BUCKET)
-      .upload(path, file, { cacheControl: '3600', upsert: false });
+      .upload(path, fileUp, { cacheControl: '3600', upsert: false });
     if (upErr) throw new Error(upErr.message);
 
     const { data: pub } = supabase.storage.from(SETORAN_BUCKET).getPublicUrl(path);
