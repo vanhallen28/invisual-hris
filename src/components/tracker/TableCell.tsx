@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check, Trash2, Tag, User, CalendarDays, Plus, FileText } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import Avatar from '@/components/Avatar';
@@ -12,7 +12,8 @@ export default function TableCell({ type, item, group, col }: any) {
     openDropdown, setOpenDropdown, newLabelText, setNewLabelText, 
     newMemberName, setNewMemberName, tempTimeline, setTempTimeline, 
     triggerConfirm, handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, HEX_COLORS, LABEL_COLORS, openDocEditor,
-    handleUpdateItem, handleUpdateSubItem, columns, subColumns 
+    handleUpdateItem, handleUpdateSubItem, columns, subColumns,
+    selectedItems, handleBulkSetField
   } = useDashboard();
 
   const [colorPickerFor, setColorPickerFor] = useState<string | null>(null);
@@ -43,6 +44,13 @@ export default function TableCell({ type, item, group, col }: any) {
 
   const isDrop = openDropdown?.itemId === actualItemId && openDropdown?.field === col.id && (isSub ? openDropdown?.subItemId === actualSubItemId : openDropdown?.type === 'item');
   const triggerUpdate = (field: string, val: any) => { if (isSub) handleUpdateSubItem(group.id, actualItemId, actualSubItemId!, field, val); else handleUpdateItem(group.id, actualItemId, field, val); };
+  // Monday-style: kalau baris ini termasuk yang tercentang (>1), set nilai berlaku
+  // ke SEMUA baris terpilih di kolom ini. Kalau tidak, hanya baris ini (seperti biasa).
+  const applyBulk = !isSub && Array.isArray(selectedItems) && selectedItems.includes(actualItemId) && selectedItems.length > 1;
+  const commitValue = (field: string, val: any) => { if (applyBulk) handleBulkSetField(selectedItems, col, val); else triggerUpdate(field, val); };
+  // Fokus input dropdown TANPA menggulirkan halaman (fix: dulu autoFocus menarik viewport).
+  const dropInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (isDrop) dropInputRef.current?.focus({ preventScroll: true }); }, [isDrop]);
   const cellBorder = (isSub ? 'border-r border-white/10' : 'border-r border-white/10') + ' dwt-cell-in';
   
   const activePopupPos = 'left-1/2 -translate-x-1/2'; 
@@ -106,13 +114,14 @@ export default function TableCell({ type, item, group, col }: any) {
           <>
             <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenDropdown(null); }}></div>
             <div className={`absolute top-full mt-1.5 ${activePopupPos} bg-kartu border border-white/10 shadow-2xl rounded-xl z-50 p-2 w-56 flex flex-col text-left animate-in fade-in zoom-in-95`} onClick={e=>e.stopPropagation()}>
+              {applyBulk && (<div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-300 bg-blue-500/15 border border-blue-500/30 rounded-lg px-2 py-1.5 mb-1.5"><Check size={12}/> Terapkan ke {selectedItems.length} baris terpilih</div>)}
               <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider px-2 py-1 mb-1">Assign Karyawan</div>
-              <input autoComplete="off" spellCheck="false" autoFocus value={newMemberName} onChange={e=>setNewMemberName(e.target.value)} placeholder="Cari orang..." className="bg-latar text-[11px] border border-white/10 focus:border-blue-500 rounded-md px-2.5 py-1.5 outline-none w-full text-white shadow-inner transition-colors min-w-0 mb-1.5"/>
+              <input ref={dropInputRef} autoComplete="off" spellCheck="false" value={newMemberName} onChange={e=>setNewMemberName(e.target.value)} placeholder="Cari orang..." className="bg-latar text-[11px] border border-white/10 focus:border-blue-500 rounded-md px-2.5 py-1.5 outline-none w-full text-white shadow-inner transition-colors min-w-0 mb-1.5"/>
               <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5 pr-1 custom-scrollbar">
                 {teamMembers.filter((m:any) => cocokNama(m, newMemberName || '')).map((m:any) => { 
                   const has = item[col.id]?.includes(m.id); 
                   return (
-                    <div key={m.id} className="flex items-center justify-between text-xs px-2 py-1.5 hover:bg-kartu-hover rounded-lg text-gray-300 w-full cursor-pointer transition-colors" onClick={(e) => { e.stopPropagation(); triggerUpdate(col.id, has ? item[col.id].filter((id:any)=>id!==m.id) : [...(item[col.id]||[]), m.id]); }}>
+                    <div key={m.id} className="flex items-center justify-between text-xs px-2 py-1.5 hover:bg-kartu-hover rounded-lg text-gray-300 w-full cursor-pointer transition-colors" onClick={(e) => { e.stopPropagation(); commitValue(col.id, has ? item[col.id].filter((id:any)=>id!==m.id) : [...(item[col.id]||[]), m.id]); }}>
                       <div className="flex items-center gap-2.5 min-w-0"><Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[8px] font-bold text-white shadow-sm ${memberColor(m)}`} /><span className="truncate">{m.name}</span></div>
                       {has && <Check size={12} className="text-blue-400 shrink-0"/>}
                     </div>
@@ -142,14 +151,15 @@ export default function TableCell({ type, item, group, col }: any) {
            <>
              <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenDropdown(null); }}></div>
              <div className={`absolute top-full mt-1.5 ${activePopupPos} bg-kartu border border-white/10 shadow-2xl rounded-xl z-50 p-1.5 w-56 flex flex-col animate-in fade-in zoom-in-95`} onClick={e=>e.stopPropagation()}>
+               {applyBulk && (<div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-300 bg-blue-500/15 border border-blue-500/30 rounded-lg px-2 py-1.5 mb-1.5"><Check size={12}/> Terapkan ke {selectedItems.length} baris terpilih</div>)}
                <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider px-2 py-1 mb-1">{col.label}</div>
-               {!isMulti && <button onClick={() => { triggerUpdate(col.id, ''); setOpenDropdown(null); }} className="text-left text-xs px-3 py-2 hover:bg-kartu-hover rounded-lg text-gray-400 w-full mb-1 transition-colors shrink-0">- Reset</button>}
+               {!isMulti && <button onClick={() => { commitValue(col.id, ''); setOpenDropdown(null); }} className="text-left text-xs px-3 py-2 hover:bg-kartu-hover rounded-lg text-gray-400 w-full mb-1 transition-colors shrink-0">- Reset</button>}
                <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5 pr-1 custom-scrollbar mb-1.5">
                  {opsiKolom.map((l: any) => {
                    const hasMulti = isMulti && item[col.id]?.includes(l.text);
                    return (
                      <div key={l.id}>
-                       <div className="flex items-center justify-between text-xs px-3 py-2 hover:bg-kartu-hover rounded-lg text-gray-200 w-full group/menuitem cursor-pointer transition-colors" onClick={() => { if(isMulti) { triggerUpdate(col.id, hasMulti ? item[col.id].filter((t:any)=>t!==l.text) : [...(item[col.id]||[]), l.text]) } else { triggerUpdate(col.id, l.text); setOpenDropdown(null); } }}>
+                       <div className="flex items-center justify-between text-xs px-3 py-2 hover:bg-kartu-hover rounded-lg text-gray-200 w-full group/menuitem cursor-pointer transition-colors" onClick={() => { if(isMulti) { commitValue(col.id, hasMulti ? item[col.id].filter((t:any)=>t!==l.text) : [...(item[col.id]||[]), l.text]) } else { commitValue(col.id, l.text); setOpenDropdown(null); } }}>
                          <div className="flex items-center gap-3 min-w-0">
                            <button onClick={(e) => { e.stopPropagation(); setColorPickerFor(colorPickerFor === l.id ? null : l.id); }} title="Ubah warna" className={`w-3.5 h-3.5 rounded-sm shadow-sm shrink-0 ${l.color} hover:ring-2 hover:ring-white/50 transition-all`}></button>
                            <span className="truncate">{l.text}</span>
@@ -176,7 +186,7 @@ export default function TableCell({ type, item, group, col }: any) {
                      <button key={c} onClick={() => setNewLabelColor(c)} title="Warna opsi baru" className={`w-5 h-5 rounded-md ${c} transition-all ${newLabelColor === c ? 'ring-2 ring-white' : 'hover:ring-2 hover:ring-white/40'}`}></button>
                    ))}
                  </div>
-                 <input autoComplete="off" spellCheck="false" autoFocus value={newLabelText} onChange={e=>setNewLabelText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleAddNewLabel(col.id, isMulti)} placeholder="+ Opsi baru (pilih warna di atas)" className="bg-latar border border-white/10 focus:border-blue-500 transition-colors rounded-md px-3 py-1.5 text-[11px] w-full text-white outline-none shadow-inner min-w-0"/>
+                 <input ref={dropInputRef} autoComplete="off" spellCheck="false" value={newLabelText} onChange={e=>setNewLabelText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleAddNewLabel(col.id, isMulti)} placeholder="+ Opsi baru (pilih warna di atas)" className="bg-latar border border-white/10 focus:border-blue-500 transition-colors rounded-md px-3 py-1.5 text-[11px] w-full text-white outline-none shadow-inner min-w-0"/>
                </div>
              </div>
            </>
@@ -209,9 +219,10 @@ export default function TableCell({ type, item, group, col }: any) {
           <>
             <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenDropdown(null); }}></div>
             <div className={`absolute top-full mt-1.5 ${activePopupPos} bg-kartu border border-white/10 shadow-2xl rounded-xl z-50 p-4 flex flex-col gap-3 animate-in fade-in zoom-in-95`} onClick={e=>e.stopPropagation()}>
+              {applyBulk && (<div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-300 bg-blue-500/15 border border-blue-500/30 rounded-lg px-2 py-1.5"><Check size={12}/> Terapkan ke {selectedItems.length} baris terpilih</div>)}
               <div><label className="text-[10px] font-bold text-gray-400 block mb-1.5 uppercase tracking-wider">Start Date</label><input type="date" value={tempTimeline?.start || ''} onChange={e=>setTempTimeline({...tempTimeline, start:e.target.value})} className="w-full bg-latar border border-white/10 rounded-md px-2.5 py-1.5 text-xs text-white [color-scheme:dark] outline-none shadow-inner" /></div>
               <div><label className="text-[10px] font-bold text-gray-400 block mb-1.5 uppercase tracking-wider">End Date</label><input type="date" value={tempTimeline?.end || ''} onChange={e=>setTempTimeline({...tempTimeline, end:e.target.value})} className="w-full bg-latar border border-white/10 rounded-md px-2.5 py-1.5 text-xs text-white [color-scheme:dark] outline-none shadow-inner" /></div>
-              <div className="flex justify-between items-center border-t border-white/10 pt-3 mt-1"><button onClick={() => { triggerUpdate(col.id, null); setOpenDropdown(null); }} className="text-xs text-red-400 font-bold hover:text-red-300 transition-colors">Clear</button><button onClick={() => { triggerUpdate(col.id, tempTimeline); setOpenDropdown(null); }} className="text-xs bg-blue-600 hover:bg-blue-500 px-4 py-1.5 rounded-md text-white font-bold transition-colors shadow-md">Set Date</button></div>
+              <div className="flex justify-between items-center border-t border-white/10 pt-3 mt-1"><button onClick={() => { commitValue(col.id, null); setOpenDropdown(null); }} className="text-xs text-red-400 font-bold hover:text-red-300 transition-colors">Clear</button><button onClick={() => { commitValue(col.id, tempTimeline); setOpenDropdown(null); }} className="text-xs bg-blue-600 hover:bg-blue-500 px-4 py-1.5 rounded-md text-white font-bold transition-colors shadow-md">Set Date</button></div>
             </div>
           </>
         )}

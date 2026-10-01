@@ -839,6 +839,27 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     }
   };
 
+  // Set nilai SATU kolom untuk banyak item sekaligus (Monday-style in-place).
+  // Memakai col.type asli → benar untuk tiap tipe (status/tags→item_values,
+  // team→item_assignees, timeline→item_values). Tandai tulis-sendiri (termasuk
+  // SELAMA proses) agar gema realtime tak memicu reload papan di tengah jalan.
+  const handleBulkSetField = (ids: string[], col: any, value: any) => {
+    if (!ids?.length || !col?.id) return;
+    tandaiTulisSendiri();
+    const idSet = new Set(ids);
+    setBoardData(boardData.map((g:any) => ({
+      ...g,
+      items: (g.items || []).map((it:any) => idSet.has(it.id) ? { ...it, [col.id]: value } : it),
+    })));
+    pushToast(`${col.label || 'Nilai'} diperbarui untuk ${ids.length} item`);
+    if (cloudOn()) {
+      (async () => {
+        for (const id of ids) { tandaiTulisSendiri(); await dbSetCellValue(supabase, id, col.id, col.type, value); }
+        tandaiTulisSendiri();
+      })().catch((e:any) => pushToast('Gagal ubah massal di cloud: ' + (e?.message || e)));
+    }
+  };
+
   const handleBulkDelete = (ids: string[]) => {
     tandaiTulisSendiri();
     setBoardData(boardData.map((g:any) => ({ ...g, items: g.items.filter((i:any) => !ids.includes(i.id)).map((i:any) => ({ ...i, subItems: i.subItems?.filter((s:any) => !ids.includes(s.id)) || [] })) })));
@@ -876,6 +897,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     if (cloudOn()) {
       (async () => {
         for (const { clone, groupId } of clones) {
+          tandaiTulisSendiri(); // segarkan guard tiap item → proses panjang tak memicu reload
           const grp = newGroups.find((g:any) => g.id === groupId);
           const pos = grp.items.findIndex((i:any) => i.id === clone.id);
           await dbAddItem(supabase, { id: clone.id, groupId, name: clone.name, position: pos });
@@ -901,6 +923,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
           const grp = newGroups.find((g:any) => g.id === gid);
           if (grp) await dbReindexItems(supabase, grp.items.map((i:any, idx:number) => ({ id: i.id, position: idx })));
         }
+        tandaiTulisSendiri(); // tandai lagi di akhir → gema tulisan terakhir tak memicu reload
       })().catch((e:any) => pushToast('Gagal duplikat di cloud: ' + (e?.message || e)));
     }
   };
@@ -1205,7 +1228,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     dragOverColumn, setDragOverColumn, detailItem, setDetailItem,
     triggerConfirm, handleUpdateItem, handleUpdateSubItem, handleDeleteItem, handleDeleteSubItem,
     handleAddItem, handleAddSubItem, toggleGroupSelection, toggleAllSubItems,
-    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, moveGroupToBoard, addYear, addMonth, addBoard, toggleBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, accountTargets, setAccountTarget, hapusAccountTarget, pushToast, HEX_COLORS, LABEL_COLORS,
+    handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, moveGroupToBoard, addYear, addMonth, addBoard, toggleBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, handleBulkSetField, accountTargets, setAccountTarget, hapusAccountTarget, pushToast, HEX_COLORS, LABEL_COLORS,
     authUser, doLogout, isManager, currentUserRole, canContentHub, canAcc, refreshData, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase
   };
 
