@@ -896,34 +896,57 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
 
     if (cloudOn()) {
       (async () => {
+        tandaiTulisSendiri();
+        // CEPAT: kumpulkan semua baris lalu INSERT per-tabel sekali jalan (batch),
+        // bukan ~90 round-trip berurutan per item+subitem. Ini yang dulu bikin
+        // duplikat item ber-subitem makan 20-30 detik & sempat tampil data parsial.
+        const kosong = (v: any) => v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+        const itemRows: any[] = [];      // induk (tabel items)
+        const subRows: any[] = [];       // sub-item (items dgn parent_item_id)
+        const valueRows: any[] = [];     // item_values
+        const assigneeRows: any[] = [];  // item_assignees (People)
+        const metaCalls: Promise<any>[] = [];
+
+        const tampungNilai = (ownerId: string, kolom: any[], src: any) => {
+          for (const col of (kolom || [])) {
+            const val = src[col.id];
+            if (kosong(val)) continue;
+            if (col.type === 'team') {
+              for (const mid of (Array.isArray(val) ? val : [val])) if (mid) assigneeRows.push({ item_id: ownerId, column_id: col.id, member_id: mid });
+            } else {
+              valueRows.push({ item_id: ownerId, column_id: col.id, value: val });
+            }
+          }
+        };
+
         for (const { clone, groupId } of clones) {
-          tandaiTulisSendiri(); // segarkan guard tiap item → proses panjang tak memicu reload
           const grp = newGroups.find((g:any) => g.id === groupId);
           const pos = grp.items.findIndex((i:any) => i.id === clone.id);
-          await dbAddItem(supabase, { id: clone.id, groupId, name: clone.name, position: pos });
-          if (clone.description) await dbSetItemMeta(supabase, clone.id, { description: clone.description });
-          for (const col of columns) {
-            const val = clone[col.id];
-            if (val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0)) continue;
-            await dbSetCellValue(supabase, clone.id, col.id, col.type, val);
-          }
+          itemRows.push({ id: clone.id, group_id: groupId, name: clone.name, position: pos, is_subitems_open: false });
+          if (clone.description) metaCalls.push(dbSetItemMeta(supabase, clone.id, { description: clone.description }));
+          tampungNilai(clone.id, columns, clone);
           const subs = clone.subItems || [];
           for (let si = 0; si < subs.length; si++) {
             const sub = subs[si];
-            await dbAddSubItem(supabase, { id: sub.id, groupId, parentItemId: clone.id, name: sub.name, position: si });
-            for (const col of subColumns) {
-              const val = sub[col.id];
-              if (val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0)) continue;
-              await dbSetCellValue(supabase, sub.id, col.id, col.type, val);
-            }
+            subRows.push({ id: sub.id, group_id: groupId, parent_item_id: clone.id, name: sub.name, position: si });
+            tampungNilai(sub.id, subColumns, sub);
           }
         }
+
+        // Urutan antar-tabel demi FK (induk → sub → nilai → penugasan); tiap tabel 1 query.
+        if (itemRows.length) { const { error } = await supabase.from('items').insert(itemRows); if (error) throw new Error(error.message); }
+        if (subRows.length) { const { error } = await supabase.from('items').insert(subRows); if (error) throw new Error(error.message); }
+        if (valueRows.length) { const { error } = await supabase.from('item_values').upsert(valueRows, { onConflict: 'item_id,column_id' }); if (error) throw new Error(error.message); }
+        if (assigneeRows.length) { const { error } = await supabase.from('item_assignees').insert(assigneeRows); if (error) throw new Error(error.message); }
+        await Promise.all(metaCalls);
+
+        // Reindex grup terdampak PARALEL (bukan satu-satu) → tetap cepat.
         const affected = Array.from(new Set(clones.map((c) => c.groupId)));
-        for (const gid of affected) {
+        await Promise.all(affected.flatMap((gid) => {
           const grp = newGroups.find((g:any) => g.id === gid);
-          if (grp) await dbReindexItems(supabase, grp.items.map((i:any, idx:number) => ({ id: i.id, position: idx })));
-        }
-        tandaiTulisSendiri(); // tandai lagi di akhir → gema tulisan terakhir tak memicu reload
+          return grp ? grp.items.map((i:any, idx:number) => supabase.from('items').update({ position: idx }).eq('id', i.id)) : [];
+        }));
+        tandaiTulisSendiri();
       })().catch((e:any) => pushToast('Gagal duplikat di cloud: ' + (e?.message || e)));
     }
   };
