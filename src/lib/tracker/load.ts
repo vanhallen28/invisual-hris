@@ -19,18 +19,45 @@ export type FullState = {
  * 1000 baris (mis. item_values yang banyak) tak ikut termuat sehingga sel
  * tampak kosong saat reload.
  */
-async function ambilSemua(supabase: SB, tabel: string): Promise<any[]> {
-  const semua: any[] = [];
+async function ambilSemua(supabase: SB, tabel: string, kolom: string = '*'): Promise<any[]> {
   const ukuran = 1000;
-  let dari = 0;
-  // Batas aman agar tak pernah tak-berujung (maks ~500rb baris).
-  for (let putaran = 0; putaran < 500; putaran++) {
-    const { data, error } = await supabase.from(tabel).select('*').range(dari, dari + ukuran - 1);
-    if (error) throw new Error(error.message);
-    const batch = data || [];
-    semua.push(...batch);
-    if (batch.length < ukuran) break;
-    dari += ukuran;
+
+  // Halaman pertama + hitung total baris sekaligus (count: 'exact').
+  const pertama = await supabase.from(tabel).select(kolom, { count: 'exact' }).range(0, ukuran - 1);
+  if (pertama.error) throw new Error(pertama.error.message);
+  const semua: any[] = pertama.data || [];
+  const total: number | null = pertama.count ?? null;
+
+  // Sudah habis di halaman pertama → selesai (tabel kecil tetap 1 permintaan).
+  if (semua.length < ukuran) return semua;
+
+  // Count tak tersedia → FALLBACK ke paginasi berurutan lama (jaminan lengkap, aman).
+  if (total == null) {
+    let dari = ukuran;
+    for (let putaran = 0; putaran < 500; putaran++) {
+      const { data, error } = await supabase.from(tabel).select(kolom).range(dari, dari + ukuran - 1);
+      if (error) throw new Error(error.message);
+      const batch = data || [];
+      semua.push(...batch);
+      if (batch.length < ukuran) break;
+      dari += ukuran;
+    }
+    return semua;
+  }
+
+  if (total <= ukuran) return semua;
+
+  // Sisa halaman diambil PARALEL (dibatch agar tak terlalu banyak sekaligus).
+  // Urutan antar-halaman tak masalah: build di bawah menata ulang via `position`,
+  // sedangkan item_values/assignees di-index per item_id (bebas urutan).
+  const rentang: [number, number][] = [];
+  for (let dari = ukuran; dari < total; dari += ukuran) rentang.push([dari, dari + ukuran - 1]);
+  const KONKUREN = 6;
+  for (let i = 0; i < rentang.length; i += KONKUREN) {
+    const bagian = await Promise.all(
+      rentang.slice(i, i + KONKUREN).map(([a, b]) => supabase.from(tabel).select(kolom).range(a, b))
+    );
+    for (const r of bagian) { if (r.error) throw new Error(r.error.message); semua.push(...(r.data || [])); }
   }
   return semua;
 }
@@ -48,8 +75,8 @@ export async function loadFullState(supabase: SB): Promise<FullState> {
     ambilSemua(supabase, 'columns'),
     ambilSemua(supabase, 'column_options'),
     ambilSemua(supabase, 'items'),
-    ambilSemua(supabase, 'item_values'),
-    ambilSemua(supabase, 'item_assignees'),
+    ambilSemua(supabase, 'item_values', 'item_id, column_id, value'),
+    ambilSemua(supabase, 'item_assignees', 'item_id, column_id, member_id'),
     ambilSemua(supabase, 'members'),
     ambilSemua(supabase, 'account_targets'),
   ]);
