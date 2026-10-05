@@ -13,7 +13,7 @@ export default function TableCell({ type, item, group, col }: any) {
     newMemberName, setNewMemberName, tempTimeline, setTempTimeline, 
     triggerConfirm, handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, HEX_COLORS, LABEL_COLORS, openDocEditor,
     handleUpdateItem, handleUpdateSubItem, columns, subColumns,
-    selectedItems, handleBulkSetField, kolomSubSerupa
+    selectedItems, handleBulkSetField, kolomSubSerupa, jumlahTerpilih
   } = useDashboard();
 
   const [colorPickerFor, setColorPickerFor] = useState<string | null>(null);
@@ -47,9 +47,15 @@ export default function TableCell({ type, item, group, col }: any) {
   // Monday-style: kalau baris ini termasuk yang tercentang (>1), set nilai berlaku
   // ke SEMUA baris terpilih di kolom ini — dan ikut ke semua sub-item bila sub-item
   // punya kolom sejenis (label & tipe sama). Kalau tidak, hanya sel ini (seperti biasa).
-  const applyBulk = !isSub && Array.isArray(selectedItems) && selectedItems.includes(actualItemId) && selectedItems.length > 1;
-  const subSerupa = applyBulk && kolomSubSerupa ? kolomSubSerupa(col) : null;
-  const commitValue = (field: string, val: any) => { if (applyBulk) handleBulkSetField(selectedItems, col, val); else triggerUpdate(field, val); };
+  // Berlaku juga untuk SUB-ITEM: sel sub-item yang tercentang → semua sub-item tercentang.
+  const nSubTerpilih = jumlahTerpilih ? jumlahTerpilih.sub : selectedItems.length;
+  const applyBulk = Array.isArray(selectedItems) && (isSub
+    ? (!!actualSubItemId && selectedItems.includes(actualSubItemId) && nSubTerpilih > 1)
+    : (selectedItems.includes(actualItemId) && selectedItems.length > 1));
+  const subSerupa = applyBulk && !isSub && kolomSubSerupa ? kolomSubSerupa(col) : null;
+  const jumlahBulk = isSub ? nSubTerpilih : (jumlahTerpilih ? jumlahTerpilih.utama : selectedItems.length);
+  const labelBulk = `Terapkan ke ${jumlahBulk} ${isSub ? 'sub-item' : 'baris'} terpilih${subSerupa ? ' + semua sub-item' : ''}`;
+  const commitValue = (field: string, val: any) => { if (applyBulk) handleBulkSetField(selectedItems, col, val, isSub ? 'sub' : 'main'); else triggerUpdate(field, val); };
   // Fokus input dropdown TANPA menggulirkan halaman (fix: dulu autoFocus menarik viewport).
   const dropInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (isDrop) dropInputRef.current?.focus({ preventScroll: true }); }, [isDrop]);
@@ -116,7 +122,7 @@ export default function TableCell({ type, item, group, col }: any) {
           <>
             <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenDropdown(null); }}></div>
             <div className={`absolute top-full mt-1.5 ${activePopupPos} bg-kartu border border-white/10 shadow-2xl rounded-xl z-50 p-2 w-56 flex flex-col text-left animate-in fade-in zoom-in-95`} onClick={e=>e.stopPropagation()}>
-              {applyBulk && (<div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-300 bg-blue-500/15 border border-blue-500/30 rounded-lg px-2 py-1.5 mb-1.5"><Check size={12}/> Terapkan ke {selectedItems.length} baris terpilih{subSerupa ? ' + semua sub-item' : ''}</div>)}
+              {applyBulk && (<div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-300 bg-blue-500/15 border border-blue-500/30 rounded-lg px-2 py-1.5 mb-1.5"><Check size={12}/> {labelBulk}</div>)}
               <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider px-2 py-1 mb-1">Assign Karyawan</div>
               <input ref={dropInputRef} autoComplete="off" spellCheck="false" value={newMemberName} onChange={e=>setNewMemberName(e.target.value)} placeholder="Cari orang..." className="bg-latar text-[11px] border border-white/10 focus:border-blue-500 rounded-md px-2.5 py-1.5 outline-none w-full text-white shadow-inner transition-colors min-w-0 mb-1.5"/>
               <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5 pr-1 custom-scrollbar">
@@ -153,7 +159,7 @@ export default function TableCell({ type, item, group, col }: any) {
            <>
              <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenDropdown(null); }}></div>
              <div className={`absolute top-full mt-1.5 ${activePopupPos} bg-kartu border border-white/10 shadow-2xl rounded-xl z-50 p-1.5 w-56 flex flex-col animate-in fade-in zoom-in-95`} onClick={e=>e.stopPropagation()}>
-               {applyBulk && (<div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-300 bg-blue-500/15 border border-blue-500/30 rounded-lg px-2 py-1.5 mb-1.5"><Check size={12}/> Terapkan ke {selectedItems.length} baris terpilih{subSerupa ? ' + semua sub-item' : ''}</div>)}
+               {applyBulk && (<div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-300 bg-blue-500/15 border border-blue-500/30 rounded-lg px-2 py-1.5 mb-1.5"><Check size={12}/> {labelBulk}</div>)}
                <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider px-2 py-1 mb-1">{col.label}</div>
                {!isMulti && <button onClick={() => { commitValue(col.id, ''); setOpenDropdown(null); }} className="text-left text-xs px-3 py-2 hover:bg-kartu-hover rounded-lg text-gray-400 w-full mb-1 transition-colors shrink-0">- Reset</button>}
                <div className="max-h-48 overflow-y-auto flex flex-col gap-0.5 pr-1 custom-scrollbar mb-1.5">
@@ -221,7 +227,7 @@ export default function TableCell({ type, item, group, col }: any) {
           <>
             <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpenDropdown(null); }}></div>
             <div className={`absolute top-full mt-1.5 ${activePopupPos} bg-kartu border border-white/10 shadow-2xl rounded-xl z-50 p-4 flex flex-col gap-3 animate-in fade-in zoom-in-95`} onClick={e=>e.stopPropagation()}>
-              {applyBulk && (<div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-300 bg-blue-500/15 border border-blue-500/30 rounded-lg px-2 py-1.5"><Check size={12}/> Terapkan ke {selectedItems.length} baris terpilih{subSerupa ? ' + semua sub-item' : ''}</div>)}
+              {applyBulk && (<div className="flex items-center gap-1.5 text-[11px] font-bold text-blue-300 bg-blue-500/15 border border-blue-500/30 rounded-lg px-2 py-1.5"><Check size={12}/> {labelBulk}</div>)}
               <div><label className="text-[10px] font-bold text-gray-400 block mb-1.5 uppercase tracking-wider">Start Date</label><input type="date" value={tempTimeline?.start || ''} onChange={e=>setTempTimeline({...tempTimeline, start:e.target.value})} className="w-full bg-latar border border-white/10 rounded-md px-2.5 py-1.5 text-xs text-white [color-scheme:dark] outline-none shadow-inner" /></div>
               <div><label className="text-[10px] font-bold text-gray-400 block mb-1.5 uppercase tracking-wider">End Date</label><input type="date" value={tempTimeline?.end || ''} onChange={e=>setTempTimeline({...tempTimeline, end:e.target.value})} className="w-full bg-latar border border-white/10 rounded-md px-2.5 py-1.5 text-xs text-white [color-scheme:dark] outline-none shadow-inner" /></div>
               <div className="flex justify-between items-center border-t border-white/10 pt-3 mt-1"><button onClick={() => { commitValue(col.id, null); setOpenDropdown(null); }} className="text-xs text-red-400 font-bold hover:text-red-300 transition-colors">Clear</button><button onClick={() => { commitValue(col.id, tempTimeline); setOpenDropdown(null); }} className="text-xs bg-blue-600 hover:bg-blue-500 px-4 py-1.5 rounded-md text-white font-bold transition-colors shadow-md">Set Date</button></div>

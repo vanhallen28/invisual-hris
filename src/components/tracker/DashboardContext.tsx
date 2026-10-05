@@ -1032,14 +1032,50 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     }
   };
 
+  // Ubah massal SUB-ITEM yang tercentang (klik sel sub-item pada salah satu baris
+  // tercentang → nilai berlaku ke semua sub-item tercentang di papan ini).
+  const setMassalSubItem = (ids: string[], col: any, value: any) => {
+    tandaiTulisSendiri();
+    const idSet = new Set(ids);
+    const idSub: string[] = [];
+    setBoardData(boardData.map((g:any) => ({
+      ...g,
+      items: (g.items || []).map((it:any) => {
+        const subs = it.subItems || [];
+        if (!subs.some((s:any) => idSet.has(s.id))) return it;
+        return { ...it, subItems: subs.map((s:any) => { if (!idSet.has(s.id)) return s; idSub.push(s.id); return { ...s, [col.id]: value }; }) };
+      }),
+    })));
+    if (!idSub.length) return;
+    idSub.forEach((id) => pemuat.tandaiEdit(id, col.id));
+    pushToast(`${col.label || 'Nilai'} diperbarui untuk ${idSub.length} sub-item`);
+    if (cloudOn()) {
+      (async () => { await simpanMassal(idSub, col.id, col.type, value); tandaiTulisSendiri(); })()
+        .catch((e:any) => pushToast('Gagal ubah massal di cloud: ' + (e?.message || e)));
+    }
+  };
+
+  // Jumlah baris tercentang di papan aktif, dipisah item utama & sub-item (untuk banner massal).
+  const jumlahTerpilih = (() => {
+    const hasil = { utama: 0, sub: 0 };
+    if (!selectedItems.length) return hasil;
+    const s = new Set(selectedItems);
+    for (const g of boardData) for (const it of (g.items || [])) {
+      if (s.has(it.id)) hasil.utama++;
+      for (const x of (it.subItems || [])) if (s.has(x.id)) hasil.sub++;
+    }
+    return hasil;
+  })();
+
   // Set nilai SATU kolom untuk banyak item sekaligus (Monday-style in-place).
   // Memakai col.type asli → benar untuk tiap tipe (status/tags→item_values,
   // team→item_assignees, timeline→item_values). Tandai tulis-sendiri (termasuk
   // SELAMA proses) agar gema realtime tak memicu reload papan di tengah jalan.
   // CASCADE: bila sub-item punya kolom sejenis (label & tipe sama), SEMUA sub-item
   // dari item terpilih ikut diubah.
-  const handleBulkSetField = (ids: string[], col: any, value: any) => {
+  const handleBulkSetField = (ids: string[], col: any, value: any, lingkup: 'main' | 'sub' = 'main') => {
     if (!ids?.length || !col?.id) return;
+    if (lingkup === 'sub') { setMassalSubItem(ids, col, value); return; }
     tandaiTulisSendiri();
     const idSet = new Set(ids);
     const subCol = kolomSubSerupa(col);
@@ -1484,7 +1520,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     muatSelBoard: pemuat.muatSelBoard, muatSelSaya, muatKolomLintas: pemuat.muatKolomLintas,
     pastikanItem: pemuat.pastikanItem, pastikanBoards: pemuat.pastikanBoards,
     papanSiap, sayaSiap, lintasSiap, galatMuat, statusMuat,
-    kolomSubSerupa,
+    kolomSubSerupa, jumlahTerpilih,
   };
 
   const gate = (() => {
