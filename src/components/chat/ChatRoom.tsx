@@ -30,7 +30,9 @@ const dayLabel = (d: any) => {
 
 /* ══════ Kartu tugas yang ditempel di pesan ══════ */
 function TaskCard({ taskId }: { taskId: string }) {
-  const { boardsDataMap, labels, teamMembers, setActiveBoardId, setDetailItem }: any = useDashboard();
+  const { boardsDataMap, labels, teamMembers, setActiveBoardId, setDetailItem, pastikanItem }: any = useDashboard();
+  // Status/tenggat kartu butuh isi sel item ini → muat item ini saja (di-batch).
+  useEffect(() => { if (taskId) void pastikanItem?.([taskId]); }, [taskId]); // eslint-disable-line react-hooks/exhaustive-deps
   const found = findTask(boardsDataMap, taskId);
   if (!found) {
     return <div className="mt-1.5 text-[11px] text-gray-600 border border-white/10 rounded-lg px-3 py-2 inline-block">Tugas tidak ditemukan / tak punya akses.</div>;

@@ -8,6 +8,7 @@ import TautanItem from './TautanItem';
 import TestProject from './TestProject';
 import RiwayatItem from './RiwayatItem';
 import Avatar from '@/components/Avatar';
+import LoadingLogo from '@/components/LoadingLogo';
 
 const mColor = (m: any) => (m?.color && String(m.color).startsWith('bg-') ? m.color : 'bg-primer-terang');
 
@@ -167,7 +168,7 @@ function renderField(col: any, item: any, labels: any, teamMembers: any[], setVa
 export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
   const {
     detailItem, setDetailItem, boardData, columns, subColumns, labels, teamMembers, openDocEditor,
-    currentUserId, handleUpdateItem, handleUpdateSubItem, supabase, isManager
+    currentUserId, handleUpdateItem, handleUpdateSubItem, supabase, isManager, activeBoardId, papanSiap
   } = useDashboard();
 
   // Sub-item mana yang sedang dibentangkan di panel ini.
@@ -184,6 +185,8 @@ export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
   const group = boardData.find((g: any) => g.id === detailItem?.groupId);
   const item = group?.items.find((i: any) => i.id === detailItem?.itemId);
   const open = !!(detailItem && item);
+  // Isi sel papan masih dimuat → tampilkan pemuat dulu (hindari kolom tampak kosong).
+  const siapPanel = !papanSiap || !activeBoardId || papanSiap(activeBoardId);
 
   const setVal = (field: string, val: any) => handleUpdateItem(detailItem?.groupId, detailItem?.itemId, field, val);
   const close = () => setDetailItem(null);
@@ -194,7 +197,16 @@ export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
       {open && !push && <div className="fixed inset-0 bg-black/40 z-[55]" onClick={close} />}
 
       <div className={`fixed top-0 right-0 h-screen w-full sm:w-[480px] bg-input shadow-2xl z-[60] transform transition-transform duration-300 flex flex-col ${open ? 'translate-x-0' : 'translate-x-full'}`}>
-        {open && (
+        {open && !siapPanel && (
+          <div className="flex-1 flex flex-col">
+            <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between bg-kartu-hover shrink-0">
+              <span className="text-lg font-bold text-white truncate mr-3">{item.name}</span>
+              <button onClick={close} className="p-1.5 hover:bg-kartu-hover rounded-full text-gray-400 shrink-0 transition-colors"><X size={16} /></button>
+            </div>
+            <div className="flex-1 flex items-center justify-center bg-kartu"><LoadingLogo size={40} withRing text="Memuat detail" /></div>
+          </div>
+        )}
+        {open && siapPanel && (
           <>
             <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between bg-kartu-hover shrink-0">
               <input

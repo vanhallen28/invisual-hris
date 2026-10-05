@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import LoadingLogo from '@/components/LoadingLogo';
 import { usePathname } from 'next/navigation';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import Sidebar from '@/components/tracker/Sidebar';
@@ -22,11 +23,19 @@ function BoardContent({ onMenuClick }: any) {
   const {
     activeView, activeViewId, activeBoardName, activeBoardId, activeBoardPath,
     handleExportCSV, selectedItems, setSelectedItems, triggerConfirm, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, columns, labels, canContentHub,
+    muatSelBoard, papanSiap, galatMuat, boardsDataMap,
   }: any = useDashboard();
   const [statusMenu, setStatusMenu] = useState(false);
   const [contentMode, setContentMode] = useState(false);
   const pathname = usePathname();
   const backHref = pathname && pathname.startsWith('/admin') ? '/admin/dashboard' : '/user/dashboard';
+
+  // Isi sel papan dimuat saat papan dibuka (bukan semua papan sekaligus di awal).
+  // `adaPapan` ikut jadi pemicu: papan yang baru muncul di kerangka (mis. hasil duplikat) tetap dimuat.
+  const adaPapan = !!(activeBoardId && boardsDataMap?.[activeBoardId]);
+  useEffect(() => { if (activeBoardId && adaPapan) void muatSelBoard?.(activeBoardId); }, [activeBoardId, adaPapan, muatSelBoard]);
+  const papanBelum = !!activeBoardId && !!papanSiap && !papanSiap(activeBoardId);
+  const galatPapan = activeBoardId && galatMuat ? galatMuat('b:' + activeBoardId) : null;
 
   return (
     <div className="flex-1 flex flex-col bg-kartu overflow-hidden min-w-0">
@@ -63,7 +72,7 @@ function BoardContent({ onMenuClick }: any) {
             <div className="flex flex-col gap-4 mb-6 border-b border-white/10 pb-0 shrink-0">
               <div className="flex justify-between items-center gap-3">
                 <h1 className="text-xl sm:text-2xl font-bold tracking-wide uppercase text-gray-100 truncate">{activeViewId === 'mytasks' ? 'My Tasks' : activeViewId === 'acc' ? 'Antrean' : activeBoardName}</h1>
-                {activeViewId !== 'mytasks' && activeViewId !== 'acc' && <button onClick={handleExportCSV} className="flex items-center gap-2 px-3 py-1.5 bg-kartu-hover border border-white/10 rounded text-xs font-semibold hover:bg-kartu-hover transition-colors shrink-0"><Download size={14}/> <span className="hidden sm:inline">Export CSV</span></button>}
+                {activeViewId !== 'mytasks' && activeViewId !== 'acc' && !papanBelum && <button onClick={handleExportCSV} className="flex items-center gap-2 px-3 py-1.5 bg-kartu-hover border border-white/10 rounded text-xs font-semibold hover:bg-kartu-hover transition-colors shrink-0"><Download size={14}/> <span className="hidden sm:inline">Export CSV</span></button>}
               </div>
               <div className="flex items-center gap-3 flex-wrap">
                 <div className={contentMode ? 'opacity-40' : ''}><ViewTabs /></div>
@@ -79,12 +88,27 @@ function BoardContent({ onMenuClick }: any) {
             {contentMode && canContentHub && <ContentStudio />}
             {!contentMode && activeViewId === 'mytasks' && <MyTasks />}
             {!contentMode && activeViewId === 'acc' && <AntreanAcc />}
-            {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'table' && <MainTable />}
-            {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'kanban' && <KanbanBoard />}
-            {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'gantt' && <TimelineView />}
-            {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'chart' && <Overview />}
-            {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'calendar' && <CalendarView />}
-            {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'workload' && <WorkloadView />}
+            {!contentMode && activeViewId !== 'mytasks' && activeViewId !== 'acc' && papanBelum ? (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 py-20">
+                {galatPapan ? (
+                  <>
+                    <p className="text-sm text-red-400 text-center max-w-sm">Gagal memuat isi papan: {galatPapan}</p>
+                    <button onClick={() => muatSelBoard?.(activeBoardId)} className="px-4 py-2 text-xs font-bold text-white bg-primer-terang hover:bg-primer rounded-lg transition-colors">Coba lagi</button>
+                  </>
+                ) : (
+                  <LoadingLogo size={48} withRing text="Memuat papan" />
+                )}
+              </div>
+            ) : (
+              <>
+                {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'table' && <MainTable />}
+                {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'kanban' && <KanbanBoard />}
+                {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'gantt' && <TimelineView />}
+                {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'chart' && <Overview />}
+                {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'calendar' && <CalendarView />}
+                {!contentMode && activeViewId !== 'mytasks' && activeView?.type === 'workload' && <WorkloadView />}
+              </>
+            )}
           </div>
         </div>
       )}

@@ -2,7 +2,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { AlertCircle, X } from 'lucide-react';
 import { supabase as hrisSupabase } from '@/lib/supabase';
-import { loadFullState } from '@/lib/tracker/load';
+import { loadStrukturState, ambilNilaiKolom, semuaIdItem, pertahankanSel } from '@/lib/tracker/load';
+import { buatPemuat, STATUS_KOSONG, type Pemuat, type TandaPemuat, type StatusPemuat } from '@/lib/tracker/pemuat';
 import MemberView from '@/components/tracker/MemberView';
 import DocEditor from '@/components/tracker/DocEditor';
 import NotificationCenter from '@/components/tracker/NotificationCenter';
@@ -13,18 +14,13 @@ const LABEL_COLORS = ['bg-[#e2445c]', 'bg-primer-terang', 'bg-[#fdab3d]', 'bg-[#
 const HEX_COLORS = ['#e2445c', '#579bfc', '#fdab3d', '#00c875', '#a25ddc', '#ff5ac4', '#9d99ff'];
 
 // ── Cache state tracker (di MEMORI tab, BUKAN localStorage) ──────────────────
-// Tujuan: buka-tutup Daily/Chat tak mengulang loadFullState (9 tabel) tiap kali.
+// Tujuan: buka-tutup Daily/Chat tampil instan tanpa menunggu muat ulang.
 // AMAN: dikunci per-ID pengguna (akun beda takkan memakai cache akun lain) &
 // dibersihkan saat logout. Hilang otomatis saat tab di-reload/tutup. HANYA
-// membaca (tak ada tulisan DB / SQL). Jika gagal, alur jatuh ke muat biasa.
-let _cacheTrackerState: { uid: string; state: any } | null = null;
+// membaca (tak ada tulisan DB / SQL). Isinya = state terakhir di layar (diperbarui
+// otomatis); saat dipakai, data tetap disegarkan diam-diam di latar.
+let _cacheTrackerState: { uid: string; state: any; tanda?: TandaPemuat } | null = null;
 function bersihkanCacheTracker() { _cacheTrackerState = null; }
-async function loadFullStateCached(supabase: any, uid: string): Promise<{ s: any; fromCache: boolean }> {
-  if (uid && _cacheTrackerState && _cacheTrackerState.uid === uid) return { s: _cacheTrackerState.state, fromCache: true };
-  const s = await loadFullState(supabase);
-  if (uid) _cacheTrackerState = { uid, state: s };
-  return { s, fromCache: false };
-}
 
 // Set view default tiap board (Table, Kanban, Gantt, Chart) — sama seperti tab lama
 export const makeDefaultViews = (seedHidden: string[] = []) => {
@@ -131,7 +127,34 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       subColumns: []  // Subitem 100% kosong dari kolom
     }
   }));
-  
+
+  // === LAZY-LOAD SEL ===
+  // Kerangka papan dimuat sekali; nilai sel dimuat seperlunya oleh `pemuat`
+  // (papan yang dibuka, tugas saya, kolom lintas papan). Lihat lib/tracker/pemuat.ts.
+  const petaRef = useRef<Record<string, any>>(boardsDataMap);
+  petaRef.current = boardsDataMap;
+  // Status muat disimpan sebagai DATA di state (bukan dibaca dari objek yang
+  // berubah diam-diam) supaya setiap komponen yang memakainya ikut digambar ulang.
+  const [statusMuat, setStatusMuat] = useState<StatusPemuat>(STATUS_KOSONG);
+  const laporRef = useRef<(m: string) => void>(() => {});
+  const pemuatRef = useRef<Pemuat | null>(null);
+  if (!pemuatRef.current) {
+    pemuatRef.current = buatPemuat({
+      supabase: hrisSupabase,
+      ambilPeta: () => petaRef.current,
+      ubahPeta: (fn) => setBoardsDataMap((p: any) => fn(p)),
+      saatBerubah: () => { if (pemuatRef.current) setStatusMuat(pemuatRef.current.status()); },
+      lapor: (m) => laporRef.current(m),
+    });
+  }
+  const pemuat = pemuatRef.current;
+  const uidMuatRef = useRef('');   // akun pemilik data yang sedang dimuat (kunci cache)
+  // Pembaca status (fungsi murni atas state → aman untuk React Compiler).
+  const papanSiap = (id: string) => statusMuat.tampil.includes(id) || !boardsDataMap[id];
+  const sayaSiap = () => statusMuat.saya;
+  const lintasSiap = (tipe: string[]) => (tipe || []).every((t) => statusMuat.tipe.includes(t));
+  const galatMuat = (kunci: string) => statusMuat.galat[kunci] || null;
+
   const activeBoardData = activeBoardId ? boardsDataMap[activeBoardId] : null;
   const boardData = activeBoardData?.groups || [];
   const columns = activeBoardData?.columns || [];
@@ -212,6 +235,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     setToasts((t:any[]) => [...t, { id, message, undo, actionLabel }]);
     if (duration > 0) setTimeout(() => setToasts((t:any[]) => t.filter((x:any) => x.id !== id)), duration);
   };
+  laporRef.current = (m: string) => pushToast(m);
 
   // === AUTH: cek sesi + ikuti perubahan login/logout ===
   // PENTING: pakai getSession() (membaca penyimpanan LOKAL, tanpa jaringan),
@@ -265,18 +289,33 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   }, [supabase]);
 
   // === LOAD dari Supabase saat user tersedia (sekali) ===
+  // Yang dimuat di sini hanya KERANGKA (papan, grup, kolom, label, item) — tanpa
+  // nilai sel, sehingga waktunya tak membengkak seiring data. Nilai sel dimuat
+  // oleh komponen yang membutuhkannya (lihat `pemuat`).
   useEffect(() => {
     if (!supabase || !authUser || isLoaded) return;
     let active = true;
     (async () => {
       try {
-        const { s, fromCache } = await loadFullStateCached(supabase, authUser?.id || '');
-        if (!active) return;
+        const uid = authUser?.id || '';
+        const cache = (uid && _cacheTrackerState && _cacheTrackerState.uid === uid) ? _cacheTrackerState : null;
+        const fromCache = !!cache;
+        let s: any;
+        let anggota: any[] | null = null;
+        if (cache) {
+          s = cache.state;
+          anggota = (s.teamMembers && s.teamMembers.length) ? s.teamMembers : null; // avatar sudah tergabung
+        } else {
+          s = await loadStrukturState(supabase);
+          if (!active) return;
+          anggota = s.teamMembers.length ? await mergeAvatars(supabase, s.teamMembers) : null;
+          if (!active) return;
+        }
         setWorkspaces(s.workspaces);
         setBoardsDataMap(ensureViews(s.boardsDataMap));
         setLabels(s.labels);
         setAccountTargets(s.accountTargets || {});
-        if (s.teamMembers.length) setTeamMembers(await mergeAvatars(supabase, s.teamMembers));
+        if (anggota) setTeamMembers(anggota);
         if (s.currentUserId) setCurrentUserId(s.currentUserId);
         setCurrentUserRole(s.currentUserRole || 'member');
         setCanContentHub(s.canContentHub !== false);
@@ -308,9 +347,11 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
         setWorkspaces([...s.workspaces]);
         setActiveWorkspaceId(wsActive);
         setActiveBoardId(chosen);
+        // Dari cache: tampilkan sel yang tersimpan; tetap dimuat ulang di latar.
+        if (fromCache) { pemuat.pulihkan(cache?.tanda); setStatusMuat(pemuat.status()); }
+        uidMuatRef.current = uid;
         setIsLoaded(true);
-        // Data dari cache → segarkan diam-diam di latar (pakai jalur refresh yang SUDAH ada;
-        // board aktif & sidebar tak diganggu karena refreshData tak menyentuhnya).
+        // Data dari cache → segarkan kerangka diam-diam di latar.
         if (fromCache) { void refreshData(); }
       } catch (e: any) {
         if (active) setLoadError(e?.message || 'Gagal memuat data dari Supabase');
@@ -319,37 +360,68 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     return () => { active = false; };
   }, [supabase, authUser, isLoaded]);
 
-  // Muat ulang data ringan (dipakai realtime saat ada perubahan penugasan)
-  const refreshData = async () => {
-    if (!supabase || !authUser) return;
-    try {
-      const s = await loadFullState(supabase);
-      setWorkspaces(s.workspaces);
-      setBoardsDataMap(ensureViews(s.boardsDataMap));
-      setLabels(s.labels);
-      setAccountTargets(s.accountTargets || {});
-      if (s.teamMembers.length) setTeamMembers(await mergeAvatars(supabase, s.teamMembers));
-      if (s.currentUserId) setCurrentUserId(s.currentUserId);
-      setCurrentUserRole(s.currentUserRole || 'member');
-      setCanContentHub(s.canContentHub !== false);
-      setCanAcc(s.canAcc === true);
-    } catch { /* abaikan */ }
+  // Simpan state terakhir ke cache memori (hanya referensi — murah).
+  // Hanya untuk akun yang memang memuat data ini (cegah tercampur bila akun berganti).
+  useEffect(() => {
+    if (!isLoaded || !authUser?.id || authUser.id !== uidMuatRef.current) return;
+    _cacheTrackerState = {
+      uid: authUser.id,
+      state: { workspaces, boardsDataMap, labels, accountTargets, teamMembers, currentUserId, currentUserRole, canContentHub, canAcc },
+      tanda: pemuat.snapshot(),
+    };
+  }, [isLoaded, authUser, workspaces, boardsDataMap, labels, accountTargets, teamMembers, currentUserId, currentUserRole, canContentHub, canAcc, statusMuat, pemuat]);
+
+  // Segarkan KERANGKA (dipakai realtime, setelah duplikat papan, dsb.).
+  // Dulu fungsi ini menarik ulang SEMUA nilai sel semua papan — itulah yang
+  // membuat muat/ tambah board terasa berat. Sekarang hanya kerangka; sel yang
+  // sudah ada di layar dipertahankan, dan hanya item baru yang selnya dimuat.
+  // Panggilan saat proses berjalan digabung (+1 putaran susulan).
+  const strukturRef = useRef<{ jalan: Promise<void> | null; lagi: boolean }>({ jalan: null, lagi: false });
+  const sesiRef = useRef(0);
+  const refreshData = (): Promise<void> => {
+    if (!supabase || !authUser) return Promise.resolve();
+    const st = strukturRef.current;
+    if (st.jalan) { st.lagi = true; return st.jalan; }
+    const sesi = sesiRef.current;
+    const jalan = (async () => {
+      do {
+        st.lagi = false;
+        try {
+          const s = await loadStrukturState(supabase);
+          const anggota = s.teamMembers.length ? await mergeAvatars(supabase, s.teamMembers) : null;
+          if (sesi !== sesiRef.current) return;
+          const lamaIds = semuaIdItem(petaRef.current);
+          const baru = ensureViews(s.boardsDataMap);
+          setWorkspaces(s.workspaces);
+          setBoardsDataMap((prev: any) => pertahankanSel(baru, prev));
+          setLabels(s.labels);
+          setAccountTargets(s.accountTargets || {});
+          if (anggota) setTeamMembers(anggota);
+          if (s.currentUserId) setCurrentUserId(s.currentUserId);
+          setCurrentUserRole(s.currentUserRole || 'member');
+          setCanContentHub(s.canContentHub !== false);
+          setCanAcc(s.canAcc === true);
+          await pemuat.sesudahStruktur(baru, lamaIds);
+        } catch { /* abaikan */ }
+      } while (st.lagi && sesi === sesiRef.current);
+    })();
+    st.jalan = jalan.finally(() => { st.jalan = null; });
+    return st.jalan;
   };
 
-  // Realtime untuk MEMBER: saat di-assign/lepas dari tugas, tugas baru muncul otomatis (tanpa reload manual)
+  // Id pengguna untuk "tugas saya" (sama dengan yang dipakai My Tasks).
+  const uidSaya = (currentUserId && currentUserId !== 'me') ? currentUserId : (authUser?.id || '');
+  const uidRef = useRef(uidSaya);
+  uidRef.current = uidSaya;
+  const activeBoardRef = useRef(activeBoardId);
+  activeBoardRef.current = activeBoardId;
+  const muatSelSaya = (opsi?: { paksa?: boolean }) => pemuat.muatSelSaya(uidSaya, opsi);
+
+  // Panel detail dibuka (mis. karyawan dari My Tasks) → pastikan isi papannya termuat
+  // supaya induk & sub-item lain tampil lengkap.
   useEffect(() => {
-    if (!supabase || !authUser || !isLoaded || currentUserRole === 'manager') return;
-    let timer: any;
-    const channel = supabase
-      .channel('member-assignees-refresh')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'item_assignees' }, () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => { refreshData(); }, 1200);
-      })
-      .subscribe();
-    return () => { clearTimeout(timer); supabase.removeChannel(channel); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, authUser, isLoaded, currentUserRole]);
+    if (isLoaded && detailItem && activeBoardId) void pemuat.muatSelBoard(activeBoardId);
+  }, [isLoaded, detailItem, activeBoardId, pemuat]);
 
   // === REALTIME PAPAN — berlaku untuk semua peran, termasuk manager ===
   // Perubahan rekan langsung tampak tanpa memuat ulang halaman.
@@ -389,6 +461,8 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   useEffect(() => {
     if (!supabase || !authUser || !isLoaded) return;
     let jeda: any;
+    let jedaSaya: any;
+    let jedaPenuh: any;
 
     // Jangan menarik data baru saat seseorang sedang mengetik — tunggu ia selesai.
     const sedangMengetik = () => {
@@ -405,27 +479,89 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       }, 1500);
     };
 
+    // "Tugas saya" disegarkan berjeda bila penugasan yang menyangkut saya berubah.
+    const jadwalkanSaya = (paksa = false) => {
+      clearTimeout(jedaSaya);
+      jedaSaya = setTimeout(() => {
+        const uid = uidRef.current;
+        if (uid && pemuat.sayaDiminta()) void pemuat.muatSelSaya(uid, { paksa });
+      }, 800);
+    };
+    // Cadangan bila event tak membawa item_id (mis. DELETE ber-RLS hanya membawa
+    // kunci primer): segarkan PENUGASAN papan aktif + tugas saya (ringan, hanya
+    // tabel item_assignees), berjeda.
+    const jadwalkanTim = () => {
+      clearTimeout(jedaPenuh);
+      jedaPenuh = setTimeout(() => {
+        void pemuat.segarkanTim(activeBoardRef.current, uidRef.current);
+        jadwalkanSaya();
+      }, 1200);
+    };
+
     let ch: any = supabase
       .channel('papan-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'item_values' }, (p: any) => {
-        const baris = p.new || p.old;
+        // DELETE: baris ada di p.old (p.new berupa objek kosong).
+        const baris = p.eventType === 'DELETE' ? p.old : (p.new || p.old);
         if (!baris?.item_id || !baris?.column_id) return;
+        pemuat.tandaiEdit(baris.item_id, baris.column_id, false);
         tambalSel(baris.item_id, baris.column_id, p.eventType === 'DELETE' ? '' : baris.value);
       });
 
     for (const tabel of ['items', 'groups', 'columns', 'column_options', 'tree_nodes']) {
       ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: tabel }, jadwalkanMuatUlang);
     }
-    // Penugasan sudah dipantau langganan khusus member di atas, jadi di sini
-    // cukup untuk manager agar tidak ada pemantauan ganda.
-    if (currentUserRole === 'manager') {
-      ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: 'item_assignees' }, jadwalkanMuatUlang);
-    }
-    ch.subscribe();
+    // Penugasan (semua peran): tambal tepat sasaran item+kolom yang berubah —
+    // bukan lagi muat ulang seluruh data. Bila menyangkut saya, "tugas saya" ikut disegarkan.
+    ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: 'item_assignees' }, (p: any) => {
+      const baris = p.eventType === 'DELETE' ? p.old : (p.new || p.old);
+      if (baris?.item_id && baris?.column_id) {
+        pemuat.tambalTim(baris.item_id, baris.column_id);
+        if (!baris.member_id || baris.member_id === uidRef.current) {
+          jadwalkanSaya();
+          // Tugas yang baru di-assign ke saya bisa jadi belum ada di kerangka
+          // (mis. akses karyawan dibatasi ke tugasnya) → segarkan kerangka juga.
+          if (!semuaIdItem(petaRef.current).has(baris.item_id)) jadwalkanMuatUlang();
+        }
+      } else {
+        jadwalkanTim();
+      }
+    });
+    // Tersambung ULANG setelah putus → event selama putus mungkin terlewat:
+    // segarkan kerangka + sel yang sedang dipakai.
+    let pernahTerhubung = false;
+    ch.subscribe((status: string) => {
+      if (status !== 'SUBSCRIBED') return;
+      if (pernahTerhubung) {
+        void refreshData();
+        void pemuat.segarkanSemua(activeBoardRef.current, uidRef.current);
+      }
+      pernahTerhubung = true;
+    });
 
-    return () => { clearTimeout(jeda); supabase.removeChannel(ch); };
+    return () => { clearTimeout(jeda); clearTimeout(jedaSaya); clearTimeout(jedaPenuh); supabase.removeChannel(ch); };
+    // authUser?.id (bukan objeknya): objek sesi diganti setiap tab kembali fokus —
+    // memakai objeknya membuat kanal realtime dibongkar-pasang tanpa perlu.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, authUser, isLoaded, currentUserRole, tambalSel]);
+  }, [supabase, authUser?.id, isLoaded, currentUserRole, tambalSel]);
+
+  // Tab kembali aktif setelah lama (> 1 menit) di latar → realtime bisa terlewat
+  // (peramban menidurkan koneksi): segarkan kerangka + sel yang sedang dipakai.
+  useEffect(() => {
+    if (!isLoaded) return;
+    let tersembunyiSejak = 0;
+    const saatVisibilitas = () => {
+      if (document.visibilityState === 'hidden') { tersembunyiSejak = Date.now(); return; }
+      if (tersembunyiSejak && Date.now() - tersembunyiSejak > 60_000) {
+        void refreshData();
+        void pemuat.segarkanSemua(activeBoardRef.current, uidRef.current);
+      }
+      tersembunyiSejak = 0;
+    };
+    document.addEventListener('visibilitychange', saatVisibilitas);
+    return () => document.removeEventListener('visibilitychange', saatVisibilitas);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, pemuat]);
 
   useEffect(() => {
     // 1d-ii: penyimpanan ke cloud menyusul di 1e. Sengaja TIDAK menulis ke localStorage
@@ -472,6 +608,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       const groups = bd.groups.map((g:any) => g.id !== gId ? g : { ...g, items: g.items.map((i:any) => i.id === iId ? { ...i, [field]: val } : i) });
       return { ...prev, [activeBoardId]: { ...bd, groups } };
     });
+    pemuat.tandaiEdit(iId, field);
     persistItemField('main', iId, field, val);
   };
   const handleUpdateSubItem = (gId: string, iId: string, sId: string, field: string, val: any) => {
@@ -481,6 +618,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       const groups = bd.groups.map((g:any) => g.id !== gId ? g : { ...g, items: g.items.map((i:any) => i.id === iId ? { ...i, subItems: i.subItems.map((s:any) => s.id === sId ? { ...s, [field]: val } : s) } : i) });
       return { ...prev, [activeBoardId]: { ...bd, groups } };
     });
+    pemuat.tandaiEdit(sId, field);
     persistItemField('sub', sId, field, val);
   };
   const handleDeleteItem = (gId: string, iId: string) => {
@@ -567,7 +705,24 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     pushToast('Label dihapus');
     if (cloudOn()) {
       dbDeleteLabel(supabase, labelId).catch((e: any) => pushToast('Gagal hapus label di cloud: ' + (e?.message || e)));
-      for (const c of changed) dbSetCellValue(supabase, c.itemId, field, 'status', c.val).catch(() => {});
+      if (deletedText != null) {
+        // Sel yang memakai label ini dibersihkan berdasarkan data SERVER (papan yang
+        // belum dibuka tak punya sel di memori). Gagal → pakai daftar dari memori.
+        (async () => {
+          let target = changed;
+          try {
+            const baris = await ambilNilaiKolom(supabase, field);
+            target = [];
+            for (const b of baris) {
+              const v = b.value;
+              if (Array.isArray(v) && v.includes(deletedText)) target.push({ itemId: b.item_id, val: v.filter((x: any) => x !== deletedText) });
+              else if (v === deletedText) target.push({ itemId: b.item_id, val: '' });
+            }
+          } catch { /* pakai daftar lokal */ }
+          tandaiTulisSendiri();
+          await Promise.all(target.map((c: any) => dbSetCellValue(supabase, c.itemId, field, 'status', c.val).catch(() => {})));
+        })();
+      }
     }
   };
   // Tambah opsi/label baru (dipakai context & TableCell) — id uuid + simpan ke cloud
@@ -674,10 +829,12 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       setWorkspaces(petaSemuaBoards(workspaces, parentId, (b:any) => ({ ...b, isOpen: true, boards: [...(b.boards || []), { id, name, isOpen: false, boards: [] }] })));
     }
     setBoardsDataMap((prev:any) => ({ ...prev, [id]: { groups: [{ id: groupId, title: 'New Group', color, isCollapsed: false, itemLabel: 'Item Name', subItemLabel: 'Subitem', items: [] }], columns: [], subColumns: [], views: makeDefaultViews() } }));
+    pemuat.tandaiPapanSiap(id); // papan baru kosong → tak perlu dimuat
     setActiveBoardId(id);
     if (cloudOn()) {
       dbAddTreeNode(supabase, { id, parentId, kind: 'board', name, position })
         .then(() => dbAddGroup(supabase, { id: groupId, boardId: id, title: 'New Group', color, position: 0 }))
+        .then(() => { tandaiTulisSendiri(); }) // gema realtime tulisan sendiri tak perlu memuat ulang
         .catch((e:any) => pushToast('Gagal tambah board di cloud: ' + (e?.message || e)));
     }
     return id;
@@ -839,22 +996,87 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     }
   };
 
+  // Kolom SUB-ITEM yang "sejenis" dengan kolom utama: label sama (abaikan
+  // besar-kecil/spasi tepi) DAN tipe sama. Dipakai cascade ubah massal.
+  const normLabel = (s: any) => String(s || '').trim().toUpperCase();
+  const kolomSubSerupa = (col: any) => {
+    if (!col?.id || !normLabel(col.label)) return null;
+    return (subColumns || []).find((c: any) => normLabel(c.label) === normLabel(col.label) && c.type === col.type) || null;
+  };
+
+  // Simpan SATU nilai ke banyak item sekaligus — hasil setara dbSetCellValue per item.
+  // Nilai biasa: 1 kueri per 100 item. Penugasan (tim): per item, 5 berjalan bersamaan.
+  const kosongNilai = (v: any) => v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+  const simpanMassal = async (ids: string[], colId: string, type: string, val: any) => {
+    if (type === 'team') {
+      // Penugasan tetap per item (hapus+sisip per item, seperti edit satu sel) agar
+      // kegagalan tak pernah mengosongkan PIC banyak item sekaligus — dijalankan
+      // 5 sekaligus supaya tetap cepat.
+      for (let i = 0; i < ids.length; i += 5) {
+        tandaiTulisSendiri();
+        await Promise.all(ids.slice(i, i + 5).map((id) => dbSetCellValue(supabase, id, colId, type, val)));
+      }
+      return;
+    }
+    for (let i = 0; i < ids.length; i += 100) {
+      const p = ids.slice(i, i + 100);
+      tandaiTulisSendiri();
+      if (kosongNilai(val)) {
+        const del = await supabase.from('item_values').delete().in('item_id', p).eq('column_id', colId);
+        if (del.error) throw new Error(del.error.message);
+      } else {
+        const up = await supabase.from('item_values').upsert(p.map((id) => ({ item_id: id, column_id: colId, value: val })), { onConflict: 'item_id,column_id' });
+        // Cadangan (mis. UNIQUE belum terpasang): simpan satu per satu seperti dulu.
+        if (up.error) { for (const id of p) { tandaiTulisSendiri(); await dbSetCellValue(supabase, id, colId, type, val); } }
+      }
+    }
+  };
+
   // Set nilai SATU kolom untuk banyak item sekaligus (Monday-style in-place).
   // Memakai col.type asli → benar untuk tiap tipe (status/tags→item_values,
   // team→item_assignees, timeline→item_values). Tandai tulis-sendiri (termasuk
   // SELAMA proses) agar gema realtime tak memicu reload papan di tengah jalan.
+  // CASCADE: bila sub-item punya kolom sejenis (label & tipe sama), SEMUA sub-item
+  // dari item terpilih ikut diubah.
   const handleBulkSetField = (ids: string[], col: any, value: any) => {
     if (!ids?.length || !col?.id) return;
     tandaiTulisSendiri();
     const idSet = new Set(ids);
+    const subCol = kolomSubSerupa(col);
+    const idUtama: string[] = [];
+    const idSub: string[] = [];
     setBoardData(boardData.map((g:any) => ({
       ...g,
-      items: (g.items || []).map((it:any) => idSet.has(it.id) ? { ...it, [col.id]: value } : it),
+      items: (g.items || []).map((it:any) => {
+        if (!idSet.has(it.id)) return it;
+        idUtama.push(it.id);
+        const baru: any = { ...it, [col.id]: value };
+        if (subCol && (it.subItems || []).length) {
+          baru.subItems = it.subItems.map((s:any) => { idSub.push(s.id); return { ...s, [subCol.id]: value }; });
+        }
+        return baru;
+      }),
     })));
-    pushToast(`${col.label || 'Nilai'} diperbarui untuk ${ids.length} item`);
+    if (!idUtama.length) return;
+    idUtama.forEach((id) => pemuat.tandaiEdit(id, col.id));
+    if (subCol) idSub.forEach((id) => pemuat.tandaiEdit(id, subCol.id));
+
+    // Label status/tags yang belum ada di kolom sub → tambahkan (warna sama) agar pill sub-item tampil benar.
+    if (subCol && idSub.length && (col.type === 'status' || col.type === 'tags')) {
+      const teks = (Array.isArray(value) ? value : [value]).filter((t: any) => typeof t === 'string' && t);
+      const adaTeks = new Set((labels[subCol.id] || []).map((l: any) => l.text));
+      for (const t of teks) {
+        if (adaTeks.has(t)) continue;
+        adaTeks.add(t);
+        addLabelOption(subCol.id, t, (labels[col.id] || []).find((l: any) => l.text === t)?.color);
+      }
+    }
+
+    pushToast(`${col.label || 'Nilai'} diperbarui untuk ${idUtama.length} item${idSub.length ? ` + ${idSub.length} sub-item` : ''}`);
     if (cloudOn()) {
       (async () => {
-        for (const id of ids) { tandaiTulisSendiri(); await dbSetCellValue(supabase, id, col.id, col.type, value); }
+        await simpanMassal(idUtama, col.id, col.type, value);
+        if (subCol && idSub.length) await simpanMassal(idSub, subCol.id, subCol.type, value);
         tandaiTulisSendiri();
       })().catch((e:any) => pushToast('Gagal ubah massal di cloud: ' + (e?.message || e)));
     }
@@ -1012,6 +1234,8 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       return baru;
     };
     const grupBaru = { ...grup, items: (grup.items || []).map(remapItem) };
+    // Sel hasil pemetaan masih dalam perjalanan ke cloud → jangan tertimpa muat papan tujuan.
+    setNilai.forEach((v) => pemuat.tandaiEdit(v.itemId, v.colId));
 
     setBoardsDataMap((prev: any) => {
       const s0 = prev[activeBoardId], t0 = prev[targetBoardId];
@@ -1225,6 +1449,9 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     if (!supabase) return;
     await supabase.auth.signOut();
     bersihkanCacheTracker(); // buang cache agar tak terbawa ke akun berikutnya
+    sesiRef.current++;       // hasil muat yang masih berjalan dibuang
+    pemuat.reset();
+    setStatusMuat(pemuat.status());
     setAuthUser(null); setIsLoaded(false); setLoadError(null);
   };
 
@@ -1252,7 +1479,12 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     triggerConfirm, handleUpdateItem, handleUpdateSubItem, handleDeleteItem, handleDeleteSubItem,
     handleAddItem, handleAddSubItem, toggleGroupSelection, toggleAllSubItems,
     handleDeleteTeamMember, handleDeleteLabel, addLabelOption, updateLabelColor, handleDeleteColumn, handleDeleteSubColumn, handleAddDynamicColumn, copyParentColumns, handleExportCSV, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, moveGroupToBoard, addYear, addMonth, addBoard, toggleBoard, renameNode, deleteNode, updateColumnLabel, reorderColumns, reorderGroups, moveItem, insertItemBelow, insertSubBelow, handleBulkDelete, handleBulkDuplicate, handleBulkSetStatus, handleBulkSetField, accountTargets, setAccountTarget, hapusAccountTarget, pushToast, HEX_COLORS, LABEL_COLORS,
-    authUser, doLogout, isManager, currentUserRole, canContentHub, canAcc, refreshData, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase
+    authUser, doLogout, isManager, currentUserRole, canContentHub, canAcc, refreshData, openDocEditor, closeDocEditor, saveDoc, docEditorTarget, supabase,
+    // Lazy-load sel (dipanggil komponen yang membutuhkan isi sel)
+    muatSelBoard: pemuat.muatSelBoard, muatSelSaya, muatKolomLintas: pemuat.muatKolomLintas,
+    pastikanItem: pemuat.pastikanItem, pastikanBoards: pemuat.pastikanBoards,
+    papanSiap, sayaSiap, lintasSiap, galatMuat, statusMuat,
+    kolomSubSerupa,
   };
 
   const gate = (() => {

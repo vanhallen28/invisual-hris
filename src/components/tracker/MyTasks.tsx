@@ -3,10 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import { menungguAcc, sudahSelesai } from '@/lib/tracker/acc';
 import MyContent from '@/components/tracker/MyContent';
+import LoadingLogo from '@/components/LoadingLogo';
 import { ListChecks, CalendarDays, ChevronRight, Inbox, CornerDownRight, AlarmClock, X, Check } from 'lucide-react';
 
 export default function MyTasks() {
-  const { boardsDataMap, workspaces, currentUserId, labels, teamMembers, setActiveBoardId, setActiveViewId, setDetailItem, handleUpdateItem, handleUpdateSubItem, supabase } = useDashboard();
+  const { boardsDataMap, workspaces, currentUserId, labels, teamMembers, setActiveBoardId, setActiveViewId, setDetailItem, handleUpdateItem, handleUpdateSubItem, supabase, muatSelSaya, sayaSiap, galatMuat } = useDashboard();
+
+  // Muat isi sel HANYA untuk tugas yang di-assign ke saya (bukan seluruh papan).
+  useEffect(() => { void muatSelSaya?.(); }, [currentUserId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Peta boardId -> info board (untuk menampilkan asal tugas)
   const boardMeta: Record<string, any> = {};
@@ -223,6 +227,23 @@ export default function MyTasks() {
       </div>
     );
   };
+
+  // Belum termuat → tampilkan pemuat (semua hook di atas tetap terpanggil).
+  if (sayaSiap && !sayaSiap()) {
+    const galat = galatMuat ? (galatMuat('saya') || galatMuat('saya:p')) : null;
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-20">
+        {galat ? (
+          <>
+            <p className="text-sm text-red-400 text-center max-w-sm">Gagal memuat tugas: {galat}</p>
+            <button onClick={() => muatSelSaya?.()} className="px-4 py-2 text-xs font-bold text-white bg-primer-terang hover:bg-primer rounded-lg transition-colors">Coba lagi</button>
+          </>
+        ) : (
+          <LoadingLogo size={48} withRing text="Memuat tugas" />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col">

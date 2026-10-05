@@ -19,8 +19,16 @@ function InputTarget({ boardId, akun, nilai, onSimpan }: any) {
 }
 
 export default function Overview() {
-  const { boardData, columns, subColumns, labels, teamMembers, setDetailItem, activeBoardName, activeBoardId, accountTargets, setAccountTarget, hapusAccountTarget, boardsDataMap, workspaces } = useDashboard();
+  const { boardData, columns, subColumns, labels, teamMembers, setDetailItem, activeBoardName, activeBoardId, accountTargets, setAccountTarget, hapusAccountTarget, boardsDataMap, workspaces, pastikanBoards, papanSiap } = useDashboard();
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // MARKETPLACE menjumlahkan sub-board juga → pastikan isi sub-board ikut termuat.
+  const idSubBoard: string[] = /marketplace/i.test(activeBoardName || '')
+    ? kumpulkanIdBoardDanSub(workspaces, activeBoardId || '').filter((id: string) => id !== activeBoardId)
+    : [];
+  const kunciSub = idSubBoard.join(',');
+  React.useEffect(() => { if (idSubBoard.length) void pastikanBoards?.(idSubBoard); }, [kunciSub]); // eslint-disable-line react-hooks/exhaustive-deps
+  const subBelum = !!papanSiap && idSubBoard.some((id) => !papanSiap(id));
 
   // Resolve the dynamic Status / People columns by type (ids are generated).
   const statusKey = columns.find((c: any) => c.type === 'status')?.id;
@@ -118,6 +126,7 @@ export default function Overview() {
         <div className="bg-kartu-hover border border-white/10 rounded-xl p-6 shadow-xl">
           <h3 className="text-sm font-bold text-white mb-1 uppercase tracking-wider flex items-center gap-2"><User size={16} className="text-blue-400" /> Progres per Akun</h3>
           <p className="text-[11px] text-gray-500 mb-5">Target diinput manual. Sisa = Target − (Done + In Review + Approved). Rejected tak dikurangkan.</p>
+          {subBelum && <p className="text-[11px] text-blue-300 -mt-3 mb-4 animate-pulse">Memuat data sub-board…</p>}
           {daftarAkun.length === 0 ? (
             <p className="text-xs text-gray-600 italic">Belum ada akun. Isi kolom AKUN pada baris untuk memunculkan akun di sini.</p>
           ) : (
@@ -132,7 +141,7 @@ export default function Overview() {
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="font-bold text-white text-sm truncate">{akun}</span>
-                        {!akunDariItem.has(akun) && (
+                        {!akunDariItem.has(akun) && !subBelum && (
                           <button onClick={() => hapusAccountTarget(activeBoardId, akun)} title="Akun ini tak punya item di board — hapus dari Overview" className="shrink-0 text-[10px] font-bold text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-500/50 rounded px-1.5 py-0.5">Hapus</button>
                         )}
                       </div>

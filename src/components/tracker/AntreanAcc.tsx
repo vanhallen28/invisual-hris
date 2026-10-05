@@ -5,6 +5,7 @@ import React from 'react';
 import { CheckCircle2, Inbox, CornerDownRight, X } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import Avatar from '@/components/Avatar';
+import LoadingLogo from '@/components/LoadingLogo';
 import { kumpulkanBrief, cariBentrok, labelSetelahAcc, labelSetelahUpload, type Brief } from '@/lib/tracker/acc';
 
 /**
@@ -17,8 +18,15 @@ export default function AntreanAcc() {
   const {
     boardsDataMap, workspaces, labels, teamMembers, isManager, canAcc,
     handleUpdateItem, handleUpdateSubItem, setActiveBoardId, setActiveViewId,
-    setDetailItem, pushToast,
+    setDetailItem, pushToast, muatKolomLintas, lintasSiap, galatMuat,
   } = useDashboard();
+
+  // Antrean lintas papan hanya butuh kolom status/PIC/tanggal/timeline —
+  // dimuat untuk semua papan saat halaman ini dibuka (bukan saat aplikasi dibuka).
+  const TIPE_ANTREAN = ['status', 'team', 'date', 'timeline'];
+  React.useEffect(() => {
+    if (isManager || canAcc) void muatKolomLintas?.(TIPE_ANTREAN);
+  }, [isManager, canAcc]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const boardMeta: Record<string, any> = {};
   (workspaces || []).forEach((y: any) =>
@@ -78,6 +86,22 @@ export default function AntreanAcc() {
         <Inbox size={40} className="text-blue-500/20 mb-1" />
         <p className="text-sm font-bold text-gray-300">Khusus project manager</p>
         <p className="text-xs text-gray-500 max-w-sm">Halaman ini dipakai untuk menyetujui brief sebelum sampai ke karyawan.</p>
+      </div>
+    );
+  }
+
+  if (lintasSiap && !lintasSiap(TIPE_ANTREAN)) {
+    const galat = galatMuat ? galatMuat('lintas:' + [...TIPE_ANTREAN].sort().join(',')) : null;
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-20">
+        {galat ? (
+          <>
+            <p className="text-sm text-red-400 text-center max-w-sm">Gagal memuat antrean: {galat}</p>
+            <button onClick={() => muatKolomLintas?.(TIPE_ANTREAN)} className="px-4 py-2 text-xs font-bold text-white bg-primer-terang hover:bg-primer rounded-lg transition-colors">Coba lagi</button>
+          </>
+        ) : (
+          <LoadingLogo size={48} withRing text="Memuat antrean" />
+        )}
       </div>
     );
   }

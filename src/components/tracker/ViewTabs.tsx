@@ -8,7 +8,16 @@ import { menungguAcc, siapUpload } from '@/lib/tracker/acc';
 const ICONS: any = { table: Columns, kanban: LayoutGrid, gantt: CalendarDays, chart: BarChart3, calendar: CalendarDays, workload: ListChecks };
 
 export default function ViewTabs() {
-  const { views, activeView, activeViewId, setActiveViewId, renameView, deleteView, duplicateView, reorderViews, isManager, canAcc, boardsDataMap } = useDashboard();
+  const { views, activeView, activeViewId, setActiveViewId, renameView, deleteView, duplicateView, reorderViews, isManager, canAcc, boardsDataMap, muatKolomLintas, lintasSiap } = useDashboard();
+
+  // Angka badge butuh kolom status SEMUA papan → dimuat ringan di latar
+  // (hanya kolom status, sedikit tertunda agar papan yang dibuka didahulukan).
+  React.useEffect(() => {
+    if (!isManager && !canAcc) return;
+    const t = setTimeout(() => { void muatKolomLintas?.(['status']); }, 1500);
+    return () => clearTimeout(t);
+  }, [isManager, canAcc]); // eslint-disable-line react-hooks/exhaustive-deps
+  const statusSiap = lintasSiap ? lintasSiap(['status']) : true;
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [picker, setPicker] = useState(false);
@@ -22,6 +31,7 @@ export default function ViewTabs() {
   // Dihitung di sini supaya angka di tab tidak perlu menunggu halamannya dibuka.
   const jumlahAcc = React.useMemo(() => {
     if (!isManager && !canAcc) return 0;
+    if (!statusSiap) return 0; // belum lengkap → jangan tampilkan angka parsial
     let n = 0;
     Object.values(boardsDataMap || {}).forEach((bd: any) => {
       const sCol = (bd.columns || []).find((c: any) => c.type === 'status');
@@ -35,7 +45,7 @@ export default function ViewTabs() {
       }));
     });
     return n;
-  }, [boardsDataMap, isManager, canAcc]);
+  }, [boardsDataMap, isManager, canAcc, statusSiap]);
 
 
   const commitRename = (id: string, val: string) => {
