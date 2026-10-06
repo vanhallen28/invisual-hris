@@ -7,6 +7,7 @@ import { TOLERANSI_TELAT_MENIT, JAM_KERJA_JAM, jamPulangDariClockIn } from "@/li
 import { ambilAturanJamKerja, teksDurasi } from "@/lib/jamKerja";
 import { jarakMeter, ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
 import { pushNotify } from "@/lib/push";
+import { simpanFotoAbsen } from "@/lib/fotoAbsen";
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
 
@@ -271,7 +272,7 @@ export default function UserDashboardPage() {
   const lakukanClockIn = async (alasanTelatWajib: string) => {
     if (!currentUser) return;
     setIsActionLoading(true);
-    takePhoto();
+    const fotoMasuk = takePhoto();
 
     const now = new Date();
     const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -294,6 +295,8 @@ export default function UserDashboardPage() {
         jamPulangSeharusnya: jamPulang
       }]);
       if (error) throw error;
+      // Simpan selfie (latar belakang; gagal pun absen tetap tercatat)
+      simpanFotoAbsen(supabase, { dataUrl: fotoMasuk, jenis: "masuk", tanggal: todayISO, idKaryawan: safeId });
       showToast("success", `Clock-In berhasil dicatat pada ${timeString} WIB.`);
       pushNotify(supabase, { toAdmins: true, title: "Absen Masuk", body: `${currentUser?.nama || "Karyawan"} clock-in ${timeString} (${statusKehadiran})`, url: "/admin/kehadiran", tag: "absen" });
       // Terlambat + alasan wajib terisi → otomatis buat pengajuan Izin Terlambat (Menunggu) → masuk antrean manajer.
@@ -329,7 +332,7 @@ export default function UserDashboardPage() {
       if (_hhmm < todayAttendance.jamPulangSeharusnya) return showToast("error", `Belum boleh clock-out. Jam wajib pulang Anda ${todayAttendance.jamPulangSeharusnya} WIB.`);
     }
     setIsActionLoading(true);
-    takePhoto();
+    const fotoKeluar = takePhoto();
 
     const now = new Date();
     const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -338,6 +341,7 @@ export default function UserDashboardPage() {
     try {
       const { error } = await supabase.from("attendance").update({ waktuKeluar: timeString }).eq("id", todayAttendance.id);
       if (error) throw error;
+      simpanFotoAbsen(supabase, { dataUrl: fotoKeluar, jenis: "keluar", tanggal: todayAttendance.tanggal || todayISO, idKaryawan: safeId, idAbsen: todayAttendance.id });
       showToast("success", `Clock-Out berhasil dicatat pada ${timeString} WIB.`);
       pushNotify(supabase, { toAdmins: true, title: "Absen Pulang", body: `${currentUser?.nama || "Karyawan"} clock-out ${timeString}`, url: "/admin/kehadiran", tag: "absen" });
       await fetchDashboardData(safeId);
@@ -433,6 +437,10 @@ export default function UserDashboardPage() {
 
             {(cameraOn && !capturedPhoto) && (
               <>
+                {/* Pemberitahuan penyimpanan foto (UU PDP): foto disimpan 7 hari untuk verifikasi HR */}
+                <div className="absolute top-2 md:top-3 right-2 md:right-3 max-w-[70%] bg-black/60 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 z-10">
+                  <span className="block text-[8px] md:text-[10px] text-gray-200 leading-snug text-right">Foto disimpan 7 hari untuk verifikasi HR, lalu terhapus otomatis</span>
+                </div>
                 <div className="absolute bottom-2 md:bottom-4 left-2 md:left-4 bg-black/60 backdrop-blur-md px-2 md:px-3 py-1 md:py-1.5 rounded-md md:rounded-lg border border-white/10 flex items-center gap-1.5 md:gap-2 z-10">
                   <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full animate-pulse"></span>
                   <span className="text-[8px] md:text-[10px] text-white font-mono tracking-widest truncate">Face ID</span>

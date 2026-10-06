@@ -1,12 +1,17 @@
 // src/app/admin/kehadiran/page.tsx
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { fleksibelIds, terlambat } from "@/lib/keterlambatan";
 import LeaveCalendar from "@/components/LeaveCalendar";
 import { rapikanNama, namaResmi } from "@/lib/nama";
 import { supabase } from "@/lib/supabase";
 import { excludeOwners } from "@/lib/owners";
+import RentangTanggal from "@/components/RentangTanggal";
+import { type Rentang, periodeGaji, hariDalamRentang, labelRentang, jumlahHari } from "@/lib/rentangTanggal";
+import { unduhBerkas } from "@/lib/keuangan/cetak";
+import { csvRekapKehadiran } from "@/lib/rekapKehadiranCsv";
+import { FotoAbsenPasangan } from "@/components/FotoAbsen";
 
 type StatusKehadiran = "Hadir" | "Telat" | "Alpa" | "Cuti/Sakit" | "WFH" | "Libur" | "-";
 type Sel = { iso: string; status: StatusKehadiran; att?: any; leave?: any };
@@ -22,8 +27,7 @@ const dariIso = (iso: string) => { const [y, m, d] = iso.split("-").map(Number);
 const tglPendek = (iso: string) => { const d = dariIso(iso); return `${HARI[d.getDay()].slice(0, 3)}, ${d.getDate()} ${BULAN[d.getMonth()].slice(0, 3)}`; };
 const tglPanjang = (iso: string) => { const d = dariIso(iso); return `${HARI[d.getDay()]}, ${d.getDate()} ${BULAN[d.getMonth()]} ${d.getFullYear()}`; };
 const normNama = (v: any) => String(v ?? "").trim().toLowerCase();
-// Periode tutup-buku: mulai tgl ini tiap bulan s/d (tgl ini - 1) bulan berikutnya.
-const TGL_MULAI_PERIODE = 21;
+// Rentang bawaan = periode tutup-buku 21 → 20 (lihat lib/rentangTanggal), HR bebas memilih rentang lain.
 
 // Ambil rentang tanggal dari string approvals ("2026-07-16" atau "2026-07-16 s/d 2026-07-20").
 function parseRange(t: string) {
@@ -55,10 +59,10 @@ async function ambilSemuaBaris(bangun: () => any): Promise<any[]> {
 }
 
 const KATEGORI: Record<Kategori, { judul: string; warna: string; bar: string; satuan: string; kosong: string }> = {
-  hadir: { judul: "Hadir Tepat Waktu", warna: "text-green-400", bar: "bg-green-500", satuan: "hari tepat waktu", kosong: "Belum ada kehadiran tepat waktu di periode ini." },
-  telat: { judul: "Terlambat", warna: "text-yellow-400", bar: "bg-yellow-500", satuan: "hari telat", kosong: "Tidak ada keterlambatan di periode ini. 🎉" },
-  izin: { judul: "Izin / Cuti / WFH", warna: "text-purple-400", bar: "bg-purple-500", satuan: "hari izin", kosong: "Tidak ada izin/cuti/WFH di periode ini." },
-  alpa: { judul: "Alpa", warna: "text-red-400", bar: "bg-red-500", satuan: "hari alpa", kosong: "Tidak ada alpa di periode ini. 🎉" },
+  hadir: { judul: "Hadir Tepat Waktu", warna: "text-green-400", bar: "bg-green-500", satuan: "hari tepat waktu", kosong: "Belum ada kehadiran tepat waktu di rentang ini." },
+  telat: { judul: "Terlambat", warna: "text-yellow-400", bar: "bg-yellow-500", satuan: "hari telat", kosong: "Tidak ada keterlambatan di rentang ini. 🎉" },
+  izin: { judul: "Izin / Cuti / WFH", warna: "text-purple-400", bar: "bg-purple-500", satuan: "hari izin", kosong: "Tidak ada izin/cuti/WFH di rentang ini." },
+  alpa: { judul: "Alpa", warna: "text-red-400", bar: "bg-red-500", satuan: "hari alpa", kosong: "Tidak ada alpa di rentang ini. 🎉" },
 };
 const cocokKategori = (k: Kategori, st: StatusKehadiran) =>
   (k === "hadir" && st === "Hadir") || (k === "telat" && st === "Telat") || (k === "izin" && (st === "Cuti/Sakit" || st === "WFH")) || (k === "alpa" && st === "Alpa");
@@ -66,11 +70,10 @@ const cocokKategori = (k: Kategori, st: StatusKehadiran) =>
 export default function AdminKehadiranPage() {
   const today = new Date();
   const todayISO = isoOf(today);
-  const _anchorM = today.getDate() >= TGL_MULAI_PERIODE ? today.getMonth() : today.getMonth() - 1;
-  const _anchorDate = new Date(today.getFullYear(), _anchorM, 1);
-  const currentYM = `${_anchorDate.getFullYear()}-${pad(_anchorDate.getMonth() + 1)}`;
 
-  const [selectedYM, setSelectedYM] = useState(currentYM);
+  // Rentang tanggal yang direkap (dipilih lewat kalender / preset). Bawaan = periode gaji berjalan.
+  const [rentang, setRentang] = useState<Rentang>(() => periodeGaji(isoOf(new Date())));
+  const nomorMuat = useRef(0); // abaikan hasil muat lama bila rentang diganti cepat
   const [employees, setEmployees] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
   const [leaves, setLeaves] = useState<any[]>([]);
@@ -83,32 +86,20 @@ export default function AdminKehadiranPage() {
   const [detailSel, setDetailSel] = useState<{ baris: any; sel: Sel } | null>(null);
   const [cariNama, setCariNama] = useState("");
 
-  // Pilihan bulan: 12 bulan terakhir
-  const monthOptions = useMemo(() => {
-    const out: { value: string; label: string }[] = [];
-    const anchorM = today.getDate() >= TGL_MULAI_PERIODE ? today.getMonth() : today.getMonth() - 1;
-    for (let i = 0; i < 12; i++) {
-      const s = new Date(today.getFullYear(), anchorM - i, TGL_MULAI_PERIODE);
-      const e = new Date(today.getFullYear(), anchorM - i + 1, TGL_MULAI_PERIODE - 1);
-      out.push({ value: `${s.getFullYear()}-${pad(s.getMonth() + 1)}`, label: `${TGL_MULAI_PERIODE} ${BULAN[s.getMonth()].slice(0, 3)} – ${TGL_MULAI_PERIODE - 1} ${BULAN[e.getMonth()].slice(0, 3)} ${e.getFullYear()}` });
-    }
-    return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const fetchData = async () => {
+    const nomor = ++nomorMuat.current;
     setIsLoading(true);
     setGalatMuat("");
     try {
-      const [pY, pM] = selectedYM.split("-").map(Number);
-      const periodeStartISO = isoOf(new Date(pY, pM - 1, TGL_MULAI_PERIODE));
-      const periodeEndISO = isoOf(new Date(pY, pM - 1 + 1, TGL_MULAI_PERIODE - 1));
+      const periodeStartISO = rentang.dari;
+      const periodeEndISO = rentang.sampai;
       const [empRes, absensiSemua, izinSemua] = await Promise.all([
         supabase.from("employees").select("*").order("nama", { ascending: true }),
         ambilSemuaBaris(() => supabase.from("attendance").select("*").gte("tanggal", periodeStartISO).lte("tanggal", periodeEndISO)),
         // Izin Terlambat bukan ketidakhadiran → tak perlu dimuat di sini.
         ambilSemuaBaris(() => supabase.from("approvals").select("*").eq("status", "Disetujui").neq("jenis", "Izin Terlambat")),
       ]);
+      if (nomor !== nomorMuat.current) return; // sudah ada permintaan yang lebih baru
       // Owner dikecualikan dari statistik operasional
       setEmployees(excludeOwners((empRes.data || []).filter((e: any) => e.isAktif !== false)));
       setAttendance(absensiSemua);
@@ -118,15 +109,16 @@ export default function AdminKehadiranPage() {
           .filter((l: any) => l.range),
       );
     } catch (e: any) {
+      if (nomor !== nomorMuat.current) return;
       setGalatMuat(e?.message || "Gagal memuat data kehadiran.");
     }
-    setIsLoading(false);
+    if (nomor === nomorMuat.current) setIsLoading(false);
   };
 
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedYM]);
+  }, [rentang.dari, rentang.sampai]);
 
   // Tutup jendela dengan tombol Escape
   useEffect(() => {
@@ -135,16 +127,7 @@ export default function AdminKehadiranPage() {
     return () => window.removeEventListener("keydown", tutup);
   }, []);
 
-  const [yearStr, monthStr] = selectedYM.split("-");
-  const year = Number(yearStr);
-  const monthIdx = Number(monthStr) - 1;
-  const periodeHari = useMemo(() => {
-    const arr: Date[] = [];
-    const s = new Date(year, monthIdx, TGL_MULAI_PERIODE);
-    const e = new Date(year, monthIdx + 1, TGL_MULAI_PERIODE - 1);
-    for (let dt = new Date(s); dt <= e; dt.setDate(dt.getDate() + 1)) arr.push(new Date(dt));
-    return arr;
-  }, [year, monthIdx]);
+  const periodeHari = useMemo(() => hariDalamRentang(rentang), [rentang]);
 
   // ── HEATMAP dari data nyata (setiap sel menyimpan sumber datanya untuk rincian) ──
   const heatmapData = useMemo(() => {
@@ -299,8 +282,14 @@ export default function AdminKehadiranPage() {
     return labelStatus(x.status);
   };
 
-  const monthLabel = `${TGL_MULAI_PERIODE} ${BULAN[monthIdx].slice(0, 3)} – ${TGL_MULAI_PERIODE - 1} ${BULAN[(monthIdx + 1) % 12].slice(0, 3)} ${new Date(year, monthIdx + 1, TGL_MULAI_PERIODE - 1).getFullYear()}`;
+  const monthLabel = labelRentang(rentang);
   const barisTampil = cariNama.trim() ? heatmapData.filter((r) => normNama(r.nama).includes(normNama(cariNama))) : heatmapData;
+
+  // Unduh rekap rentang terpilih (CSV; terbuka rapi di Excel)
+  const unduhRekap = () => {
+    const isi = csvRekapKehadiran(heatmapData, periodeHari.map((d) => isoOf(d)), monthLabel, todayISO);
+    unduhBerkas(`rekap-kehadiran_${rentang.dari}_sd_${rentang.sampai}.csv`, isi);
+  };
 
   const kartu: { k: Kategori; value: number; ket: string }[] = [
     { k: "hadir", value: summary.hadir, ket: `${summary.orang.hadir} orang · total hadir ${summary.hadir + summary.telat} hari` },
@@ -316,15 +305,21 @@ export default function AdminKehadiranPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">Manajemen Kehadiran</h1>
-          <p className="text-gray-400 text-sm">Analitik kedisiplinan dari data absensi asli — periode {monthLabel}.</p>
+          <p className="text-gray-400 text-sm">Analitik kedisiplinan dari data absensi asli — {monthLabel} ({jumlahHari(rentang)} hari).</p>
         </div>
-        <select
-          value={selectedYM}
-          onChange={(e) => setSelectedYM(e.target.value)}
-          className="bg-input border border-white/10 rounded-xl px-5 py-3 text-sm text-white focus:outline-none focus:border-primer-terang font-bold shadow-lg cursor-pointer"
-        >
-          {monthOptions.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <RentangTanggal nilai={rentang} onChange={setRentang} hariIni={todayISO} />
+          <button
+            type="button"
+            onClick={unduhRekap}
+            disabled={isLoading || !!galatMuat || heatmapData.length === 0}
+            title="Unduh rekap kehadiran rentang ini (CSV, bisa dibuka di Excel)"
+            className="flex items-center gap-2 bg-input border border-white/10 hover:border-white/20 rounded-xl px-4 py-3 text-sm text-gray-200 font-bold shadow-lg disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+            Unduh Rekap
+          </button>
+        </div>
       </div>
 
       {galatMuat && (
@@ -371,7 +366,7 @@ export default function AdminKehadiranPage() {
             {isLoading ? (
               <p className="text-xs text-gray-600">Memuat…</p>
             ) : seringTelat.length === 0 ? (
-              <p className="text-xs text-gray-600">Tidak ada keterlambatan bulan ini. 🎉</p>
+              <p className="text-xs text-gray-600">Tidak ada keterlambatan di rentang ini. 🎉</p>
             ) : seringTelat.map((emp: any, idx: number) => (
               <div key={idx} className="flex justify-between items-center bg-kartu-hover p-3 rounded-xl border border-white/10">
                 <span className="text-sm font-semibold text-gray-200 truncate mr-2">{emp.nama}</span>
@@ -427,7 +422,7 @@ export default function AdminKehadiranPage() {
             {isLoading ? (
               <p className="text-xs text-gray-600">Memuat…</p>
             ) : palingDisiplin.length === 0 ? (
-              <p className="text-xs text-gray-600">Belum ada data absensi bulan ini.</p>
+              <p className="text-xs text-gray-600">Belum ada data absensi di rentang ini.</p>
             ) : palingDisiplin.map((emp: any, idx: number) => (
               <div key={idx} className="flex justify-between items-center bg-kartu-hover p-3 rounded-xl border border-white/10 gap-2">
                 <span className="text-sm font-semibold text-gray-200 truncate">{emp.nama}</span>
@@ -595,7 +590,7 @@ export default function AdminKehadiranPage() {
         );
         return (
           <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setDetailSel(null)}>
-            <div className="bg-kartu rounded-xl border border-white/10 w-full max-w-md shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-kartu rounded-xl border border-white/10 w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
               <div className="p-4 border-b border-white/5 bg-kartu-hover flex justify-between items-start gap-3">
                 <div className="min-w-0">
                   <p className="font-bold text-white text-sm truncate">{baris.nama}</p>
@@ -603,7 +598,7 @@ export default function AdminKehadiranPage() {
                 </div>
                 <button onClick={() => setDetailSel(null)} className="text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
               </div>
-              <div className="p-4">
+              <div className="p-4 overflow-y-auto custom-scrollbar flex-1">
                 <div className="flex items-center gap-2 mb-3">
                   <span className={`w-4 h-4 rounded border ${getColorByStatus(x.status)}`}></span>
                   <span className="text-sm font-bold text-white">{labelStatus(x.status)}</span>
@@ -618,6 +613,10 @@ export default function AdminKehadiranPage() {
                     {att.mode_kerja && baris1("Mode kerja", att.mode_kerja)}
                     {att.lokasi && baris1("Lokasi", att.lokasi)}
                     {att.anomali_disetujui === true && baris1("Keterlambatan", "Sudah disetujui admin", "text-green-400")}
+                    <div className="mt-3 pt-3 border-t border-white/5">
+                      <p className="text-[11px] text-gray-500 mb-2">Foto absen</p>
+                      <FotoAbsenPasangan att={att} hariIni={todayISO} />
+                    </div>
                   </div>
                 ) : lv ? (
                   <div>

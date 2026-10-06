@@ -13,6 +13,8 @@ import { ResetAbsensiCard } from "@/components/admin/ResetAbsensiCard";
 import { ChatNotifCard } from "@/components/admin/ChatNotifCard";
 import { excludeOwners } from "@/lib/owners";
 import { ambilAturanJamKerja } from "@/lib/jamKerja";
+import { GaleriFotoAbsen } from "@/components/FotoAbsen";
+import { mintaBersihkanFotoLama } from "@/lib/fotoAbsen";
 
 // Cek apakah HARI INI termasuk dalam periode izin/cuti.
 // Kolom `tanggal` berupa string: "2025-07-16", "2025-07-16 s/d 2025-07-20",
@@ -84,6 +86,8 @@ export default function AdminDashboardPage() {
   const [showAnomalyPopup, setShowAnomalyPopup] = useState(false);
   const [hasShownAnomaly, setHasShownAnomaly] = useState(false);
   const [anomalyList, setAnomalyList] = useState<any[]>([]);
+  // Galeri foto selfie absensi (dibuka dari "Log absensi live"); fokusId = karyawan yang diklik
+  const [galeriFoto, setGaleriFoto] = useState<{ fokusId: string | null } | null>(null);
 
   const todayDate = new Date().toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const todayISO = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(); // tanggal LOKAL (WIB), bukan UTC
@@ -136,7 +140,11 @@ export default function AdminDashboardPage() {
 
     // Hanya jalankan penarikan data JIKA verifikasi lulus
     verifyAccess().then((lolos) => {
-      if (lolos) fetchDashboardData();
+      if (lolos) {
+        fetchDashboardData();
+        // Hapus foto absen > 7 hari (maks. sekali sehari; cadangan bila cron belum aktif)
+        mintaBersihkanFotoLama(supabase);
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Kosongkan dependency array agar tidak terjadi re-render berulang
@@ -683,7 +691,18 @@ export default function AdminDashboardPage() {
             <BentoCell className="col-span-2">
               <div className="flex justify-between items-center mb-5 border-b border-white/5 pb-4">
                 <h3 className="text-base font-bold text-white">Log absensi live</h3>
-                <span className="text-[11px] text-gray-500">{todayAttendances.length} tercatat</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-gray-500">{todayAttendances.length} tercatat</span>
+                  <button
+                    type="button"
+                    onClick={() => setGaleriFoto({ fokusId: null })}
+                    title="Lihat foto selfie absensi (7 hari terakhir)"
+                    className="flex items-center gap-1.5 text-[11px] font-bold text-tint bg-primer/10 hover:bg-primer/20 border border-primer/30 px-2.5 py-1 rounded-lg transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
+                    Foto absen
+                  </button>
+                </div>
               </div>
               <div className="relative border-l border-white/10 ml-3 space-y-5 max-h-[280px] overflow-y-auto custom-scrollbar">
                 {todayAttendances.slice(0, 8).map((absen, idx) => (
@@ -694,6 +713,15 @@ export default function AdminDashboardPage() {
                       {absen.mode_kerja && absen.mode_kerja !== "Kantor" && (
                         <span className="text-[9px] font-bold uppercase tracking-wide bg-primer/15 text-tint-redup px-1.5 py-0.5 rounded border border-primer/30">{absen.mode_kerja}</span>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => setGaleriFoto({ fokusId: String(absen.idKaryawan ?? "") })}
+                        title={absen.foto_masuk || absen.foto_keluar ? "Lihat foto absen" : "Foto absen (belum ada)"}
+                        aria-label={`Lihat foto absen ${absen.nama}`}
+                        className={`ml-auto shrink-0 p-1 rounded-md transition-colors ${absen.foto_masuk || absen.foto_keluar ? "text-tint hover:bg-primer/20" : "text-gray-600 hover:text-gray-400 hover:bg-white/5"}`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
+                      </button>
                     </div>
                     <span className="text-[10px] bg-white/5 text-gray-300 px-2 py-0.5 rounded font-mono border border-white/10 mt-1 inline-block">Masuk {absen.waktuMasuk}</span>
                   </div>
@@ -998,6 +1026,9 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Galeri foto selfie absensi */}
+      {galeriFoto && <GaleriFotoAbsen hariIni={todayISO} fokusId={galeriFoto.fokusId} onTutup={() => setGaleriFoto(null)} />}
     </div>
   );
 }

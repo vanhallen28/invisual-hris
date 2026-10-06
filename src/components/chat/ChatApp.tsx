@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Hash, Lock, Megaphone, Plus, ChevronLeft, ChevronDown, X, Settings2,
-  Users, Trash2, Check, Search, Bell, BellOff, Volume2, Video, Camera,
+  Users, Trash2, Check, Search, Bell, BellOff, Volume2, Video, Camera, MessageCircle,
 } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import Avatar from '@/components/Avatar';
@@ -12,6 +12,7 @@ import ItemDetailPanel from '@/components/tracker/ItemDetailPanel';
 import ChatRoom from '@/components/chat/ChatRoom';
 import VoiceRoom from '@/components/chat/VoiceRoom';
 import SetoranRoom from '@/components/chat/SetoranRoom';
+import PesanPribadiRoom, { useLencanaPesanPribadi } from '@/components/chat/PesanPribadiRoom';
 import LoadingLogo from '@/components/LoadingLogo';
 import { enablePush, disablePush, pushStatus, clearBadge } from '@/lib/push';
 import {
@@ -173,7 +174,10 @@ export default function ChatApp() {
   const [chMembers, setChMembers] = useState<any[]>([]);
   const [active, setActive] = useState<any>(null);
   const [unread, setUnread] = useState<Record<string, number>>({});
-  const [mobileRoom, setMobileRoom] = useState(false); // mobile: false = daftar channel, true = ruang chat
+  const [mobileRoom, setMobileRoom] = useState<boolean>(() => {   // mobile: false = daftar channel, true = ruang chat
+    if (typeof window === 'undefined') return false;
+    try { return new URLSearchParams(window.location.search).has('pesan'); } catch { return false; }
+  });
 
   const [chLoading, setChLoading] = useState(true);
   const [modal, setModal] = useState<any>(null);
@@ -185,7 +189,23 @@ export default function ChatApp() {
   // melempar kembali ke channel #general. Dibaca dari localStorage saat muat.
   const [setoranOpen, setSetoranOpen] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
-    try { return localStorage.getItem('invisual_setoran_terbuka') === '1'; } catch { return false; }
+    try {
+      if (new URLSearchParams(window.location.search).has('pesan')) return false; // tautan notifikasi pesan pribadi
+      return localStorage.getItem('invisual_setoran_terbuka') === '1';
+    } catch { return false; }
+  });
+  // Pesan Pribadi (HR/manager ↔ karyawan). Dibuka dari sidebar, atau lewat
+  // tautan notifikasi `?pesan=<id utas>`. Diingat seperti Setoran Daily.
+  const [utasAwal] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try { return new URLSearchParams(window.location.search).get('pesan'); } catch { return null; }
+  });
+  const [ppOpen, setPpOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      if (new URLSearchParams(window.location.search).has('pesan')) return true;
+      return localStorage.getItem('invisual_pp_terbuka') === '1';
+    } catch { return false; }
   });
   // Di ponsel, membuka ruang menambah satu langkah riwayat. Tanpa ini,
   // tombol kembali bawaan ponsel akan keluar dari halaman chat sama sekali.
@@ -193,7 +213,13 @@ export default function ChatApp() {
     if (typeof window === 'undefined') return;
     if (!mobileRoom || window.innerWidth >= 768) return;
     window.history.pushState({ ruangChat: true }, '');
-    const kembali = () => { setMobileRoom(false); setSetoranOpen(false); };
+    const kembali = () => {
+      setMobileRoom(false); setSetoranOpen(false);
+      // Pesan Pribadi ikut ditutup: kalau tetap "terbuka" di balik daftar, lencananya
+      // tersembunyi dan pesan masuk tertandai dibaca padahal tidak terlihat.
+      setPpOpen(false);
+      try { localStorage.setItem('invisual_pp_terbuka', '0'); } catch { /* diamkan */ }
+    };
     window.addEventListener('popstate', kembali);
     return () => window.removeEventListener('popstate', kembali);
   }, [mobileRoom]);
@@ -270,7 +296,7 @@ export default function ChatApp() {
      juga tak jalan karena ruangnya tak terpasang. Pesannya hilang dari
      hitungan sampai halaman dimuat ulang. */
   const channelTampil =
-    setoranOpen || (voiceCh && voiceCh.id === active?.id) || active?.is_voice
+    ppOpen || setoranOpen || (voiceCh && voiceCh.id === active?.id) || active?.is_voice
       ? null
       : active?.id;
   useEffect(() => { activeIdRef.current = channelTampil; }, [channelTampil]);
@@ -356,7 +382,21 @@ export default function ChatApp() {
     return () => { supabase.removeChannel(ch); };
   }, [supabase, currentUserId]);
 
+  const ppUnread = useLencanaPesanPribadi(supabase, currentUserId, ppOpen);
+  const tutupPesanPribadi = () => {
+    setPpOpen(false);
+    try { localStorage.setItem('invisual_pp_terbuka', '0'); } catch { /* diamkan */ }
+  };
+  const bukaPesanPribadi = () => {
+    setSetoranOpen(false);
+    try { localStorage.setItem('invisual_setoran_terbuka', '0'); } catch { /* diamkan */ }
+    setPpOpen(true);
+    setMobileRoom(true);
+    try { localStorage.setItem('invisual_pp_terbuka', '1'); } catch { /* diamkan */ }
+  };
+
   const bukaSetoran = () => {
+    tutupPesanPribadi();
     setSetoranOpen(true);
     setMobileRoom(true);
     setSetoranUnread(0);
@@ -369,6 +409,7 @@ export default function ChatApp() {
   };
 
   const openChannel = (c: any) => {
+    tutupPesanPribadi();
     setSetoranOpen(false);
     try { localStorage.setItem('invisual_setoran_terbuka', '0'); } catch { /* diamkan */ }
     setActive(c); setMobileRoom(true);
@@ -409,6 +450,18 @@ export default function ChatApp() {
               {setoranUnread > 0 && !setoranOpen && (
                 <span className="text-[9px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full shrink-0">
                   {setoranUnread > 99 ? '99+' : setoranUnread}
+                </span>
+              )}
+            </button>
+          )}
+          {!chLoading && (
+            <button onClick={bukaPesanPribadi}
+              className={`w-full flex items-center gap-1.5 px-2 py-1.5 mb-2 rounded-lg transition-colors ${ppOpen ? 'bg-white/5 text-white' : ppUnread > 0 ? 'text-white hover:bg-white/5' : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'}`}>
+              <MessageCircle size={14} className="shrink-0 text-tint/80" />
+              <span className={`text-[13px] truncate flex-1 text-left ${ppUnread > 0 && !ppOpen ? 'font-bold' : 'font-medium'}`}>Pesan Pribadi</span>
+              {ppUnread > 0 && !ppOpen && (
+                <span className="text-[9px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full shrink-0">
+                  {ppUnread > 99 ? '99+' : ppUnread}
                 </span>
               )}
             </button>
@@ -486,7 +539,9 @@ export default function ChatApp() {
 
       {/* ══ RUANG CHAT ══ */}
       <div className={`${mobileRoom ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0 min-h-0`}>
-        {(setoranOpen && !sayaFreelancer) ? (
+        {ppOpen ? (
+          <PesanPribadiRoom onBack={() => { setMobileRoom(false); tutupPesanPribadi(); }} utasAwal={utasAwal} />
+        ) : (setoranOpen && !sayaFreelancer) ? (
           <SetoranRoom onBack={() => setMobileRoom(false)} />
         ) : voiceCh && voiceCh.id === active?.id ? (
           <VoiceRoom channel={voiceCh} onLeave={() => setVoiceCh(null)} />
@@ -515,7 +570,7 @@ export default function ChatApp() {
       </div>
 
       {/* ══ DAFTAR ANGGOTA ══ */}
-      <aside className="hidden xl:flex w-56 shrink-0 flex-col bg-kartu border-l border-white/10">
+      <aside className={`hidden ${ppOpen ? '' : 'xl:flex'} w-56 shrink-0 flex-col bg-kartu border-l border-white/10`}>
         <div className="h-12 border-b border-white/10 flex items-center gap-2 px-4 shrink-0">
           <Users size={14} className="text-gray-500" />
           <span className="text-[11px] font-black text-gray-400 uppercase tracking-wider">Anggota</span>
