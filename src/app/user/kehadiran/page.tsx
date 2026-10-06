@@ -8,6 +8,7 @@ import { ambilAturanJamKerja, teksDurasi } from "@/lib/jamKerja";
 import { jarakMeter, ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
 import { pushNotify } from "@/lib/push";
 import { simpanFotoAbsen } from "@/lib/fotoAbsen";
+import { statusRemoteHariIni, modeBawaan, keteranganRemote } from "@/lib/kerjaRemote";
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
 
@@ -82,19 +83,10 @@ export default function UserKehadiranPage() {
   // WFH/WFC hanya boleh dipilih saat absen kalau pengajuannya untuk hari
   // ini sudah disetujui. Tanggal pengajuan bisa satu hari ("2025-07-16")
   // atau rentang ("2025-07-16 s/d 2025-07-20"); keduanya dicek di sini.
-  const izinDisetujuiHariIni = (kunci: string) =>
-    pengajuanList.some((r) => {
-      if (r.status !== "Disetujui") return false;
-      if (!String(r.jenis || "").includes(kunci)) return false;
-      const t = String(r.tanggal || "");
-      if (t.includes(" s/d ")) {
-        const [awal, akhir] = t.split(" s/d ");
-        return todayISO >= awal.trim() && todayISO <= akhir.trim();
-      }
-      return t.trim() === todayISO;
-    });
-  const bolehWFH = izinDisetujuiHariIni("WFH");
-  const bolehWFC = izinDisetujuiHariIni("WFC");
+  // Aturan bersama di lib/kerjaRemote (juga dipakai Dasbor karyawan).
+  const stRemote = statusRemoteHariIni(pengajuanList, todayISO);
+  const bolehWFH = stRemote.WFH === "disetujui";
+  const bolehWFC = stRemote.WFC === "disetujui";
 
   // FUNGSI MENAMPILKAN NOTIFIKASI CANTIK
   // Diarahkan ke toast global standar. Tanda tangan lama (type, message)
@@ -192,6 +184,22 @@ export default function UserKehadiranPage() {
   const startCapture = async (mode: "in" | "out") => {
     setCapturedPhoto(null);
     setCaptureMode(mode);
+    if (mode === "in") {
+      // WFH/WFC yang sudah disetujui langsung terpilih (dulu selalu "Kantor" →
+      // karyawan WFH yang langsung menekan Absen ditolak lokasi kantor).
+      setModeKerja(modeBawaan(stRemote));
+      // Segarkan status pengajuan: persetujuan HR yang masuk setelah halaman
+      // dibuka langsung terbaca tanpa memuat ulang halaman.
+      const idSaya = currentUser?.idKaryawan || currentUser?.id_karyawan || currentUser?.id;
+      if (idSaya) {
+        supabase.from("approvals").select("*").eq("idKaryawan", idSaya).order("id", { ascending: false }).then(({ data }: any) => {
+          if (!data) return;
+          setPengajuanList(data);
+          const st = statusRemoteHariIni(data, todayISO);
+          setModeKerja((m) => (m === "Kantor" ? modeBawaan(st) : st[m] === "disetujui" ? m : "Kantor"));
+        }, () => { /* gagal segarkan → pakai data lama */ });
+      }
+    }
     await startCamera();
   };
 
@@ -584,8 +592,8 @@ export default function UserKehadiranPage() {
                         );
                       })}
                     </div>
-                    {(!bolehWFH && !bolehWFC) && (
-                      <p className="text-[10px] text-gray-500 mt-2 leading-relaxed">WFH/WFC aktif hanya bila pengajuan hari ini sudah disetujui HRD.</p>
+                    {keteranganRemote(stRemote) && (
+                      <p className="text-[10px] text-gray-500 mt-2 leading-relaxed">{keteranganRemote(stRemote)}</p>
                     )}
                   </div>
                 )}

@@ -8,6 +8,7 @@ import { ambilAturanJamKerja, teksDurasi } from "@/lib/jamKerja";
 import { jarakMeter, ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
 import { pushNotify } from "@/lib/push";
 import { simpanFotoAbsen } from "@/lib/fotoAbsen";
+import { type ModeKerja, statusRemoteHariIni, modeBawaan, keteranganRemote, muatPengajuanRemote } from "@/lib/kerjaRemote";
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
 
@@ -61,6 +62,11 @@ export default function UserDashboardPage() {
   const [kantorLat, setKantorLat] = useState(KANTOR_DEFAULT.lat);
   const [kantorLng, setKantorLng] = useState(KANTOR_DEFAULT.lng);
   const [kantorRadius, setKantorRadius] = useState(KANTOR_DEFAULT.radius);
+  // Lokasi kerja saat clock-in (sama seperti halaman Absen). Dulu Dasbor TIDAK
+  // punya pilihan ini → absen dari Dasbor selalu dicek lokasi kantor, sehingga
+  // karyawan WFH/WFC yang sudah disetujui tetap ditolak.
+  const [modeKerja, setModeKerja] = useState<ModeKerja>("Kantor");
+  const [pengajuanRemote, setPengajuanRemote] = useState<any[]>([]);
   // Diarahkan ke toast global standar. Tanda tangan lama (type, message)
   // dipertahankan agar semua pemanggilan showToast(...) tetap jalan.
   const showToast = (type: "success" | "error", message: string) => {
@@ -71,6 +77,9 @@ export default function UserDashboardPage() {
 
   const todayDate = new Date().toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const todayISO = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(); // tanggal LOKAL (WIB), bukan UTC
+  const stRemote = statusRemoteHariIni(pengajuanRemote, todayISO);
+  const bolehWFH = stRemote.WFH === "disetujui";
+  const bolehWFC = stRemote.WFC === "disetujui";
 
   // Ambil tugas/brief yang ditugaskan ke saya. Terpisah & dibungkus try/catch
   // supaya kegagalan di sini tidak mengganggu absensi.
@@ -154,6 +163,8 @@ export default function UserDashboardPage() {
 
       const { data: cutiData } = await supabase.from("approvals").select("*").eq("idKaryawan", safeId).order("id", { ascending: false }).limit(3);
       if (cutiData) setRecentLeaves(cutiData);
+      const remote = await muatPengajuanRemote(supabase, safeId);
+      if (remote) setPengajuanRemote(remote);
 
       const { data: schedData } = await supabase.from("employees").select("jamMasuk, toleransiTelat, jamKeluar, fleksibel").eq("idKaryawan", safeId).single();
       if (schedData?.jamMasuk) setJamMasuk(schedData.jamMasuk);
@@ -204,6 +215,20 @@ export default function UserDashboardPage() {
   const startCapture = async (mode: "in" | "out") => {
     setCapturedPhoto(null);
     setCaptureMode(mode);
+    if (mode === "in") {
+      // WFH/WFC yang sudah disetujui langsung terpilih, lalu status pengajuan
+      // disegarkan (persetujuan HR yang baru masuk langsung terbaca).
+      setModeKerja(modeBawaan(stRemote));
+      const idSaya = currentUser?.idKaryawan || currentUser?.id_karyawan || currentUser?.id;
+      if (idSaya) {
+        muatPengajuanRemote(supabase, idSaya).then((rows) => {
+          if (!rows) return;
+          setPengajuanRemote(rows);
+          const st = statusRemoteHariIni(rows, todayISO);
+          setModeKerja((m) => (m === "Kantor" ? modeBawaan(st) : st[m] === "disetujui" ? m : "Kantor"));
+        });
+      }
+    }
     await startCamera();
   };
   const cancelCapture = () => {
@@ -239,13 +264,13 @@ export default function UserDashboardPage() {
 
   const handleClockIn = async () => {
     if (hasCameraPermission === false) return showToast("error", "Izinkan akses kamera di browser Anda!");
-    // Geofence: absen dari dashboard = mode Kantor → wajib di lokasi kantor.
-    if (geofenceAktif) {
+    // Geofence: mode Kantor wajib di lokasi kantor. WFH/WFC (sudah disetujui) dilewati.
+    if (geofenceAktif && modeKerja === "Kantor") {
       if (!isFinite(kantorLat) || !isFinite(kantorLng)) return showToast("error", "Lokasi kantor belum diatur admin. Hubungi HRD.");
       try {
         const pos = await ambilPosisi();
         const jarak = jarakMeter(pos.lat, pos.lng, kantorLat, kantorLng);
-        if (jarak > kantorRadius) return showToast("error", `Anda ~${Math.round(jarak)} m dari kantor (batas ${kantorRadius} m). Absen kantor hanya di lokasi kantor.`);
+        if (jarak > kantorRadius) return showToast("error", `Anda ~${Math.round(jarak)} m dari kantor (batas ${kantorRadius} m). Absen kantor hanya di lokasi kantor. Untuk WFH/WFC, ajukan lalu pilih modenya.`);
       } catch (e: any) {
         return showToast("error", (e?.message || "Gagal cek lokasi.") + " Absen butuh izin lokasi.");
       }
@@ -255,7 +280,7 @@ export default function UserDashboardPage() {
     const [sHc, sMc] = String(jamMasuk || "09:00").split(":").map(Number);
     const telatCek = (nowCek.getHours() * 60 + nowCek.getMinutes()) > ((sHc || 9) * 60 + (sMc || 0) + toleransiTelat);
     const safeIdCek = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
-    if (!isFleksibel && telatCek) {
+    if (!isFleksibel && modeKerja === "Kantor" && telatCek) {   // WFH/WFC tidak dihitung terlambat
       const sudahIzin = await cekSudahAdaIzinTelat(safeIdCek);
       if (!sudahIzin) { setWajibTelat(true); return; } // tahan clock-in; buka modal wajib alasan
     }
@@ -278,7 +303,8 @@ export default function UserDashboardPage() {
     const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     const [schedH, schedM] = String(jamMasuk || "09:00").split(":").map(Number);
     const isLate = (now.getHours() * 60 + now.getMinutes()) > ((schedH || 9) * 60 + (schedM || 0) + toleransiTelat);
-    const statusKehadiran = isLate ? "Terlambat" : "Tepat Waktu";
+    // Sama dengan halaman Absen: WFH/WFC & jam fleksibel tidak dihitung terlambat.
+    const statusKehadiran = (!isFleksibel && modeKerja === "Kantor" && isLate) ? "Terlambat" : "Tepat Waktu";
     const jamPulang = isFleksibel ? null : jamPulangDariClockIn(timeString, jamMasuk, jamKeluar, toleransiTelat, durasiKerja);
 
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
@@ -290,7 +316,8 @@ export default function UserDashboardPage() {
         tanggal: todayISO,
         waktuMasuk: timeString, 
         waktuKeluar: null, 
-        lokasi: "Invisual Studio (Selfie)", 
+        lokasi: modeKerja === "Kantor" ? "Invisual Studio (Selfie)" : `${modeKerja} (Selfie)`,
+        mode_kerja: modeKerja,
         status: statusKehadiran,
         jamPulangSeharusnya: jamPulang
       }]);
@@ -461,6 +488,42 @@ export default function UserDashboardPage() {
                 Absensi Hari Ini Selesai
               </div>
             ) : captureMode ? (
+              <div className="flex flex-col gap-2.5">
+                {captureMode === "in" && (
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Lokasi kerja</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { key: "Kantor", label: "Kantor", boleh: true },
+                        { key: "WFH", label: "WFH", boleh: bolehWFH },
+                        { key: "WFC", label: "WFC", boleh: bolehWFC },
+                      ] as const).map((opt) => {
+                        const aktif = modeKerja === opt.key;
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            disabled={!opt.boleh}
+                            onClick={() => setModeKerja(opt.key)}
+                            title={opt.boleh ? undefined : `Pengajuan ${opt.label} hari ini belum disetujui`}
+                            className={`py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                              aktif
+                                ? "bg-primer text-white border-primer"
+                                : opt.boleh
+                                  ? "bg-white/[0.03] text-gray-300 border-white/10 hover:border-white/20"
+                                  : "bg-white/[0.02] text-gray-600 border-white/5 cursor-not-allowed"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {keteranganRemote(stRemote) && (
+                      <p className="text-[10px] text-gray-500 mt-2 leading-relaxed">{keteranganRemote(stRemote)}</p>
+                    )}
+                  </div>
+                )}
               <div className="flex gap-2.5">
                 <button
                   onClick={captureMode === "in" ? handleClockIn : handleClockOut}
@@ -472,6 +535,7 @@ export default function UserDashboardPage() {
                 <button onClick={cancelCapture} disabled={isActionLoading} className="px-4 md:px-5 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 font-bold transition-all disabled:opacity-50 text-xs md:text-sm">
                   Batal
                 </button>
+              </div>
               </div>
             ) : !todayAttendance ? (
               <button onClick={() => startCapture("in")} className="w-full bg-primer hover:bg-blue-600 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">

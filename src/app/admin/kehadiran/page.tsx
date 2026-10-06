@@ -434,7 +434,8 @@ export default function AdminKehadiranPage() {
 
       </div>
 
-      <LeaveCalendar />
+      {/* Kalender bisa menyetujui/menolak pengajuan → segarkan kartu & heatmap */}
+      <LeaveCalendar onBerubah={fetchData} />
 
       {/* TIMESHEET HEATMAP — data nyata; klik sel untuk melihat rincian hari itu */}
       <div className="flex flex-col overflow-hidden relative rounded-xl border border-white/10 bg-white/[0.03] transition-colors duration-300 hover:border-white/20 kartu-glow">
