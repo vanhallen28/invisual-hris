@@ -404,7 +404,39 @@ export default function AdminDashboardPage() {
   // Turunan untuk cincin kehadiran (tampilan saja)
   const hadirTotal = onTimeToday.length + lateToday.length;
   const persenHadir = employees.length ? Math.round((hadirTotal / employees.length) * 100) : 0;
-  const belumAbsen = Math.max(0, employees.length - hadirTotal - approvedLeaves.length - remoteToday.length);
+  // "Belum absen" dihitung dari DAFTAR karyawan (bukan pengurangan angka).
+  // Dulu: total − hadir − sakit/cuti − WFH/WFC. Padahal karyawan WFH/WFC yang
+  // SUDAH clock-in sudah termasuk "hadir", jadi ikut dikurangkan dua kali dan
+  // angkanya hampir selalu 0. Sekarang: karyawan aktif yang belum punya absen
+  // hari ini DAN tidak sedang sakit/cuti. Karyawan WFH/WFC yang belum clock-in
+  // tetap tampil di sini (diberi penanda), karena mereka pun wajib absen.
+  const normNama = (v: any) => String(v ?? "").trim().toLowerCase();
+  const idSudahAbsen = new Set(todayAttendances.map((a: any) => String(a.idKaryawan ?? "")).filter(Boolean));
+  const izinIds = new Set(approvedLeaves.map((a: any) => String(a.idKaryawan ?? "")).filter(Boolean));
+  const izinNama = new Set(approvedLeaves.filter((a: any) => !a.idKaryawan).map((a: any) => normNama(a.nama)));
+  const remoteIds = new Set(remoteToday.map((a: any) => String(a.idKaryawan ?? "")).filter(Boolean));
+  const remoteNama = new Set(remoteToday.filter((a: any) => !a.idKaryawan).map((a: any) => normNama(a.nama)));
+  const belumAbsenList = employees.filter((e: any) => {
+    const id = String(e.idKaryawan ?? "");
+    if (id && idSudahAbsen.has(id)) return false;
+    if ((id && izinIds.has(id)) || izinNama.has(normNama(e.nama))) return false;
+    return true;
+  });
+  const belumAbsen = belumAbsenList.length;
+  const sedangRemote = (e: any) => (!!e.idKaryawan && remoteIds.has(String(e.idKaryawan))) || remoteNama.has(normNama(e.nama));
+
+  // Judul jendela rincian sesuai kategori yang diklik.
+  const JUDUL_RINCIAN: Record<string, string> = {
+    total: "Total karyawan", hadir: "Tepat waktu", terlambat: "Terlambat",
+    absen: "Sakit / cuti", remote: "WFH / WFC", belum: "Belum absen",
+  };
+  // Baris legenda yang bisa diklik (membuka daftar nama sesuai kategorinya).
+  const barisKlik = (kunci: string) => ({
+    role: "button" as const,
+    tabIndex: 0,
+    onClick: () => setActiveModal(kunci),
+    onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setActiveModal(kunci); } },
+  });
 
   // =========================================================================
   // KOMPONEN HEADER KANAN (THEME + USER PROFILE + LOGOUT)
@@ -524,30 +556,35 @@ export default function AdminDashboardPage() {
                 </svg>
 
                 <div className="space-y-2.5 flex-1 min-w-[150px]">
-                  <div className="flex items-center gap-2.5">
+                  <div {...barisKlik("hadir")} title="Lihat daftar Tepat waktu" className="flex items-center gap-2.5 cursor-pointer rounded-lg hover:bg-white/5 transition-colors relative z-30">
                     <span className="w-2.5 h-2.5 rounded-lg bg-primer-terang"></span>
                     <span className="text-sm text-gray-400">Tepat waktu</span>
-                    <span className="ml-auto text-sm font-bold text-white">{onTimeToday.length}</span>
+                    <span className="ml-auto text-sm font-bold text-white">{isLoading ? "-" : onTimeToday.length}</span>
+                    <span className="text-[11px] text-tint">→</span>
                   </div>
-                  <div className="flex items-center gap-2.5">
+                  <div {...barisKlik("terlambat")} title="Lihat daftar Terlambat" className="flex items-center gap-2.5 cursor-pointer rounded-lg hover:bg-white/5 transition-colors relative z-30">
                     <span className="w-2.5 h-2.5 rounded-lg bg-yellow-500"></span>
                     <span className="text-sm text-gray-400">Terlambat</span>
-                    <span className="ml-auto text-sm font-bold text-white">{lateToday.length}</span>
+                    <span className="ml-auto text-sm font-bold text-white">{isLoading ? "-" : lateToday.length}</span>
+                    <span className="text-[11px] text-tint">→</span>
                   </div>
-                  <div className="flex items-center gap-2.5">
+                  <div {...barisKlik("absen")} title="Lihat daftar Sakit / cuti" className="flex items-center gap-2.5 cursor-pointer rounded-lg hover:bg-white/5 transition-colors relative z-30">
                     <span className="w-2.5 h-2.5 rounded-lg bg-red-500"></span>
                     <span className="text-sm text-gray-400">Sakit / cuti</span>
-                    <span className="ml-auto text-sm font-bold text-white">{approvedLeaves.length}</span>
+                    <span className="ml-auto text-sm font-bold text-white">{isLoading ? "-" : approvedLeaves.length}</span>
+                    <span className="text-[11px] text-tint">→</span>
                   </div>
-                  <div className="flex items-center gap-2.5">
+                  <div {...barisKlik("remote")} title="Lihat daftar WFH / WFC" className="flex items-center gap-2.5 cursor-pointer rounded-lg hover:bg-white/5 transition-colors relative z-30">
                     <span className="w-2.5 h-2.5 rounded-lg bg-tint-redup"></span>
                     <span className="text-sm text-gray-400">WFH / WFC</span>
-                    <span className="ml-auto text-sm font-bold text-white">{remoteToday.length}</span>
+                    <span className="ml-auto text-sm font-bold text-white">{isLoading ? "-" : remoteToday.length}</span>
+                    <span className="text-[11px] text-tint">→</span>
                   </div>
-                  <div className="flex items-center gap-2.5">
+                  <div {...barisKlik("belum")} title="Lihat daftar Belum absen" className="flex items-center gap-2.5 cursor-pointer rounded-lg hover:bg-white/5 transition-colors relative z-30">
                     <span className="w-2.5 h-2.5 rounded-lg bg-white/20"></span>
                     <span className="text-sm text-gray-400">Belum absen</span>
-                    <span className="ml-auto text-sm font-bold text-white">{belumAbsen}</span>
+                    <span className="ml-auto text-sm font-bold text-white">{isLoading ? "-" : belumAbsen}</span>
+                    <span className="text-[11px] text-tint">→</span>
                   </div>
                   <div onClick={() => setActiveModal("total")} className="mt-2 pt-2.5 border-t border-white/10 flex items-center gap-2.5 cursor-pointer rounded-lg hover:bg-white/5 transition-colors relative z-30">
                     <span className="w-2.5"></span>
@@ -859,7 +896,7 @@ export default function AdminDashboardPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className={`${'bg-kartu rounded-xl'} border border-white/10 w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200`}>
             <div className={`p-4 border-b border-white/5 flex justify-between items-center ${'bg-kartu-hover'}`}>
-              <h2 className={`font-bold text-white ${'text-lg uppercase tracking-wider text-xs'}`}>Detail Informasi</h2>
+              <h2 className={`font-bold text-white ${'text-lg uppercase tracking-wider text-xs'}`}>{JUDUL_RINCIAN[activeModal] || "Detail Informasi"}</h2>
               <button onClick={() => setActiveModal(null)} className="text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             <div className="p-5">
@@ -910,6 +947,26 @@ export default function AdminDashboardPage() {
                     );
                   })}
                   {approvedLeaves.length === 0 && <p className="text-sm text-gray-500 text-center py-4">Tidak ada cuti/sakit.</p>}
+                </div>
+              )}
+              {activeModal === "belum" && (
+                <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
+                  {belumAbsenList.length > 0 && <p className="text-[10px] text-gray-500 mb-1">Karyawan aktif yang belum clock-in hari ini (yang sedang sakit/cuti tidak termasuk).</p>}
+                  {belumAbsenList.map((emp: any, i: number) => (
+                    <div key={emp.idKaryawan || emp.id || `ba-${i}`} className="flex justify-between items-center gap-3 p-3 bg-input rounded-lg border border-white/5 border-l-2 border-l-white/30">
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-white truncate">{emp.nama}</p>
+                        <p className="text-[10px] text-gray-500 font-mono mt-0.5 truncate">{emp.idKaryawan || "-"} • {emp.jabatan || "-"}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {sedangRemote(emp) && <span className="text-[10px] bg-primer/15 text-tint-redup px-2 py-1 rounded font-bold uppercase">WFH/WFC</span>}
+                        {emp.fleksibel === true
+                          ? <span className="text-[10px] bg-white/5 text-gray-400 px-2 py-1 rounded font-bold">Fleksibel</span>
+                          : <span className="text-xs font-mono text-gray-400">Masuk {emp.jamMasuk || "09:00"}</span>}
+                      </div>
+                    </div>
+                  ))}
+                  {belumAbsenList.length === 0 && <p className="text-sm text-gray-500 text-center py-4">Semua karyawan sudah absen atau sedang izin.</p>}
                 </div>
               )}
               {activeModal === "remote" && (
