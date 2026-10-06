@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import { X, Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, Link2, FileText, Image as ImageIcon, Paperclip, MessageSquare, ChevronDown, Send } from 'lucide-react';
 import { useToast } from "@/components/Toast";
+import { unggahMediaPublik } from '@/lib/media';
 
 // invisual.docs — editor dokumen kanvas (tema gelap) + upload gambar/file + komentar.
 // Di tingkat modul agar tombol tidak dipasang ulang tiap render.
@@ -61,11 +62,15 @@ export default function DocEditor() {
     setUploading(true);
     try {
       const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const path = `${dbItemId}/${Date.now()}-${safe}`;
-      const up = await supabase.storage.from('doc-assets').upload(path, file, { upsert: false });
-      if (up.error) throw up.error;
-      const { data } = supabase.storage.from('doc-assets').getPublicUrl(path);
-      const url = data.publicUrl;
+      // Gambar/video → Cloudinary (dikompres otomatis). Tak bisa/gagal → alur lama (Supabase).
+      let url = (await unggahMediaPublik(supabase, file, 'dokumen'))?.url || '';
+      if (!url) {
+        const path = `${dbItemId}/${Date.now()}-${safe}`;
+        const up = await supabase.storage.from('doc-assets').upload(path, file, { upsert: false });
+        if (up.error) throw up.error;
+        const { data } = supabase.storage.from('doc-assets').getPublicUrl(path);
+        url = data.publicUrl;
+      }
       ref.current?.focus();
       if (asImage) document.execCommand('insertHTML', false, `<img src="${url}" alt="${safe}" /><p><br/></p>`);
       else document.execCommand('insertHTML', false, `<a href="${url}" target="_blank" rel="noopener">\uD83D\uDCCE ${file.name}</a>&nbsp;`);

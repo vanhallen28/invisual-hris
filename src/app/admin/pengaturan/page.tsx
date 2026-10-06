@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
 import LoadingLogo from "@/components/LoadingLogo";
 import ResetKaryawanLogin from "@/components/admin/ResetKaryawanLogin";
+import KompresiMediaCard from "@/components/admin/KompresiMediaCard";
 import { useToast } from "@/components/Toast";
 import { ambilAturanJamKerja, simpanAturanJamKerja, rapikanJam, teksDurasi, ATURAN_JAM_KERJA_DEFAULT, type AturanJamKerja } from "@/lib/jamKerja";
 
@@ -41,6 +42,7 @@ const ICONS = {
   lock: <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />,
   user: <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />,
   key: <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />,
+  photo: <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21zM13.5 8.25h.008v.008H13.5V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />,
 };
 
 export default function PengaturanAkunPage() {
@@ -439,6 +441,17 @@ export default function PengaturanAkunPage() {
 
         <Section id="karyawan" open={open} setOpen={setOpen} icon={ICONS.key} title="Reset Login Karyawan" subtitle="Ubah nama, email, atau password karyawan yang lupa">
           <ResetKaryawanLogin />
+        </Section>
+
+        {/* SISTEM */}
+        <div className="flex items-center gap-3 mt-4 mb-1">
+          <div className="flex-1 h-px bg-white/10" />
+          <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Sistem</span>
+          <div className="flex-1 h-px bg-white/10" />
+        </div>
+
+        <Section id="media" open={open} setOpen={setOpen} icon={ICONS.photo} title="Kompresi Media (Cloudinary)" subtitle="Gambar & video dikompres otomatis saat diunggah">
+          <KompresiMediaCard dibuka={open === "media"} />
         </Section>
       </div>
 

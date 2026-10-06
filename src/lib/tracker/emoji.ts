@@ -1,4 +1,5 @@
 // src/lib/tracker/emoji.ts
+import { unggahMediaPublik } from '@/lib/media';
 type SB = any;
 
 export const EMOJI_GROUPS: { id: string; label: string; list: string[] }[] = [
@@ -46,13 +47,18 @@ export async function loadStickers(supabase: SB) {
 }
 
 export async function addSticker(supabase: SB, file: File, memberId: string) {
-  const safe = file.name.replace(/[^\w.\-]/g, '_');
-  const path = `stickers/${Date.now()}-${safe}`;
-  const up = await supabase.storage.from('doc-assets').upload(path, file);
-  if (up.error) throw new Error(up.error.message);
-  const { data } = supabase.storage.from('doc-assets').getPublicUrl(path);
+  // Gambar → Cloudinary (dikompres otomatis, maks 512 px). Tak bisa/gagal → alur lama (Supabase).
+  let url = (await unggahMediaPublik(supabase, file, 'stiker'))?.url || '';
+  if (!url) {
+    const safe = file.name.replace(/[^\w.\-]/g, '_');
+    const path = `stickers/${Date.now()}-${safe}`;
+    const up = await supabase.storage.from('doc-assets').upload(path, file);
+    if (up.error) throw new Error(up.error.message);
+    const { data } = supabase.storage.from('doc-assets').getPublicUrl(path);
+    url = data.publicUrl;
+  }
   const { data: row, error } = await supabase.from('chat_stickers')
-    .insert({ name: file.name.replace(/\.[^.]+$/, '').slice(0, 40), url: data.publicUrl, created_by: memberId })
+    .insert({ name: file.name.replace(/\.[^.]+$/, '').slice(0, 40), url, created_by: memberId })
     .select().single();
   if (error) throw new Error(error.message);
   return row;

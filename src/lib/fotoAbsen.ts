@@ -13,6 +13,8 @@
 // tidak pernah melempar galat; absen tetap tercatat walau foto gagal tersimpan
 // (mis. SQL belum dijalankan, koneksi putus).
 
+import { kompresMediaPrivat } from "@/lib/media";
+
 type SB = any;
 
 export const BUCKET_FOTO_ABSEN = "foto-absen";
@@ -51,8 +53,13 @@ export async function simpanFotoAbsen(
     const { data } = await supabase.auth.getSession();
     const uid = data?.session?.user?.id;
     if (!uid) return false;
-    const blob = await kompres(p.dataUrl);
+    let blob: Blob | null = await kompres(p.dataUrl);
     if (!blob) return false;
+    // Kompres lanjutan oleh Cloudinary (bila aktif; maks ±3 dtk agar sisa waktu cukup untuk
+    // menyimpan ke Supabase). Hasil tetap disimpan PRIVAT di Supabase; salinan di Cloudinary
+    // langsung dihapus. Gagal / lewat batas / tidak lebih kecil → hasil kompresi lokal.
+    const lanjut = await kompresMediaPrivat(supabase, new File([blob], "selfie.jpg", { type: "image/jpeg" }), "absen", { batasMs: 3000 });
+    if (lanjut && lanjut.type === "image/jpeg") blob = lanjut;
 
     path = `${uid}/${p.tanggal}_${p.jenis}_${Date.now()}.jpg`;
     const up = await supabase.storage.from(BUCKET_FOTO_ABSEN).upload(path, blob, { contentType: "image/jpeg", upsert: false, cacheControl: "3600" });

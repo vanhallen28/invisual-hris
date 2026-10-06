@@ -4,6 +4,8 @@
 // aturan akses, dan bucket lampirannya sendiri (lihat pesan-pribadi.sql).
 // Aturan "karyawan hanya boleh dengan HR/manager" dijaga di database;
 // kode di sini hanya memanggilnya.
+import { kompresMediaPrivat, cloudinaryDiketahuiNonaktif } from "@/lib/media";
+import { bisaDikompres } from "@/lib/cloudinary/aturan";
 type SB = any;
 
 export const BUCKET_PESAN_PRIBADI = "pesan-pribadi";
@@ -88,13 +90,21 @@ export const totalBelum = (m: Record<string, number> | null | undefined) => Obje
 /** Nama event jendela: ruang Pesan Pribadi melaporkan total belum dibaca ke lencana sidebar. */
 export const EVENT_BELUM_DIBACA = "pesan-pribadi-belum-dibaca";
 
+/** Boleh dipilih walau > batas? Ya bila gambar/video yang masih bisa dikompres Cloudinary lebih dulu. */
+export const lampiranBisaDikompres = (file: File) => !!bisaDikompres(file, "pesan") && !cloudinaryDiketahuiNonaktif();
+
 export async function unggahLampiran(supabase: SB, utasId: string, file: File): Promise<Lampiran> {
-  if (file.size > MAKS_LAMPIRAN_MB * 1024 * 1024) throw new Error(`Ukuran berkas maksimal ${MAKS_LAMPIRAN_MB} MB.`);
-  const aman = file.name.replace(/[^\w.\-]/g, "_").slice(-80) || "berkas";
+  const maks = MAKS_LAMPIRAN_MB * 1024 * 1024;
+  if (file.size > maks && !lampiranBisaDikompres(file)) throw new Error(`Ukuran berkas maksimal ${MAKS_LAMPIRAN_MB} MB.`);
+  // Gambar/video dikompres Cloudinary dulu; hasilnya tetap disimpan PRIVAT di Supabase.
+  // Tak bisa / gagal / tidak lebih kecil → berkas asli (alur lama).
+  const berkas = (await kompresMediaPrivat(supabase, file, "pesan")) || file;
+  if (berkas.size > maks) throw new Error(`Ukuran berkas maksimal ${MAKS_LAMPIRAN_MB} MB.`);
+  const aman = berkas.name.replace(/[^\w.\-]/g, "_").slice(-80) || "berkas";
   const path = `${utasId}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${aman}`;
-  const { error } = await supabase.storage.from(BUCKET_PESAN_PRIBADI).upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
+  const { error } = await supabase.storage.from(BUCKET_PESAN_PRIBADI).upload(path, berkas, { contentType: berkas.type || "application/octet-stream", upsert: false });
   if (error) lempar(error);
-  return { path, nama: file.name, tipe: file.type || "", ukuran: file.size };
+  return { path, nama: berkas === file ? file.name : berkas.name, tipe: berkas.type || "", ukuran: berkas.size };
 }
 
 /** Tautan sementara (1 jam) untuk lampiran. */

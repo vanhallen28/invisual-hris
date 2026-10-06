@@ -14,7 +14,7 @@ import {
   type Kontak, type Utas, type Pesan, type Peran,
   muatKontak, muatUtas, bukaUtas, muatPesan, kirimPesan, hapusPesan, tandaiDibaca, belumDibaca,
   unggahLampiran, urlLampiran, lawanDari, dibacaLawan, belumDipasang, ukuranTeks, totalBelum,
-  EVENT_BELUM_DIBACA, MAKS_LAMPIRAN_MB,
+  EVENT_BELUM_DIBACA, MAKS_LAMPIRAN_MB, lampiranBisaDikompres,
 } from '@/lib/pesanPribadi';
 
 const HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -254,7 +254,8 @@ export default function PesanPribadiRoom({ onBack, utasAwal }: { onBack: () => v
 
   const unggah = async (file: File) => {
     if (!file || !aktif) return;
-    if (file.size > MAKS_LAMPIRAN_MB * 1024 * 1024) { toast.gagal(`Ukuran berkas maksimal ${MAKS_LAMPIRAN_MB} MB.`); return; }
+    // Gambar/video yang bisa dikompres boleh lebih besar; ukuran akhirnya dicek lagi setelah dikompres.
+    if (file.size > MAKS_LAMPIRAN_MB * 1024 * 1024 && !lampiranBisaDikompres(file)) { toast.gagal(`Ukuran berkas maksimal ${MAKS_LAMPIRAN_MB} MB.`); return; }
     setMengunggah(true);
     try {
       const lamp = await unggahLampiran(supabase, aktif, file);

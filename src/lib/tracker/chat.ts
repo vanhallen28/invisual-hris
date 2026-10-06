@@ -1,4 +1,5 @@
 // src/lib/tracker/chat.ts — lapisan data Chat (ala Discord)
+import { unggahMediaPublik } from '@/lib/media';
 type SB = any;
 
 export const EMOJIS = ['👍', '❤️', '🔥', '✅', '👀', '🎉', '😂', '🙏'];
@@ -216,6 +217,9 @@ export async function unreadByChannel(supabase: SB, memberId: string) {
 
 /* ═══════════ LAMPIRAN ═══════════ */
 export async function uploadChatFile(supabase: SB, file: File) {
+  // Gambar/video → Cloudinary (dikompres otomatis). Tak bisa/gagal → alur lama (Supabase).
+  const cdn = await unggahMediaPublik(supabase, file, 'chat');
+  if (cdn) return { name: cdn.nama, url: cdn.url, type: cdn.tipe };
   const safe = file.name.replace(/[^\w.\-]/g, '_');
   const path = `chat/${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${safe}`;
   const { error } = await supabase.storage.from('doc-assets').upload(path, file);

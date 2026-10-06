@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import PerformancePanel from "@/components/PerformancePanel";
 import { logAudit } from "@/lib/audit";
 import Avatar from "@/components/Avatar";
+import { unggahMediaPublik } from "@/lib/media";
 import { useToast } from "@/components/Toast";
 import { ambilAturanJamKerjaDetail } from "@/lib/jamKerja";
 
@@ -209,6 +210,9 @@ export default function AdminKaryawanPage() {
     if (file.size > 3 * 1024 * 1024) return showToast("Ukuran gambar maksimal 3MB.", "error");
     setUploadingAvatar(true);
     try {
+      // Avatar → Cloudinary (dikompres otomatis, maks 512 px). Tak bisa/gagal → alur lama (Supabase).
+      const cdn = await unggahMediaPublik(supabase, file, "avatar");
+      if (cdn) { setFormData((f) => ({ ...f, avatarUrl: cdn.url })); return; }
       const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
       const safe = String(formData.idKaryawan || "new-" + Date.now()).replace(/[^a-zA-Z0-9-_]/g, "");
       const path = `avatars/${safe}-${Date.now()}.${ext}`;

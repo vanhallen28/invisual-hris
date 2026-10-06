@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import { Send, Maximize2, Minimize2, MessageSquare, Paperclip } from 'lucide-react';
 import { useToast } from "@/components/Toast";
+import { unggahMediaPublik } from '@/lib/media';
 
 // Chat per-tugas (item_updates). Pesan teks = polos (tanpa bubble). Lampiran = gambar/berkas via Storage.
 export default function TaskChat({ itemId, itemName }: { itemId: string; itemName?: string }) {
@@ -42,12 +43,17 @@ export default function TaskChat({ itemId, itemName }: { itemId: string; itemNam
     if (!supabase || !file || !itemId) return;
     setUploading(true);
     try {
-      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const path = `chat/${itemId}/${Date.now()}-${safe}`;
-      const up = await supabase.storage.from('doc-assets').upload(path, file, { upsert: false });
-      if (up.error) throw up.error;
-      const { data } = supabase.storage.from('doc-assets').getPublicUrl(path);
-      const { data: msg, error } = await supabase.from('item_updates').insert({ item_id: itemId, author_id: currentUserId, text: data.publicUrl }).select('*').single();
+      // Gambar/video → Cloudinary (dikompres otomatis). Tak bisa/gagal → alur lama (Supabase).
+      let url = (await unggahMediaPublik(supabase, file, 'tugas'))?.url || '';
+      if (!url) {
+        const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `chat/${itemId}/${Date.now()}-${safe}`;
+        const up = await supabase.storage.from('doc-assets').upload(path, file, { upsert: false });
+        if (up.error) throw up.error;
+        const { data } = supabase.storage.from('doc-assets').getPublicUrl(path);
+        url = data.publicUrl;
+      }
+      const { data: msg, error } = await supabase.from('item_updates').insert({ item_id: itemId, author_id: currentUserId, text: url }).select('*').single();
       if (error) throw error;
       setUpdates((u) => [...u, msg]); scrollBottom(true);
     } catch (e: any) {

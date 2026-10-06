@@ -1,6 +1,7 @@
 {
   "regions": ["hnd1"],
   "crons": [
-    { "path": "/api/foto-absen/bersihkan", "schedule": "0 19 * * *" }
+    { "path": "/api/foto-absen/bersihkan", "schedule": "0 19 * * *" },
+    { "path": "/api/cloudinary/bersihkan", "schedule": "30 19 * * *" }
   ]
 }

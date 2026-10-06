@@ -1,6 +1,13 @@
 // src/lib/tracker/setoran.ts
 // Setoran Daily — bukti laporan harian berupa tangkapan layar.
 // Nama & foto TIDAK disimpan di sini; diambil dari employees lewat user_id.
+//
+// Gambar setoran kini disimpan di Cloudinary (dikompres otomatis) bila Cloudinary
+// aktif. Kolom storage_path lalu berisi penanda "cloudinary:image:upload:<public_id>"
+// supaya hapus manual & pembersihan 30 hari ikut menghapus berkas di Cloudinary.
+// Bila Cloudinary belum diatur / gagal → tetap ke bucket Supabase seperti dulu.
+import { unggahMediaPublik, hapusMediaCloudinary } from '@/lib/media';
+import { adalahPenanda } from '@/lib/cloudinary/aturan';
 
 type SB = any;
 
@@ -124,16 +131,22 @@ export async function uploadSetoran(supabase: SB, file: File | null, userId: str
 
   if (file) {
     const fileUp = await kompresGambar(file);                 // kompres dulu (fail-safe ke file asli)
-    const aman = fileUp.name.replace(/[^\w.\-]/g, '_');
-    path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${aman}`;
+    const cdn = await unggahMediaPublik(supabase, fileUp, 'setoran');
+    if (cdn) {
+      imageUrl = cdn.url;
+      path = cdn.penanda;
+    } else {
+      const aman = fileUp.name.replace(/[^\w.\-]/g, '_');
+      path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${aman}`;
 
-    const { error: upErr } = await supabase.storage
-      .from(SETORAN_BUCKET)
-      .upload(path, fileUp, { cacheControl: '3600', upsert: false });
-    if (upErr) throw new Error(upErr.message);
+      const { error: upErr } = await supabase.storage
+        .from(SETORAN_BUCKET)
+        .upload(path, fileUp, { cacheControl: '3600', upsert: false });
+      if (upErr) throw new Error(upErr.message);
 
-    const { data: pub } = supabase.storage.from(SETORAN_BUCKET).getPublicUrl(path);
-    imageUrl = pub.publicUrl;
+      const { data: pub } = supabase.storage.from(SETORAN_BUCKET).getPublicUrl(path);
+      imageUrl = pub.publicUrl;
+    }
   } else if (!caption?.trim()) {
     throw new Error('Tulis catatan atau lampirkan gambar dulu');
   }
@@ -150,7 +163,8 @@ export async function uploadSetoran(supabase: SB, file: File | null, userId: str
     .single();
   if (error) {
     // Baris gagal dibuat → jangan tinggalkan berkas yatim di storage.
-    await supabase.storage.from(SETORAN_BUCKET).remove([path]);
+    if (adalahPenanda(path)) await hapusMediaCloudinary(supabase, [path as string]);
+    else await supabase.storage.from(SETORAN_BUCKET).remove([path]);
     throw new Error(error.message);
   }
   return data;
@@ -158,7 +172,8 @@ export async function uploadSetoran(supabase: SB, file: File | null, userId: str
 
 export async function deleteSetoran(supabase: SB, post: any) {
   if (post?.storage_path) {
-    await supabase.storage.from(SETORAN_BUCKET).remove([post.storage_path]);
+    if (adalahPenanda(post.storage_path)) await hapusMediaCloudinary(supabase, [post.storage_path]);
+    else await supabase.storage.from(SETORAN_BUCKET).remove([post.storage_path]);
   }
   const { error } = await supabase.from('setoran_posts').delete().eq('id', post.id);
   if (error) throw new Error(error.message);
@@ -199,10 +214,13 @@ export async function purgeSetoranKedaluwarsa(supabase: SB) {
     .lt('created_at', batasWaktu());
   if (error || !data || data.length === 0) return 0;
 
-  const paths = data.map((d: any) => d.storage_path).filter(Boolean);
+  const semua = data.map((d: any) => d.storage_path).filter(Boolean);
+  const paths = semua.filter((p: string) => !adalahPenanda(p));
   for (let i = 0; i < paths.length; i += 100) {
     await supabase.storage.from(SETORAN_BUCKET).remove(paths.slice(i, i + 100));
   }
+  const diCloudinary = semua.filter((p: string) => adalahPenanda(p));
+  if (diCloudinary.length) await hapusMediaCloudinary(supabase, diCloudinary);
   await supabase.from('setoran_posts').delete().in('id', data.map((d: any) => d.id));
   return data.length;
 }
