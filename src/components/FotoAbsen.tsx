@@ -1,14 +1,14 @@
 // src/components/FotoAbsen.tsx
 // Tampilan foto selfie absensi untuk HR.
 //   • FotoAbsenPasangan — foto masuk & pulang satu baris absensi (dipakai di detail heatmap)
-//   • GaleriFotoAbsen   — jendela galeri semua foto absen per tanggal (7 hari terakhir)
+//   • GaleriFotoAbsen   — jendela galeri foto absen per tanggal (hari kerja 7 hari terakhir; Sabtu & Minggu tidak ditampilkan)
 // Foto disimpan privat; yang ditampilkan adalah tautan sementara (1 jam).
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { rapikanNama } from "@/lib/nama";
-import { ambilUrlFotoAbsen, fotoKedaluwarsa, UMUR_FOTO_HARI } from "@/lib/fotoAbsen";
+import { ambilUrlFotoAbsen, fotoKedaluwarsa, UMUR_FOTO_HARI, FOTO_ABSEN_MULAI } from "@/lib/fotoAbsen";
 import AvatarKaryawan from "@/components/AvatarKaryawan";
 
 const HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
@@ -16,6 +16,20 @@ const BULAN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "O
 const pad = (n: number) => String(n).padStart(2, "0");
 const isoDari = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const tglDari = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, (m || 1) - 1, d || 1); };
+
+/**
+ * Tanggal yang bisa dipilih di galeri: masa simpan foto (7 hari terakhir), tetapi
+ * TANPA Sabtu & Minggu (hari libur) dan tidak sebelum fitur foto absen aktif.
+ * Urut terbaru → terlama.
+ */
+function daftarTanggalGaleri(hariIni: string): string[] {
+  const d0 = tglDari(hariIni);
+  return Array.from({ length: UMUR_FOTO_HARI }, (_, i) => new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() - i))
+    .filter((d) => d.getDay() !== 0 && d.getDay() !== 6)
+    .map(isoDari)
+    .filter((iso) => iso >= FOTO_ABSEN_MULAI);
+}
+const selisihHari = (a: string, b: string) => Math.round((tglDari(b).getTime() - tglDari(a).getTime()) / 86400000);
 
 function Lightbox({ src, onTutup }: { src: string; onTutup: () => void }) {
   useEffect(() => {
@@ -103,9 +117,10 @@ export function FotoAbsenPasangan({ att, hariIni }: { att: any; hariIni: string 
   );
 }
 
-/** Jendela galeri foto absen per tanggal (hari ini s/d 6 hari lalu). */
+/** Jendela galeri foto absen per tanggal (hari kerja dalam 7 hari terakhir, Sabtu & Minggu tidak ditampilkan). */
 export function GaleriFotoAbsen({ hariIni, fokusId, onTutup }: { hariIni: string; fokusId?: string | null; onTutup: () => void }) {
-  const [tanggal, setTanggal] = useState(hariIni);
+  // Bawaan: hari ini; bila hari ini Sabtu/Minggu → hari kerja terakhir.
+  const [tanggal, setTanggal] = useState(() => daftarTanggalGaleri(hariIni)[0] ?? hariIni);
   const [baris, setBaris] = useState<any[]>([]);
   const [url, setUrl] = useState<Record<string, string>>({});
   const [hilang, setHilang] = useState<Set<string>>(() => new Set());
@@ -117,10 +132,7 @@ export function GaleriFotoAbsen({ hariIni, fokusId, onTutup }: { hariIni: string
   const [besar, setBesar] = useState<string | null>(null);
   const [ulang, setUlang] = useState(0);
 
-  const pilihanTanggal = useMemo(() => {
-    const d0 = tglDari(hariIni);
-    return Array.from({ length: UMUR_FOTO_HARI }, (_, i) => isoDari(new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() - i)));
-  }, [hariIni]);
+  const pilihanTanggal = useMemo(() => daftarTanggalGaleri(hariIni), [hariIni]);
 
   useEffect(() => {
     let hidup = true;
@@ -178,12 +190,13 @@ export function GaleriFotoAbsen({ hariIni, fokusId, onTutup }: { hariIni: string
 
         <div className="px-4 pt-3 pb-2 border-b border-white/5 flex flex-col gap-2.5">
           <div className="flex gap-1.5 overflow-x-auto pb-1">
-            {pilihanTanggal.map((iso, i) => {
+            {pilihanTanggal.map((iso) => {
               const d = tglDari(iso);
+              const mundur = selisihHari(iso, hariIni);
               return (
                 <button key={iso} type="button" onClick={() => setTanggal(iso)}
                   className={`shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${tanggal === iso ? "bg-primer text-white" : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"}`}>
-                  {i === 0 ? "Hari ini" : i === 1 ? "Kemarin" : `${HARI[d.getDay()].slice(0, 3)}, ${d.getDate()} ${BULAN[d.getMonth()]}`}
+                  {mundur === 0 ? "Hari ini" : mundur === 1 ? "Kemarin" : `${HARI[d.getDay()].slice(0, 3)}, ${d.getDate()} ${BULAN[d.getMonth()]}`}
                 </button>
               );
             })}

@@ -19,6 +19,8 @@ type SB = any;
 
 export const BUCKET_FOTO_ABSEN = "foto-absen";
 export const UMUR_FOTO_HARI = 7;
+/** Hari pertama fitur foto absen aktif — galeri tidak menampilkan tanggal sebelum ini (belum ada foto). */
+export const FOTO_ABSEN_MULAI = "2026-10-06";
 
 /** Perkecil foto (sisi terpanjang ≤ maks px, JPEG mutu 0,7) → ±40–80 KB. */
 async function kompres(dataUrl: string, maks = 720, mutu = 0.7): Promise<Blob | null> {
