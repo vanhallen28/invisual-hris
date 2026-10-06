@@ -12,6 +12,7 @@ import { CorporateSummaryCard } from "@/components/admin/CorporateSummaryCard";
 import { ResetAbsensiCard } from "@/components/admin/ResetAbsensiCard";
 import { ChatNotifCard } from "@/components/admin/ChatNotifCard";
 import { excludeOwners } from "@/lib/owners";
+import { ambilAturanJamKerja } from "@/lib/jamKerja";
 
 // Cek apakah HARI INI termasuk dalam periode izin/cuti.
 // Kolom `tanggal` berupa string: "2025-07-16", "2025-07-16 s/d 2025-07-20",
@@ -252,7 +253,9 @@ export default function AdminDashboardPage() {
               const { data: emp } = await supabase.from("employees").select("jamKeluar").eq("idKaryawan", req.idKaryawan).maybeSingle();
               jps = emp?.jamKeluar || "18:00";
             } else {
-              jps = tambahJamKe(att.waktuMasuk || "09:00", JAM_KERJA_JAM);
+              // Durasi kerja diatur HR di Pengaturan (bawaan 9 jam).
+              const aturanJK = await ambilAturanJamKerja(supabase);
+              jps = tambahJamKe(att.waktuMasuk || "09:00", aturanJK.durasiJam || JAM_KERJA_JAM);
             }
             await supabase.from("attendance").update({ jamPulangSeharusnya: jps }).eq("id", att.id);
           }
@@ -527,7 +530,7 @@ export default function AdminDashboardPage() {
                     <div className="flex gap-2 flex-wrap justify-end shrink-0">
                       <button onClick={() => handleApprovalAction(req.id, "Ditolak")} className="px-3 py-2 text-xs font-bold text-gray-400 hover:text-white relative z-30">Tolak</button>
                       <button onClick={() => handleApprovalAction(req.id, "Disetujui", "normal")} title="Keterlambatan dimaafkan — pulang jam normal" className="px-3 py-2 bg-green-600/90 hover:bg-green-600 text-white text-xs font-bold rounded-xl relative z-30 whitespace-nowrap">ACC pulang 18:00</button>
-                      <button onClick={() => handleApprovalAction(req.id, "Disetujui", "sesuai_telat")} title="Wajib ganti jam — pulang sesuai keterlambatan (clock-in + 9 jam)" className="px-3 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30 whitespace-nowrap">ACC pulang +jam</button>
+                      <button onClick={() => handleApprovalAction(req.id, "Disetujui", "sesuai_telat")} title="Wajib ganti jam — pulang sesuai keterlambatan (clock-in + durasi kerja di Pengaturan)" className="px-3 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30 whitespace-nowrap">ACC pulang +jam</button>
                     </div>
                   </div>
                 ))}
@@ -664,7 +667,7 @@ export default function AdminDashboardPage() {
                         {req.jenis === "Izin Terlambat" ? (
                           <>
                             <button onClick={() => handleApprovalAction(req.id, "Disetujui", "normal")} title="Keterlambatan dimaafkan — pulang jam normal" className="px-3 py-2 bg-green-600/90 hover:bg-green-600 text-white text-xs font-bold rounded-xl relative z-30">ACC pulang 18:00</button>
-                            <button onClick={() => handleApprovalAction(req.id, "Disetujui", "sesuai_telat")} title="Wajib ganti jam — pulang sesuai keterlambatan (clock-in + 9 jam)" className="px-3 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30">ACC pulang +jam</button>
+                            <button onClick={() => handleApprovalAction(req.id, "Disetujui", "sesuai_telat")} title="Wajib ganti jam — pulang sesuai keterlambatan (clock-in + durasi kerja di Pengaturan)" className="px-3 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30">ACC pulang +jam</button>
                           </>
                         ) : (
                           <button onClick={() => handleApprovalAction(req.id, "Disetujui")} className="px-4 py-2 bg-primer-terang hover:bg-blue-600 text-white text-xs font-bold rounded-xl relative z-30">Setujui</button>

@@ -64,11 +64,12 @@ export function tambahJamKe(hhmm: string, jam: number): string {
  * - Telat (clock-in > jam masuk + toleransi) → clock-in + JAM_KERJA_JAM (persis).
  * - Tepat waktu → jam keluar normal.
  */
-export function jamPulangDariClockIn(clockInHHMM: string, jamMasuk: string, jamKeluar: string, toleransiMenit: number): string {
+export function jamPulangDariClockIn(clockInHHMM: string, jamMasuk: string, jamKeluar: string, toleransiMenit: number, durasiJam: number = JAM_KERJA_JAM): string {
   const [cih, cim] = String(clockInHHMM || "00:00").split(":").map(Number);
   const menitCI = (cih || 0) * 60 + (cim || 0);
   const [mh, mm] = String(jamMasuk || "09:00").split(":").map(Number);
   const menitMasuk = (mh || 9) * 60 + (mm || 0);
-  if (menitCI > menitMasuk + (toleransiMenit || 0)) return tambahJamKe(clockInHHMM, JAM_KERJA_JAM);
+  // durasiJam: diatur HR di Pengaturan (bawaan JAM_KERJA_JAM = 9).
+  if (menitCI > menitMasuk + (toleransiMenit || 0)) return tambahJamKe(clockInHHMM, durasiJam > 0 ? durasiJam : JAM_KERJA_JAM);
   return jamKeluar || "18:00";
 }

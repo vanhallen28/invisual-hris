@@ -3,7 +3,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { TOLERANSI_TELAT_MENIT, jamPulangDariClockIn } from "@/lib/keterlambatan";
+import { TOLERANSI_TELAT_MENIT, JAM_KERJA_JAM, jamPulangDariClockIn } from "@/lib/keterlambatan";
+import { ambilAturanJamKerja, teksDurasi } from "@/lib/jamKerja";
 import { jarakMeter, ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
 import { pushNotify } from "@/lib/push";
 import LoadingLogo from "@/components/LoadingLogo";
@@ -31,6 +32,7 @@ export default function UserKehadiranPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [jamMasuk, setJamMasuk] = useState("09:00");
   const [toleransiTelat, setToleransiTelat] = useState(TOLERANSI_TELAT_MENIT);
+  const [durasiKerja, setDurasiKerja] = useState(JAM_KERJA_JAM); // diatur HR di Pengaturan
   const [blokirPulangTelat, setBlokirPulangTelat] = useState(false);
   const [geofenceAktif, setGeofenceAktif] = useState(true); // DIPAKSA aktif: enforcement lokasi tak bisa dimatikan
   const [kantorLat, setKantorLat] = useState(KANTOR_DEFAULT.lat);
@@ -147,6 +149,10 @@ export default function UserKehadiranPage() {
       if (schedData?.jamKeluar) setJamKeluar(schedData.jamKeluar);
       setIsFleksibel(schedData?.fleksibel === true);
       if (schedData?.toleransiTelat != null) setToleransiTelat(Number(schedData.toleransiTelat));
+      // Aturan jam kerja global (Pengaturan): durasi kerja + toleransi cadangan bila data karyawan kosong.
+      const aturanJK = await ambilAturanJamKerja(supabase);
+      setDurasiKerja(aturanJK.durasiJam);
+      if (schedData?.toleransiTelat == null) setToleransiTelat(aturanJK.toleransiMenit);
       const { data: pgn } = await supabase.from("pengaturan").select("nilai").eq("kunci", "blokir_pulang_telat").maybeSingle();
       setBlokirPulangTelat(pgn?.nilai === "true");
       const { data: geo } = await supabase.from("pengaturan").select("kunci, nilai").in("kunci", ["geofence_aktif", "kantor_lat", "kantor_lng", "kantor_radius"]);
@@ -338,7 +344,7 @@ export default function UserKehadiranPage() {
     const isLate = (now.getHours() * 60 + now.getMinutes()) > ((schedH || 9) * 60 + (schedM || 0) + toleransiTelat);
     // WFH/WFC tidak dihitung terlambat (hanya mode Kantor); jam fleksibel juga tidak.
     const statusKehadiran = (!isFleksibel && modeKerja === "Kantor" && isLate) ? "Terlambat" : "Tepat Waktu";
-    const jamPulang = isFleksibel ? null : jamPulangDariClockIn(timeString, jamMasuk, jamKeluar, toleransiTelat);
+    const jamPulang = isFleksibel ? null : jamPulangDariClockIn(timeString, jamMasuk, jamKeluar, toleransiTelat, durasiKerja);
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
 
     try {
@@ -735,7 +741,7 @@ export default function UserKehadiranPage() {
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4" onClick={() => !menyimpanTelat && setPromptTelat(false)}>
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-kartu p-5" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold text-white">Anda tercatat terlambat</h3>
-            <p className="mt-1.5 text-[12px] text-gray-400 leading-relaxed">Ajukan izin keterlambatan agar atasan bisa menyetujui <span className="text-tint font-semibold">pulang jam normal (18:00)</span>. Tanpa izin yang disetujui, jam pulang wajib mengikuti +9 jam dari clock-in.</p>
+            <p className="mt-1.5 text-[12px] text-gray-400 leading-relaxed">Ajukan izin keterlambatan agar atasan bisa menyetujui <span className="text-tint font-semibold">pulang jam normal (18:00)</span>. Tanpa izin yang disetujui, jam pulang wajib mengikuti +{teksDurasi(durasiKerja)} dari clock-in.</p>
             <textarea value={alasanTelat} onChange={(e) => setAlasanTelat(e.target.value)} rows={3} placeholder="Alasan keterlambatan (mis. macet, ada urusan keluarga)…" className="mt-3 w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer resize-none" />
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => { setPromptTelat(false); setAlasanTelat(""); }} disabled={menyimpanTelat} className="rounded-lg px-4 py-2 text-sm font-bold text-gray-400 hover:text-white disabled:opacity-50">Lewati</button>
@@ -753,7 +759,7 @@ export default function UserKehadiranPage() {
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-amber-400"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
               Anda Terlambat
             </h3>
-            <p className="mt-1.5 text-[12px] text-gray-400 leading-relaxed">Absen masuk Anda melewati jam masuk. <span className="text-amber-300 font-semibold">Alasan keterlambatan wajib diisi</span> untuk melanjutkan clock-in. Pengajuan izin terlambat otomatis dibuat dan jam wajib pulang mengikuti +9 jam dari sekarang (atasan dapat menyetujui pulang jam normal).</p>
+            <p className="mt-1.5 text-[12px] text-gray-400 leading-relaxed">Absen masuk Anda melewati jam masuk. <span className="text-amber-300 font-semibold">Alasan keterlambatan wajib diisi</span> untuk melanjutkan clock-in. Pengajuan izin terlambat otomatis dibuat dan jam wajib pulang mengikuti +{teksDurasi(durasiKerja)} dari sekarang (atasan dapat menyetujui pulang jam normal).</p>
             <textarea value={alasanWajibTelat} onChange={(e) => setAlasanWajibTelat(e.target.value)} rows={3} autoFocus placeholder="Alasan keterlambatan (mis. macet, ada urusan keluarga)…" className="mt-3 w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer resize-none" />
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => { setWajibTelat(false); setAlasanWajibTelat(""); setCaptureMode(null); }} disabled={isActionLoading} className="rounded-lg px-4 py-2 text-sm font-bold text-gray-400 hover:text-white disabled:opacity-50">Batal</button>

@@ -7,6 +7,7 @@ import PerformancePanel from "@/components/PerformancePanel";
 import { logAudit } from "@/lib/audit";
 import Avatar from "@/components/Avatar";
 import { useToast } from "@/components/Toast";
+import { ambilAturanJamKerjaDetail } from "@/lib/jamKerja";
 
 export default function AdminKaryawanPage() {
   const toast = useToast();
@@ -53,6 +54,9 @@ export default function AdminKaryawanPage() {
   const [roleMap, setRoleMap] = useState<Record<string, string>>({}); // user_id -> role Tracker
   const [allBoards, setAllBoards] = useState<string[]>([]); // nama board Daily Task untuk pembatasan akses
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  // Bawaan jam kerja untuk karyawan BARU — dari Pengaturan bila HR sudah menyimpannya,
+  // selain itu tetap bawaan lama (09:00, 17:00, 5 menit).
+  const [bawaanJK, setBawaanJK] = useState({ jamMasuk: "09:00", jamKeluar: "17:00", toleransiTelat: 5 });
 
   const fetchEmployees = async () => {
     setIsLoading(true);
@@ -78,6 +82,16 @@ export default function AdminKaryawanPage() {
       if (!error && data) setEmployees(data);
     } catch (error) {}
   };
+
+  useEffect(() => {
+    ambilAturanJamKerjaDetail(supabase).then(({ aturan, diatur }) => {
+      setBawaanJK({
+        jamMasuk: diatur.jamMasuk ? aturan.jamMasuk : "09:00",
+        jamKeluar: diatur.jamPulang ? aturan.jamPulang : "17:00",
+        toleransiTelat: diatur.toleransiMenit ? aturan.toleransiMenit : 5,
+      });
+    });
+  }, []);
 
   useEffect(() => {
     fetchEmployees();
@@ -141,11 +155,11 @@ export default function AdminKaryawanPage() {
       sisaCuti: 12, gajiPokok: "", namaBank: "", noRekening: "", isAktif: true, role: "member",
       institusiMagang: "", tanggalSelesaiMagang: "",
       boardAccess: [] as string[], contentHub: true, corporateAccess: false,
-      jamMasuk: "09:00", jamKeluar: "17:00", avatarUrl: "", tanggalLahir: "", accBrief: false,
+      jamMasuk: bawaanJK.jamMasuk, jamKeluar: bawaanJK.jamKeluar, avatarUrl: "", tanggalLahir: "", accBrief: false,
       tanggalBerakhirKontrak: "",
       tempatLahir: "", alamatKtp: "", domisiliSamaKtp: false,
       pendidikanNama: "", pendidikanJurusan: "", pendidikanStatus: "",
-      toleransiTelat: 5,
+      toleransiTelat: bawaanJK.toleransiTelat,
       isFreelancer: false
     });
     setShowModal(true);
@@ -182,7 +196,7 @@ export default function AdminKaryawanPage() {
       tanggalBerakhirKontrak: emp.tanggalBerakhirKontrak || "",
       tempatLahir: emp.tempatLahir || "", alamatKtp: emp.alamatKtp || "", domisiliSamaKtp: emp.domisiliSamaKtp === true,
       pendidikanNama: emp.pendidikanNama || "", pendidikanJurusan: emp.pendidikanJurusan || "", pendidikanStatus: emp.pendidikanStatus || "",
-      toleransiTelat: emp.toleransiTelat ?? 5,
+      toleransiTelat: emp.toleransiTelat ?? bawaanJK.toleransiTelat,
       isFreelancer: emp.isFreelancer === true
     });
     setShowModal(true);
@@ -829,7 +843,7 @@ export default function AdminKaryawanPage() {
                     <div className="col-span-2">
                       <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase">Toleransi Keterlambatan (menit)</label>
                       <input type="number" min={0} disabled={formData.fleksibel} value={formData.toleransiTelat} onChange={(e) => setFormData({...formData, toleransiTelat: e.target.value === "" ? "" : Number(e.target.value)})} placeholder="mis. 5" className={`w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primer outline-none ${formData.fleksibel ? "opacity-40 cursor-not-allowed" : ""}`} />
-                      <p className="text-[10px] text-gray-500 mt-1">Absen dianggap "Terlambat" hanya jika lewat jam masuk + toleransi ini. 0 = ketat. (Fleksibel = tak pernah telat.)</p>
+                      <p className="text-[10px] text-gray-500 mt-1">Absen dianggap "Terlambat" hanya jika lewat jam masuk + toleransi ini. 0 = ketat. (Fleksibel = tak pernah telat.) Standar perusahaan diatur di Pengaturan → Jam Kerja &amp; Toleransi; isian di sini = pengecualian untuk karyawan ini.</p>
                     </div>
                   </div>
 

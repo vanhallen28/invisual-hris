@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabase";
 import { ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
 import LoadingLogo from "@/components/LoadingLogo";
 import ResetKaryawanLogin from "@/components/admin/ResetKaryawanLogin";
+import { useToast } from "@/components/Toast";
+import { ambilAturanJamKerja, simpanAturanJamKerja, rapikanJam, teksDurasi, ATURAN_JAM_KERJA_DEFAULT, type AturanJamKerja } from "@/lib/jamKerja";
 
 /* Bagian accordion yang bisa dibuka-tutup */
 function Section({ id, open, setOpen, icon, title, subtitle, badge, children }: any) {
@@ -71,6 +73,15 @@ export default function PengaturanAkunPage() {
   const [geoLng, setGeoLng] = useState("");
   const [geoRadius, setGeoRadius] = useState("150");
   const [geoMsg, setGeoMsg] = useState("");
+  // Jam kerja & toleransi (global, diatur HR)
+  const toast = useToast();
+  const [jkMasuk, setJkMasuk] = useState(ATURAN_JAM_KERJA_DEFAULT.jamMasuk);
+  const [jkPulang, setJkPulang] = useState(ATURAN_JAM_KERJA_DEFAULT.jamPulang);
+  const [jkDurasi, setJkDurasi] = useState(String(ATURAN_JAM_KERJA_DEFAULT.durasiJam));
+  const [jkToleransi, setJkToleransi] = useState(String(ATURAN_JAM_KERJA_DEFAULT.toleransiMenit));
+  const [jkTersimpan, setJkTersimpan] = useState<AturanJamKerja>(ATURAN_JAM_KERJA_DEFAULT);
+  const [jkBusy, setJkBusy] = useState<"" | "simpan" | "terapkan">("");
+  const [jkMsg, setJkMsg] = useState<any>(null);
 
   useEffect(() => {
     (async () => {
@@ -89,6 +100,10 @@ export default function PengaturanAkunPage() {
         const gm: Record<string, string> = {}; (geo || []).forEach((r: any) => { gm[r.kunci] = r.nilai; });
         setGeoAktif(true); // dipaksa aktif — abaikan on/off dari DB
         setGeoLat(gm.kantor_lat || String(KANTOR_DEFAULT.lat)); setGeoLng(gm.kantor_lng || String(KANTOR_DEFAULT.lng)); setGeoRadius(gm.kantor_radius || String(KANTOR_DEFAULT.radius));
+        const aturanJK = await ambilAturanJamKerja(supabase);
+        setJkMasuk(aturanJK.jamMasuk); setJkPulang(aturanJK.jamPulang);
+        setJkDurasi(String(aturanJK.durasiJam)); setJkToleransi(String(aturanJK.toleransiMenit));
+        setJkTersimpan(aturanJK);
       } catch { setEmailMsg({ t: "err", m: "Tidak dapat terhubung ke server." }); }
       setLoading(false);
     })();
@@ -125,6 +140,73 @@ export default function PengaturanAkunPage() {
       setGeoMsg("Lokasi kantor diperbarui dari posisi Anda sekarang.");
     } catch (e: any) { setGeoMsg(e?.message || "Gagal ambil lokasi."); }
     setGeoBusy(false);
+  };
+
+  // ── Jam kerja & toleransi ──────────────────────────────────────────────
+  // Validasi isian → aturan, atau null bila ada yang tidak valid (pesan ditampilkan).
+  const bacaFormJamKerja = (): AturanJamKerja | null => {
+    const masuk = rapikanJam(jkMasuk), pulang = rapikanJam(jkPulang);
+    const durasi = Number(String(jkDurasi).replace(",", "."));
+    const toleransi = Number(jkToleransi);
+    if (!masuk || !pulang) { setJkMsg({ t: "err", m: "Format jam tidak valid (gunakan JJ:MM, mis. 09:00)." }); return null; }
+    if (!(durasi > 0 && durasi <= 24)) { setJkMsg({ t: "err", m: "Durasi kerja harus di antara 1 dan 24 jam." }); return null; }
+    if (!(Number.isInteger(toleransi) && toleransi >= 0 && toleransi <= 240)) { setJkMsg({ t: "err", m: "Toleransi harus bilangan bulat 0–240 menit." }); return null; }
+    return { jamMasuk: masuk, jamPulang: pulang, durasiJam: durasi, toleransiMenit: toleransi };
+  };
+
+  const simpanJamKerja = async () => {
+    setJkMsg(null);
+    const a = bacaFormJamKerja(); if (!a) return;
+    setJkBusy("simpan");
+    try {
+      await simpanAturanJamKerja(supabase, a);
+      setJkTersimpan(a);
+      setJkMsg({ t: "ok", m: `Tersimpan. Durasi kerja ${teksDurasi(a.durasiJam)} langsung berlaku untuk clock-in berikutnya. Untuk menyalin jam masuk/pulang & toleransi ke data karyawan, tekan "Terapkan ke semua karyawan".` });
+    } catch (e: any) { setJkMsg({ t: "err", m: "Gagal menyimpan: " + (e?.message || "coba lagi.") }); }
+    setJkBusy("");
+  };
+
+  // Salin jam masuk, jam pulang & toleransi ke semua karyawan aktif yang tidak
+  // fleksibel (lewat API karyawan yang sama dengan halaman Karyawan). Setelah itu
+  // karyawan tertentu tetap bisa dikecualikan di halaman Karyawan.
+  const terapkanKeKaryawan = async () => {
+    setJkMsg(null);
+    const a = bacaFormJamKerja(); if (!a) return;
+    let target: any[] = [];
+    try {
+      const { data, error } = await supabase.from("employees").select("*");
+      if (error) throw error;
+      target = (data || []).filter((e: any) => e.idKaryawan && e.fleksibel !== true && e.isAktif !== false && e.isFreelancer !== true);
+    } catch (e: any) { setJkMsg({ t: "err", m: "Gagal membaca data karyawan: " + (e?.message || "") }); return; }
+    if (!target.length) { setJkMsg({ t: "err", m: "Tidak ada karyawan aktif non-fleksibel untuk diterapkan." }); return; }
+    const ya = await toast.konfirmasi(
+      `Terapkan jam masuk ${a.jamMasuk}, jam pulang ${a.jamPulang} & toleransi ${a.toleransiMenit} menit ke ${target.length} karyawan aktif (non-fleksibel, non-freelance)? Pengaturan khusus mereka akan tertimpa.`,
+      { labelYa: "Terapkan" },
+    );
+    if (!ya) return;
+    setJkBusy("terapkan");
+    try {
+      await simpanAturanJamKerja(supabase, a);
+      setJkTersimpan(a);
+      let berhasil = 0; const gagal: string[] = [];
+      for (let i = 0; i < target.length; i += 4) {
+        await Promise.all(target.slice(i, i + 4).map(async (e: any) => {
+          try {
+            const res = await fetch("/api/employees", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ idKaryawan: e.idKaryawan, jamMasuk: a.jamMasuk, jamKeluar: a.jamPulang, toleransiTelat: a.toleransiMenit }),
+            });
+            if (!res.ok) throw new Error(String(res.status));
+            berhasil++;
+          } catch { gagal.push(e.nama || e.idKaryawan); }
+        }));
+      }
+      setJkMsg(gagal.length
+        ? { t: "err", m: `${berhasil} karyawan diperbarui, ${gagal.length} gagal: ${gagal.slice(0, 5).join(", ")}${gagal.length > 5 ? "…" : ""}.` }
+        : { t: "ok", m: `Aturan disimpan & diterapkan ke ${berhasil} karyawan.` });
+    } catch (e: any) { setJkMsg({ t: "err", m: "Gagal menerapkan: " + (e?.message || "coba lagi.") }); }
+    setJkBusy("");
   };
 
   const submitEmail = async (e: React.FormEvent) => {
@@ -217,10 +299,45 @@ export default function PengaturanAkunPage() {
       </div>
 
       <div className="p-5 mb-5 rounded-xl border border-white/10 bg-white/[0.03]">
+        <h3 className="text-sm font-bold text-white">Jam Kerja &amp; Toleransi Keterlambatan</h3>
+        <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">
+          Standar untuk seluruh karyawan. <span className="text-tint font-bold">Simpan</span> menyimpan aturan (durasi kerja langsung berlaku saat clock-in).{" "}
+          <span className="text-tint font-bold">Terapkan ke semua karyawan</span>{" "}menyalin jam masuk, jam pulang &amp; toleransi ke karyawan aktif non-fleksibel — karyawan tertentu tetap bisa dikecualikan di halaman Karyawan.
+        </p>
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Jam Masuk</label>
+            <input type="time" value={jkMasuk} onChange={(e) => setJkMasuk(e.target.value)} className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer [color-scheme:dark]" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Jam Pulang</label>
+            <input type="time" value={jkPulang} onChange={(e) => setJkPulang(e.target.value)} className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer [color-scheme:dark]" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Durasi Kerja (jam)</label>
+            <input type="number" min={1} max={24} step={0.5} value={jkDurasi} onChange={(e) => setJkDurasi(e.target.value)} className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer" />
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Toleransi Telat (menit)</label>
+            <input type="number" min={0} max={240} step={1} value={jkToleransi} onChange={(e) => setJkToleransi(e.target.value)} className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer" />
+          </div>
+        </div>
+        <p className="text-[11px] text-gray-500 mt-3 leading-relaxed">
+          Aturan tersimpan: masuk <span className="text-gray-300 font-bold">{jkTersimpan.jamMasuk}</span>, pulang <span className="text-gray-300 font-bold">{jkTersimpan.jamPulang}</span>.
+          Clock-in lewat <span className="text-gray-300 font-bold">jam masuk + {jkTersimpan.toleransiMenit} menit</span> tercatat Terlambat, dan jam wajib pulangnya = clock-in + <span className="text-gray-300 font-bold">{teksDurasi(jkTersimpan.durasiJam)}</span>.
+        </p>
+        {jkMsg && <div className="mt-3"><Msg data={jkMsg} /></div>}
+        <div className="flex flex-wrap gap-2 mt-3">
+          <button onClick={simpanJamKerja} disabled={!!jkBusy} className="bg-primer-terang hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-bold px-5 py-2.5 rounded-lg transition-all">{jkBusy === "simpan" ? "Menyimpan…" : "Simpan"}</button>
+          <button onClick={terapkanKeKaryawan} disabled={!!jkBusy} className="bg-primer/20 border border-primer/40 hover:bg-primer/30 disabled:opacity-50 text-tint text-xs font-bold px-5 py-2.5 rounded-lg transition-all">{jkBusy === "terapkan" ? "Menerapkan…" : "Terapkan ke semua karyawan"}</button>
+        </div>
+      </div>
+
+      <div className="p-5 mb-5 rounded-xl border border-white/10 bg-white/[0.03]">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h3 className="text-sm font-bold text-white">Kebijakan Absensi — Blokir Clock-Out Telat</h3>
-            <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">Jika aktif, karyawan yang datang telat <span className="text-tint font-bold">tidak bisa clock-out sebelum jam wajib pulang</span> (clock-in + 9 jam). Jika mati, jam wajib pulang hanya ditampilkan sebagai info.</p>
+            <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">Jika aktif, karyawan yang datang telat <span className="text-tint font-bold">tidak bisa clock-out sebelum jam wajib pulang</span> (clock-in + {teksDurasi(jkTersimpan.durasiJam)}). Jika mati, jam wajib pulang hanya ditampilkan sebagai info.</p>
           </div>
           <button onClick={toggleBlokir} disabled={blokirBusy} className={`shrink-0 w-14 h-8 rounded-full border transition-colors relative ${blokirTelat ? "bg-primer-terang border-primer" : "bg-white/10 border-white/20"} ${blokirBusy ? "opacity-50" : ""}`}>
             <span className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${blokirTelat ? "left-7" : "left-1"}`}></span>
