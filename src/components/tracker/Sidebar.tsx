@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { Plus, ChevronDown, Pencil, Trash2, LayoutTemplate, Search, X, Copy, Check } from 'lucide-react';
 import Image from 'next/image';
-import { useDashboard, makeDefaultViews } from '@/components/tracker/DashboardContext';
+import { useDashboard } from '@/components/tracker/DashboardContext';
 import { duplicateBoard, LABEL_MODE, KETERANGAN_MODE, type ModeDuplikat } from '@/lib/tracker/duplicate';
+import { simpanBuka } from '@/lib/tracker/sidebarBuka';
 
 export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
   const { 
@@ -73,8 +74,22 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
     setEditingCell(null);
   };
 
-  const toggleYear = (yearId: string) => setWorkspaces((ws:any) => ws.map((w:any) => w.id === activeWorkspaceId ? { ...w, years: w.years.map((y:any) => y.id === yearId ? { ...y, isOpen: !y.isOpen } : y) } : w));
-  const toggleMonth = (yearId: string, monthId: string) => setWorkspaces((ws:any) => ws.map((w:any) => w.id === activeWorkspaceId ? { ...w, years: w.years.map((y:any) => y.id === yearId ? { ...y, months: y.months.map((m:any) => m.id === monthId ? { ...m, isOpen: !m.isOpen } : m) } : y) } : w));
+  // Buka/tutup tahun & bulan diingat di perangkat ini (dulu kembali seperti semula
+  // setiap halaman dimuat ulang atau papan disegarkan).
+  const cariTahun = (yearId: string) => {
+    for (const w of (workspaces || [])) { const y = (w.years || []).find((yy: any) => yy.id === yearId); if (y) return y; }
+    return null;
+  };
+  const toggleYear = (yearId: string) => {
+    const nilai = !cariTahun(yearId)?.isOpen;
+    simpanBuka(yearId, nilai);
+    setWorkspaces((ws:any) => ws.map((w:any) => w.id === activeWorkspaceId ? { ...w, years: w.years.map((y:any) => y.id === yearId ? { ...y, isOpen: nilai } : y) } : w));
+  };
+  const toggleMonth = (yearId: string, monthId: string) => {
+    const nilai = !(cariTahun(yearId)?.months || []).find((m: any) => m.id === monthId)?.isOpen;
+    simpanBuka(monthId, nilai);
+    setWorkspaces((ws:any) => ws.map((w:any) => w.id === activeWorkspaceId ? { ...w, years: w.years.map((y:any) => y.id === yearId ? { ...y, months: y.months.map((m:any) => m.id === monthId ? { ...m, isOpen: nilai } : m) } : y) } : w));
+  };
 
   const handleDeleteYear = (yearId: string) => deleteNode('year', yearId);
   const handleDeleteMonth = (yearId: string, monthId: string) => deleteNode('month', monthId);

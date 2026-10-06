@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import { Send, Maximize2, Minimize2, MessageSquare, Paperclip } from 'lucide-react';
 import { useToast } from "@/components/Toast";
@@ -107,8 +108,11 @@ export default function TaskChat({ itemId, itemName }: { itemId: string; itemNam
     </form>
   );
 
-  if (expanded) {
-    return (
+  // Mode besar dirender ke <body> lewat portal: panel detail memakai `transform`
+  // (animasi geser), sehingga `fixed` di dalamnya ikut terkurung selebar panel —
+  // "Perbesar" dulu hanya sebesar panel, bukan satu layar.
+  if (expanded && typeof document !== 'undefined') {
+    return createPortal(
       <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6" onMouseDown={(e) => { if (e.target === e.currentTarget) setExpanded(false); }}>
         <div className="w-full max-w-2xl h-[88vh] bg-input rounded-xl shadow-2xl flex flex-col overflow-hidden border border-white/10">
           <div className="flex items-center justify-between px-4 h-12 border-b border-white/10 bg-kartu-hover shrink-0">
@@ -118,7 +122,8 @@ export default function TaskChat({ itemId, itemName }: { itemId: string; itemNam
           <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain px-5 py-4">{messages}</div>
           <div className="p-3 bg-kartu-hover border-t border-white/10 shrink-0">{composer}</div>
         </div>
-      </div>
+      </div>,
+      document.body,
     );
   }
 

@@ -86,6 +86,37 @@ export default function MainTable() {
   const statusColId = columns.find((c:any) => c.type === 'status')?.id;
   const statusOptions = statusColId ? (labels[statusColId] || []) : [];
 
+  // ── Filter Person/Status ikut memeriksa SUB-ITEM ──
+  // (dulu hanya kolom induk → PIC/status yang ada di sub-item tak pernah tersaring)
+  const subPeopleIds = subColumns.filter((c: any) => c.type === 'team').map((c: any) => c.id);
+  const subStatusIds = subColumns.filter((c: any) => c.type === 'status').map((c: any) => c.id);
+  const opsiFilterStatus = (() => {
+    const out: any[] = []; const ada = new Set<string>();
+    const tambah = (l: any) => { if (l?.text && !ada.has(l.text)) { ada.add(l.text); out.push(l); } };
+    statusOptions.forEach(tambah);
+    subStatusIds.forEach((cid: string) => (labels[cid] || []).forEach(tambah));
+    return out;
+  })();
+  const lolosInduk = (it: any) =>
+    (!filterPerson || (!!peopleColId && Array.isArray(it[peopleColId]) && it[peopleColId].includes(filterPerson))) &&
+    (!filterStatus || (!!statusColId && it[statusColId] === filterStatus));
+  const lolosSub = (sb: any) =>
+    (!filterPerson || subPeopleIds.some((c: string) => Array.isArray(sb?.[c]) && sb[c].includes(filterPerson))) &&
+    (!filterStatus || subStatusIds.some((c: string) => sb?.[c] === filterStatus));
+  // Item lolos sendiri → tampil utuh. Bila hanya sebagian sub-itemnya yang cocok,
+  // item tetap tampil dengan sub-item yang cocok saja, dibentangkan hanya di
+  // TAMPILAN (status buka/tutup tersimpan tidak diubah). Item seperti ini tidak
+  // ikut "pilih semua" grup — supaya hapus massal tak menghapus induk utuh
+  // padahal yang dicari hanya sub-itemnya.
+  const lewatSub = new Map<string, any[]>();   // id item → sub-item asli lengkap
+  const saringFilter = (arr: any[]) => arr.flatMap((it: any) => {
+    if (lolosInduk(it)) return [it];
+    const subs = (it.subItems || []).filter(lolosSub);
+    if (!subs.length) return [];
+    lewatSub.set(it.id, it.subItems || []);
+    return [{ ...it, subItems: subs }];
+  });
+
   // ── Pencarian: nama item, nama sub-item, dan isi sel teks/tags/status ──
   // (dulu memeriksa i.tags yang tidak pernah ada & mengabaikan sub-item)
   const teksSel = (v: any): string => {
@@ -157,10 +188,10 @@ export default function MainTable() {
             </>
           )}
         </div>
-        {(peopleColId || statusColId) && (
+        {(peopleColId || statusColId || subPeopleIds.length > 0 || subStatusIds.length > 0) && (
           <>
             <div className="w-[1px] h-6 bg-kartu-hover mx-1"></div>
-            {peopleColId && (
+            {(peopleColId || subPeopleIds.length > 0) && (
               <div className="relative">
                 <button onClick={() => setFilterMenu(filterMenu === 'person' ? null : 'person')} className={`flex items-center gap-1.5 text-sm transition-colors ${filterPerson ? 'text-blue-400 hover:text-blue-300' : 'text-gray-400 hover:text-gray-200'}`}>
                   <Filter size={15}/> {filterPerson ? (teamMembers.find((m:any) => m.id === filterPerson)?.name || 'Person') : 'Person'}
@@ -182,7 +213,7 @@ export default function MainTable() {
                 )}
               </div>
             )}
-            {statusColId && (
+            {(statusColId || subStatusIds.length > 0) && (
               <div className="relative">
                 <button onClick={() => setFilterMenu(filterMenu === 'status' ? null : 'status')} className={`flex items-center gap-1.5 text-sm transition-colors ${filterStatus ? 'text-blue-400 hover:text-blue-300' : 'text-gray-400 hover:text-gray-200'}`}>
                   <Filter size={15}/> {filterStatus || 'Status'}
@@ -192,7 +223,7 @@ export default function MainTable() {
                     <div className="fixed inset-0 z-40" onClick={() => setFilterMenu(null)}></div>
                     <div className="absolute top-full left-0 mt-2 w-52 bg-kartu border border-white/10 shadow-2xl rounded-xl z-50 p-2 flex flex-col gap-0.5 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95">
                       <button onClick={() => { setFilterStatus(null); setFilterMenu(null); }} className="text-left text-[13px] px-2.5 py-1.5 hover:bg-white/5 rounded-lg text-gray-400 transition-colors">All statuses</button>
-                      {statusOptions.map((l:any) => (
+                      {opsiFilterStatus.map((l:any) => (
                         <button key={l.id} onClick={() => { setFilterStatus(l.text); setFilterMenu(null); }} className="flex items-center gap-2 text-[13px] px-2.5 py-1.5 hover:bg-white/5 rounded-lg text-gray-200 text-left transition-colors">
                           <span className={`w-3 h-3 rounded-sm shrink-0 ${l.color}`}></span>
                           <span className="truncate">{l.text}</span>
@@ -215,8 +246,7 @@ export default function MainTable() {
         {boardData.map((group:any) => {
           let filteredItems = group.items;
           if (searchQuery.trim()) { const kata = searchQuery.trim().toLowerCase(); filteredItems = group.items.filter((i: any) => cocokCari(i, kata)); }
-          if (filterPerson && peopleColId) filteredItems = filteredItems.filter((i: any) => Array.isArray(i[peopleColId]) && i[peopleColId].includes(filterPerson));
-          if (filterStatus && statusColId) filteredItems = filteredItems.filter((i: any) => i[statusColId] === filterStatus);
+          if (filterPerson || filterStatus) filteredItems = saringFilter(filteredItems);
           if (sortConfig) filteredItems = urutkan(filteredItems);
 
           // Any popup (status/dropdown/people/timeline cell, or an add-column menu)
@@ -272,7 +302,10 @@ export default function MainTable() {
 
                   {/* HEADER TABEL UTAMA */}
                   <div className={`grid items-center border-b border-white/10 bg-kartu-hover text-[11px] font-bold text-gray-400 uppercase select-none rounded-t-md relative ${addColMenuTarget?.id === group.id ? 'z-40' : 'z-10'}`} style={{ gridTemplateColumns }}>
-                    <div className="px-2 py-3 flex justify-center pl-[6px] sticky left-0 z-20 bg-kartu-hover"><input type="checkbox" checked={filteredItems.length > 0 && filteredItems.every((i: any) => (selectedItems || []).includes(i.id))} onChange={() => toggleGroupSelection({ ...group, items: filteredItems })} title="Pilih semua baris yang tampil" className="rounded bg-latar border-white/10 text-blue-500 cursor-pointer w-3.5 h-3.5" /></div>
+                    {(() => {
+                      const bisaDipilih = filteredItems.filter((i: any) => !lewatSub.has(i.id));
+                      return <div className="px-2 py-3 flex justify-center pl-[6px] sticky left-0 z-20 bg-kartu-hover"><input type="checkbox" checked={bisaDipilih.length > 0 && bisaDipilih.every((i: any) => (selectedItems || []).includes(i.id))} onChange={() => toggleGroupSelection({ ...group, items: bisaDipilih })} title="Pilih semua baris yang tampil" className="rounded bg-latar border-white/10 text-blue-500 cursor-pointer w-3.5 h-3.5" /></div>;
+                    })()}
                     
                     <div className="px-3 py-3 border-r border-white/10 flex items-center justify-between gap-1 group/namecol transition-colors min-w-0 sticky left-[40px] z-20 bg-kartu-hover relative">
                        <span onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setResize({ id: '__nama', mulaiX: e.clientX, mulaiW: lebarNamaAktif, w: lebarNamaAktif }); }} onClick={(e) => e.stopPropagation()} title="Tarik untuk melebarkan kolom" className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500/70 active:bg-blue-500 transition-colors z-30" />
@@ -340,6 +373,8 @@ export default function MainTable() {
                         subGridTemplateColumns={subGridTemplateColumns}
                         addColMenuTarget={addColMenuTarget} 
                         setAddColMenuTarget={setAddColMenuTarget}
+                        paksaBuka={lewatSub.has(item.id)}
+                        subAsli={lewatSub.get(item.id)}
                       />
                     ))}
                   </div>

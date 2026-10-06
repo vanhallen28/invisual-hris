@@ -82,6 +82,46 @@ function PeoplePicker({ value, teamMembers, onChange }: any) {
   );
 }
 
+// Isian teks yang DISIMPAN SAAT SELESAI diketik (keluar dari isian / Enter),
+// bukan setiap ketukan. Dulu tiap huruf langsung ditulis ke database — memicu
+// riwayat per huruf dan realtime di layar rekan. Esc = batal. Bila isian hilang
+// dari layar tanpa sempat "keluar" (panel ditutup paksa, pindah item), draf
+// tetap disimpan agar ketikan tidak hilang.
+function IsianDraf({ value, onSimpan, className, type = 'text', placeholder }: any) {
+  const [draf, setDraf] = useState<string | null>(null);   // null = sedang tidak diedit
+  const drafRef = useRef<string | null>(null);
+  const batalRef = useRef(false);
+  const asli = typeof value === 'object' && value !== null ? '' : String(value ?? '');
+  const asliRef = useRef(asli);
+  const simpanRef = useRef(onSimpan);
+  useEffect(() => { asliRef.current = asli; simpanRef.current = onSimpan; });
+  useEffect(() => () => {
+    const d = drafRef.current;
+    if (d !== null && d !== asliRef.current) simpanRef.current?.(d);
+  }, []);
+  const ubah = (v: string) => { drafRef.current = v; setDraf(v); };
+  const simpan = () => {
+    const v = drafRef.current;
+    drafRef.current = null;
+    setDraf(null);
+    if (batalRef.current) { batalRef.current = false; return; }
+    if (v !== null && v !== asli) onSimpan(v);
+  };
+  return (
+    <input
+      type={type} value={draf ?? asli} placeholder={placeholder}
+      onChange={(e) => ubah(e.target.value)}
+      onBlur={simpan}
+      onKeyDown={(e) => {
+        if ((e.nativeEvent as any).isComposing) return;   // sedang merangkai huruf (IME)
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+        else if (e.key === 'Escape') { batalRef.current = true; (e.target as HTMLInputElement).blur(); }
+      }}
+      className={className}
+    />
+  );
+}
+
 // Ikon kecil di samping label setiap field, dipilih berdasar tipe kolom
 function fieldIcon(type: string) {
   const p: any = { size: 12, className: 'text-gray-500 shrink-0' };
@@ -135,13 +175,17 @@ function renderField(col: any, item: any, labels: any, teamMembers: any[], setVa
   if (col.type === 'team') {
     const arr = Array.isArray(v) ? v : [];
     if (!isManager) {
-      const me = teamMembers.find((m: any) => m.id === currentUserId);
-      if (!me) return <span className="text-xs text-gray-600">—</span>;
+      // Non-manager: hanya MELIHAT siapa yang ditugaskan. Dulu selalu menampilkan
+      // dirinya sendiri walau tidak ditugaskan di item itu.
+      const ditugaskan = arr.map((id: string) => teamMembers.find((m: any) => m.id === id) || { id, name: 'Anggota', initials: '?' });
+      if (!ditugaskan.length) return <span className="text-xs text-gray-600">—</span>;
       return (
         <div className="flex flex-wrap gap-1.5">
-          <span className="flex items-center gap-1.5 text-[11px] pl-1 pr-2.5 py-1 rounded-full border border-blue-500/50 bg-blue-500/10 text-gray-100">
-            <Avatar url={me.avatarUrl} name={me.name} initials={me.initials} className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white ${mColor(me)}`} />{me.name}
-          </span>
+          {ditugaskan.map((m: any) => (
+            <span key={m.id} className={`flex items-center gap-1.5 text-[11px] pl-1 pr-2.5 py-1 rounded-full border text-gray-100 ${m.id === currentUserId ? 'border-blue-500/50 bg-blue-500/10' : 'border-white/10 bg-white/5'}`}>
+              <Avatar url={m.avatarUrl} name={m.name} initials={m.initials} className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white ${mColor(m)}`} />{m.name}
+            </span>
+          ))}
         </div>
       );
     }
@@ -170,7 +214,7 @@ function renderField(col: any, item: any, labels: any, teamMembers: any[], setVa
   const looksUrl = !!s && (col.type === 'link' || s.startsWith('http') || /\.[a-z]{2,}([/?#]|$)/i.test(s));
   return (
     <div className="flex items-center gap-2">
-      <input type={col.type === 'number' ? 'number' : 'text'} value={safe} onChange={(e) => setVal(col.id, e.target.value)} placeholder="—" className="bg-kartu/50 border border-white/10 focus:border-blue-500 rounded-md px-2.5 py-1.5 text-xs text-gray-200 outline-none w-full transition-colors" />
+      <IsianDraf key={`${item.id}:${col.id}`} type={col.type === 'number' ? 'number' : 'text'} value={safe} onSimpan={(nilai: string) => setVal(col.id, nilai)} placeholder="—" className="bg-kartu/50 border border-white/10 focus:border-blue-500 rounded-md px-2.5 py-1.5 text-xs text-gray-200 outline-none w-full transition-colors" />
       {looksUrl && <a href={s.startsWith('http') ? s : `https://${s}`} target="_blank" rel="noopener noreferrer" title="Buka di tab baru" className="shrink-0 p-1.5 text-blue-400 hover:text-blue-300 hover:bg-kartu-hover rounded-md transition-colors"><ExternalLink size={14} /></a>}
     </div>
   );
@@ -220,9 +264,10 @@ export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
         {open && siapPanel && (
           <>
             <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between bg-kartu-hover shrink-0">
-              <input
+              <IsianDraf
+                key={item.id}
                 value={item.name}
-                onChange={(e) => setVal('name', e.target.value)}
+                onSimpan={(nilai: string) => setVal('name', nilai)}
                 className="bg-transparent text-lg font-bold text-white outline-none w-full mr-3 focus:bg-kartu/50 rounded px-1 -ml-1 transition-colors"
               />
               <button onClick={close} className="p-1.5 hover:bg-kartu-hover rounded-full text-gray-400 shrink-0 transition-colors"><X size={16} /></button>

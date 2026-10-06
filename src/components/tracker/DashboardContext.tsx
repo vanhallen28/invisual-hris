@@ -9,6 +9,9 @@ import DocEditor from '@/components/tracker/DocEditor';
 import NotificationCenter from '@/components/tracker/NotificationCenter';
 import LoadingLogo from '@/components/LoadingLogo';
 import { dbUpdateItemName, dbSetItemMeta, dbSetCellValue, newId, dbAddItem, dbAddSubItem, dbDeleteItem, dbAddColumn, dbDeleteColumn, dbAddLabel, dbDeleteLabel, dbUpdateLabelColor, dbAddGroup, dbUpdateGroup, dbDeleteGroup, dbAddTreeNode, dbRenameTreeNode, dbDeleteTreeNode, dbUpdateColumnLabel, dbReindexColumns, dbReindexGroups, dbReindexItems, dbMoveItemsGroup, dbSetAccountTarget, dbHapusAccountTarget, dbMoveGroup } from '@/lib/tracker/sync';
+import { muatViews, dbSimpanViews, dbUbahView, dbHapusView, dbUrutViews, pasangViewsDb, TABEL_VIEWS } from '@/lib/tracker/views';
+import { sudahTercermin } from '@/lib/tracker/gema';
+import { bacaBuka, simpanBuka, terapkanBuka } from '@/lib/tracker/sidebarBuka';
 
 const LABEL_COLORS = ['bg-[#e2445c]', 'bg-primer-terang', 'bg-[#fdab3d]', 'bg-[#00c875]', 'bg-[#a25ddc]', 'bg-[#ff5ac4]', 'bg-[#9d99ff]', 'bg-emerald-500', 'bg-rose-400'];
 const HEX_COLORS = ['#e2445c', '#579bfc', '#fdab3d', '#00c875', '#a25ddc', '#ff5ac4', '#9d99ff'];
@@ -22,16 +25,16 @@ const HEX_COLORS = ['#e2445c', '#579bfc', '#fdab3d', '#00c875', '#a25ddc', '#ff5
 let _cacheTrackerState: { uid: string; state: any; tanda?: TandaPemuat } | null = null;
 function bersihkanCacheTracker() { _cacheTrackerState = null; }
 
-// Set view default tiap board (Table, Kanban, Gantt, Chart) — sama seperti tab lama
-export const makeDefaultViews = (seedHidden: string[] = []) => {
-  const ts = Date.now();
-  return [
-    { id: `view-tbl-${ts}`, type: 'table', name: 'Main Table', config: { hiddenColumns: [...seedHidden] } },
-    { id: `view-kan-${ts + 1}`, type: 'kanban', name: 'Kanban', config: {} },
-    { id: `view-gan-${ts + 2}`, type: 'gantt', name: 'Timeline', config: {} },
-    { id: `view-cht-${ts + 3}`, type: 'chart', name: 'Overview', config: {} },
-  ];
-};
+// Set view default tiap board (Table, Kanban, Gantt, Chart) — sama seperti tab lama.
+// Id-nya TETAP (bukan cap waktu) supaya semua perangkat menghasilkan id yang sama:
+// saat view papan pertama kali disimpan ke database (tabel board_views), dua
+// orang yang menyimpan bersamaan tidak membuat "Main Table" ganda.
+export const makeDefaultViews = (seedHidden: string[] = []) => [
+  { id: 'view-tbl-awal', type: 'table', name: 'Main Table', config: { hiddenColumns: [...seedHidden] } },
+  { id: 'view-kan-awal', type: 'kanban', name: 'Kanban', config: {} },
+  { id: 'view-gan-awal', type: 'gantt', name: 'Timeline', config: {} },
+  { id: 'view-cht-awal', type: 'chart', name: 'Overview', config: {} },
+];
 // Migrasi non-destruktif: board lama tanpa "views" diberi set default; data lain tak disentuh
 const ensureViews = (map: any, seedHidden: string[] = []) => {
   const out: any = {};
@@ -110,6 +113,28 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   const [docEditorTarget, setDocEditorTarget] = useState<any>(null);
   const [teamMembers, setTeamMembers] = useState<any[]>([{ id: 'me', name: 'You', color: 'bg-primer-terang', initials: 'Y' }]);
   const [labels, setLabels] = useState<any>({});
+  // true bila tabel board_views terbaca → view & kolom tersembunyi disimpan ke database.
+  // false (SQL belum dijalankan / gagal baca) → perilaku lama: view hanya di memori.
+  const [viewsTersedia, setViewsTersedia] = useState(false);
+  // Papan yang view-nya sedang dikirim ke database dari tab ini (jumlah simpanan berjalan).
+  const viewsSibukRef = useRef<Map<string, number>>(new Map());
+  // Kapan view sebuah papan terakhir diubah / selesai disimpan dari tab ini.
+  const viewsUbahRef = useRef<Map<string, number>>(new Map());
+  // Antrean simpan view per papan (simpanan dijalankan berurutan, tak saling mendahului).
+  const antreanViewsRef = useRef<Map<string, Promise<void>>>(new Map());
+  // Papan yang perubahan view rekannya terlewat karena sedang disimpan → dimuat lagi sesudahnya.
+  const viewsTerlewatRef = useRef<Set<string>>(new Set());
+  const segarkanViewsRef = useRef<(() => void) | null>(null);
+  // Papan yang view lokalnya TIDAK boleh ditimpa hasil muat yang dimulai pada `mulai`:
+  // sedang disimpan, atau diubah/selesai disimpan sesudah muat itu dimulai (hasilnya
+  // bisa jadi dibaca sebelum simpanan sampai ke server).
+  const sibukViewsSejak = (mulai: number) => {
+    const out = new Set<string>(Array.from(viewsSibukRef.current.keys()));
+    viewsUbahRef.current.forEach((t, bid) => { if (t >= mulai) out.add(bid); });
+    return out;
+  };
+  // Posisi baris menurut muat terakhir dari server (untuk mengenali gema realtime).
+  const posServerRef = useRef<Record<string, number>>({});
 
   // MEMORI v24: RESET TOTAL KE KANVAS KOSONG
   const [boardsDataMap, setBoardsDataMap] = useState<Record<string, any>>(() => ensureViews({
@@ -133,6 +158,10 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   // (papan yang dibuka, tugas saya, kolom lintas papan). Lihat lib/tracker/pemuat.ts.
   const petaRef = useRef<Record<string, any>>(boardsDataMap);
   petaRef.current = boardsDataMap;
+  // Keadaan layar terkini untuk mengenali gema realtime (lihat lib/tracker/gema.ts).
+  const wsRef = useRef<any[]>(workspaces);
+  const labelsRef = useRef<any>(labels);
+  useEffect(() => { wsRef.current = workspaces; labelsRef.current = labels; }, [workspaces, labels]);
   // Status muat disimpan sebagai DATA di state (bukan dibaca dari objek yang
   // berubah diam-diam) supaya setiap komponen yang memakainya ikut digambar ulang.
   const [statusMuat, setStatusMuat] = useState<StatusPemuat>(STATUS_KOSONG);
@@ -167,20 +196,9 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   // ikut tergambar di belakang layar ACC.
   const activeView = (activeViewId === 'mytasks' || activeViewId === 'acc') ? null : (views.find((v:any) => v.id === activeViewId) || views[0] || null);
 
-  // hiddenColumns kini PER-VIEW (disimpan di activeView.config); API tetap sama
+  // hiddenColumns kini PER-VIEW (disimpan di activeView.config); API tetap sama.
+  // Pengubahnya (setHiddenColumns) ada di bagian VIEW INSTANCES — ikut tersimpan ke database.
   const hiddenColumns = activeView?.config?.hiddenColumns || [];
-  const setHiddenColumns = (updater: any) => {
-    if (!activeBoardId) return;
-    setBoardsDataMap((p:any) => {
-      const bd = p[activeBoardId]; if (!bd || !bd.views) return p;
-      const vid = (bd.views.find((v:any) => v.id === activeViewId)?.id) || bd.views[0]?.id;
-      if (!vid) return p;
-      const newViews = bd.views.map((v:any) => v.id === vid
-        ? { ...v, config: { ...(v.config || {}), hiddenColumns: typeof updater === 'function' ? updater(v.config?.hiddenColumns || []) : updater } }
-        : v);
-      return { ...p, [activeBoardId]: { ...bd, views: newViews } };
-    });
-  };
 
   const setBoardData = (newGroups: any[]) => { if(activeBoardId) setBoardsDataMap(p => ({ ...p, [activeBoardId]: { ...p[activeBoardId], groups: newGroups } })); };
   const setColumns = (newCols: any[]) => { if(activeBoardId) setBoardsDataMap(p => ({ ...p, [activeBoardId]: { ...p[activeBoardId], columns: newCols } })); };
@@ -314,8 +332,12 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
           anggota = s.teamMembers.length ? await mergeAvatars(supabase, s.teamMembers) : null;
           if (!active) return;
         }
-        setWorkspaces(s.workspaces);
+        // Status buka/tutup folder sidebar yang diingat perangkat ini (lihat sidebarBuka.ts).
+        const wsAwal = terapkanBuka(s.workspaces, bacaBuka());
+        setWorkspaces(wsAwal);
         setBoardsDataMap(ensureViews(s.boardsDataMap));
+        if (typeof s.viewsTersedia === 'boolean') setViewsTersedia(s.viewsTersedia);
+        if (s.posisi) posServerRef.current = s.posisi;
         setLabels(s.labels);
         setAccountTargets(s.accountTargets || {});
         if (anggota) setTeamMembers(anggota);
@@ -328,9 +350,9 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
         try { saved = localStorage.getItem('dwt_active_board'); } catch {}
         const boardIds = new Set<string>();
         const kumpulBoardIds = (bs: any[]) => { for (const b of (bs || [])) { boardIds.add(b.id); kumpulBoardIds(b.boards); } };
-        for (const w of s.workspaces) for (const y of (w.years || [])) for (const m of (y.months || [])) kumpulBoardIds(m.boards);
+        for (const w of wsAwal) for (const y of (w.years || [])) for (const m of (y.months || [])) kumpulBoardIds(m.boards);
         let firstBoard: string | null = null;
-        for (const w of s.workspaces) {
+        for (const w of wsAwal) {
           for (const y of (w.years || [])) {
             for (const m of (y.months || [])) { if (m.boards && m.boards[0]) { firstBoard = m.boards[0].id; break; } }
             if (firstBoard) break;
@@ -339,8 +361,8 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
         }
         const chosen = (saved && boardIds.has(saved)) ? saved : firstBoard;
         // buka tahun/bulan induk board terpilih agar sidebar menampilkannya + set workspace aktif
-        let wsActive = s.workspaces[0]?.id || '';
-        for (const w of s.workspaces) {
+        let wsActive = wsAwal[0]?.id || '';
+        for (const w of wsAwal) {
           for (const y of (w.years || [])) {
             for (const m of (y.months || [])) {
               // Termasuk sub-papan: buka juga papan induknya agar terlihat di sidebar.
@@ -353,7 +375,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
             }
           }
         }
-        setWorkspaces([...s.workspaces]);
+        setWorkspaces([...wsAwal]);
         setActiveWorkspaceId(wsActive);
         setActiveBoardId(chosen);
         // Dari cache: tampilkan sel yang tersimpan; tetap dimuat ulang di latar.
@@ -375,10 +397,10 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     if (!isLoaded || !authUser?.id || authUser.id !== uidMuatRef.current) return;
     _cacheTrackerState = {
       uid: authUser.id,
-      state: { workspaces, boardsDataMap, labels, accountTargets, teamMembers, currentUserId, currentUserRole, canContentHub, canAcc },
+      state: { workspaces, boardsDataMap, labels, accountTargets, teamMembers, currentUserId, currentUserRole, canContentHub, canAcc, viewsTersedia },
       tanda: pemuat.snapshot(),
     };
-  }, [isLoaded, authUser, workspaces, boardsDataMap, labels, accountTargets, teamMembers, currentUserId, currentUserRole, canContentHub, canAcc, statusMuat, pemuat]);
+  }, [isLoaded, authUser, workspaces, boardsDataMap, labels, accountTargets, teamMembers, currentUserId, currentUserRole, canContentHub, canAcc, viewsTersedia, statusMuat, pemuat]);
 
   // Segarkan KERANGKA (dipakai realtime, setelah duplikat papan, dsb.).
   // Dulu fungsi ini menarik ulang SEMUA nilai sel semua papan — itulah yang
@@ -396,13 +418,19 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       do {
         st.lagi = false;
         try {
+          const mulai = Date.now();
           const s = await loadStrukturState(supabase);
           const anggota = s.teamMembers.length ? await mergeAvatars(supabase, s.teamMembers) : null;
           if (sesi !== sesiRef.current) return;
           const lamaIds = semuaIdItem(petaRef.current);
           const baru = ensureViews(s.boardsDataMap);
-          setWorkspaces(s.workspaces);
-          setBoardsDataMap((prev: any) => pertahankanSel(baru, prev));
+          // Status buka/tutup folder di layar dipertahankan (dulu kembali ke nilai database tiap refresh).
+          const simpananBuka = bacaBuka();
+          const sibuk = sibukViewsSejak(mulai);
+          setWorkspaces((prev: any) => terapkanBuka(s.workspaces, simpananBuka, prev));
+          setBoardsDataMap((prev: any) => pertahankanSel(baru, prev, sibuk));
+          if (typeof s.viewsTersedia === 'boolean') setViewsTersedia(s.viewsTersedia);
+          if (s.posisi) posServerRef.current = s.posisi;
           setLabels(s.labels);
           setAccountTargets(s.accountTargets || {});
           if (anggota) setTeamMembers(anggota);
@@ -478,14 +506,29 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       const el: any = typeof document !== 'undefined' ? document.activeElement : null;
       return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
     };
-    const jadwalkanMuatUlang = () => {
+    const JENDELA_TULIS = 2500;
+    const jadwalkanMuatUlang = (tunda = 1500) => {
       clearTimeout(jeda);
       jeda = setTimeout(() => {
         if (sedangMengetik()) { jadwalkanMuatUlang(); return; }
-        // Gema dari tulisan sendiri: layar sudah benar, tak perlu ditarik ulang.
-        if (Date.now() - tulisSendiriRef.current < 2500) return;
+        // Tulisan tab ini masih baru (mungkin belum seluruhnya sampai ke server):
+        // tunda sampai jedanya lewat supaya layar tak berkedip — tapi JANGAN dibuang.
+        // Dulu dibuang, sehingga perubahan rekan yang datang dalam 2,5 detik
+        // setelah kita menulis tak pernah tampil sampai halaman dimuat ulang.
+        const sisa = JENDELA_TULIS - (Date.now() - tulisSendiriRef.current);
+        if (sisa > 0) { jadwalkanMuatUlang(sisa + 300); return; }
         refreshData();
-      }, 1500);
+      }, tunda);
+    };
+    // Perubahan struktur: gema tulisan sendiri yang isinya SUDAH sama dengan
+    // layar dilewati (tak perlu ditarik ulang); selain itu dijadwalkan muat ulang.
+    const saatStruktur = (tabel: string) => (p: any) => {
+      let gema = false;
+      if (Date.now() - tulisSendiriRef.current < JENDELA_TULIS) {
+        try { gema = sudahTercermin(tabel, p, { peta: petaRef.current, workspaces: wsRef.current, labels: labelsRef.current, posisi: posServerRef.current }); }
+        catch { gema = false; }   // ragu → muat ulang
+      }
+      if (!gema) jadwalkanMuatUlang();
     };
 
     // "Tugas saya" disegarkan berjeda bila penugasan yang menyangkut saya berubah.
@@ -518,7 +561,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       });
 
     for (const tabel of ['items', 'groups', 'columns', 'column_options', 'tree_nodes']) {
-      ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: tabel }, jadwalkanMuatUlang);
+      ch = ch.on('postgres_changes', { event: '*', schema: 'public', table: tabel }, saatStruktur(tabel));
     }
     // Penugasan (semua peran): tambal tepat sasaran item+kolom yang berubah —
     // bukan lagi muat ulang seluruh data. Bila menyangkut saya, "tugas saya" ikut disegarkan.
@@ -553,6 +596,37 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     // memakai objeknya membuat kanal realtime dibongkar-pasang tanpa perlu.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, authUser?.id, isLoaded, currentUserRole, tambalSel]);
+
+  // === REALTIME VIEW PAPAN (tabel board_views) ===
+  // Kanal TERPISAH dan hanya dipasang bila tabelnya terbaca: berlangganan tabel
+  // yang belum dibuat bisa menggagalkan satu kanal penuh — realtime papan tak boleh ikut mati.
+  // Hanya untuk manager (yang membuka papan & tab view); karyawan cukup dari muat kerangka.
+  const lihatViews = currentUserRole === 'manager';
+  useEffect(() => {
+    if (!supabase || !authUser || !isLoaded || !viewsTersedia || !lihatViews) return;
+    let aktif = true;
+    let jeda: any;
+    const segarkan = () => {
+      clearTimeout(jeda);
+      jeda = setTimeout(async () => {
+        const mulai = Date.now();
+        const hasil = await muatViews(supabase);
+        if (!aktif || hasil.status !== 'ada') return;
+        // Papan yang sedang/baru disimpan dari tab ini dilewati dulu, lalu dimuat
+        // lagi begitu simpanannya selesai (lihat simpanViews).
+        const sibuk = sibukViewsSejak(mulai);
+        sibuk.forEach((bid) => { if (hasil.peta[bid]) viewsTerlewatRef.current.add(bid); });
+        setBoardsDataMap((p: any) => pasangViewsDb(p, hasil.peta, sibuk));
+      }, 700);
+    };
+    segarkanViewsRef.current = segarkan;
+    const ch = supabase
+      .channel('papan-views')
+      .on('postgres_changes', { event: '*', schema: 'public', table: TABEL_VIEWS }, segarkan)
+      .subscribe();
+    return () => { aktif = false; clearTimeout(jeda); segarkanViewsRef.current = null; supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase, authUser?.id, isLoaded, viewsTersedia, lihatViews]);
 
   // Tab kembali aktif setelah lama (> 1 menit) di latar → realtime bisa terlewat
   // (peramban menidurkan koneksi): segarkan kerangka + sel yang sedang dipakai.
@@ -776,15 +850,28 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     setLabels((prev:any) => ({ ...prev, [columnId]: (prev[columnId] || []).map((l:any) => l.id === labelId ? { ...l, color } : l) }));
     if (cloudOn()) dbUpdateLabelColor(supabase, labelId, color).catch((e:any) => pushToast('Gagal ubah warna label: ' + (e?.message || e)));
   };
+  // Label milik kolom yang dihapus ikut dibuang dari memori (di database sudah
+  // terhapus lewat cascade) — supaya gema penghapusannya dikenali sebagai gema.
+  const buangLabelKolom = (ids: string[]) => {
+    if (!ids.length) return;
+    setLabels((prev: any) => {
+      if (!ids.some((id) => prev[id])) return prev;
+      const n = { ...prev };
+      ids.forEach((id) => { delete n[id]; });
+      return n;
+    });
+  };
   const handleDeleteColumn = (colId: string) => {
     tandaiTulisSendiri();
     setColumns(columns.filter((c:any) => c.id !== colId));
+    buangLabelKolom([colId]);
     pushToast('Kolom dihapus');
     if (cloudOn()) dbDeleteColumn(supabase, colId).catch((e:any) => pushToast('Gagal hapus kolom di cloud: ' + (e?.message || e)));
   };
   const handleDeleteSubColumn = (colId: string) => {
     tandaiTulisSendiri();
     setSubColumns(subColumns.filter((c:any) => c.id !== colId));
+    buangLabelKolom([colId]);
     pushToast('Kolom sub dihapus');
     if (cloudOn()) dbDeleteColumn(supabase, colId).catch((e:any) => pushToast('Gagal hapus kolom di cloud: ' + (e?.message || e)));
   };
@@ -836,6 +923,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     let position = 0;
     for (const w of workspaces) { const y = (w.years || []).find((yy:any) => yy.id === yearId); if (y) position = (y.months?.length) || 0; }
     setWorkspaces(workspaces.map((w:any) => ({ ...w, years: (w.years || []).map((y:any) => y.id === yearId ? { ...y, isOpen: true, months: [...(y.months || []), { id, name: nm, isOpen: true, boards: [] }] } : y) })));
+    simpanBuka(yearId, true);
     if (cloudOn()) dbAddTreeNode(supabase, { id, parentId: yearId, kind: 'month', name: nm, position }).catch((e:any) => pushToast('Gagal tambah bulan di cloud: ' + (e?.message || e)));
   };
   // === Helper rekursif pohon board (board bisa punya sub-board) ===
@@ -858,13 +946,19 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     const id = newId(); const groupId = newId();
     const color = HEX_COLORS[Math.floor(Math.random() * HEX_COLORS.length)];
     let position = 0;
+    // isOpen papan baru = true, sama dengan yang disimpan ke database (dbAddTreeNode
+    // menulis is_open: true) — dulu layar false tapi database true, tak konsisten.
+    // Pembaruan memakai updater FUNGSIONAL agar tak menimpa hasil refresh yang
+    // mungkin datang bersamaan.
+    const papanBaru = { id, name, isOpen: true, boards: [] };
     if (adalahBulanId(parentId)) {
       for (const w of workspaces) for (const y of (w.years || [])) { const m = (y.months || []).find((mm:any) => mm.id === parentId); if (m) position = (m.boards?.length) || 0; }
-      setWorkspaces(workspaces.map((w:any) => ({ ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).map((m:any) => m.id === parentId ? { ...m, isOpen: true, boards: [...(m.boards || []), { id, name, isOpen: false, boards: [] }] } : m) })) })));
+      setWorkspaces((ws: any[]) => ws.map((w:any) => ({ ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).map((m:any) => m.id === parentId ? { ...m, isOpen: true, boards: [...(m.boards || []), papanBaru] } : m) })) })));
     } else {
       position = (cariBoardWs(parentId)?.boards?.length) || 0;
-      setWorkspaces(petaSemuaBoards(workspaces, parentId, (b:any) => ({ ...b, isOpen: true, boards: [...(b.boards || []), { id, name, isOpen: false, boards: [] }] })));
+      setWorkspaces((ws: any[]) => petaSemuaBoards(ws, parentId, (b:any) => ({ ...b, isOpen: true, boards: [...(b.boards || []), papanBaru] })));
     }
+    simpanBuka(parentId, true);
     setBoardsDataMap((prev:any) => ({ ...prev, [id]: { groups: [{ id: groupId, title: 'New Group', color, isCollapsed: false, itemLabel: 'Item Name', subItemLabel: 'Subitem', items: [] }], columns: [], subColumns: [], views: makeDefaultViews() } }));
     pemuat.tandaiPapanSiap(id); // papan baru kosong → tak perlu dimuat
     setActiveBoardId(id);
@@ -908,13 +1002,21 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     }));
     if (kind === 'board') idTerhapus.add(nodeId);
     if (idTerhapus.size) {
+      const kolomTerhapus: string[] = [];
+      idTerhapus.forEach((id) => { const bd = boardsDataMap[id]; [...(bd?.columns || []), ...(bd?.subColumns || [])].forEach((c: any) => kolomTerhapus.push(c.id)); });
+      buangLabelKolom(kolomTerhapus);
       setBoardsDataMap((prev:any) => { const nm = { ...prev }; idTerhapus.forEach((id) => { delete nm[id]; }); return nm; });
       if (activeBoardId && idTerhapus.has(activeBoardId)) setActiveBoardId(null);
     }
     pushToast((kind === 'year' ? 'Tahun' : kind === 'month' ? 'Bulan' : 'Board') + ' dihapus');
     if (cloudOn()) dbDeleteTreeNode(supabase, nodeId).catch((e:any) => pushToast('Gagal hapus di cloud: ' + (e?.message || e)));
   };
-  const toggleBoard = (boardId: string) => setWorkspaces((ws:any) => petaSemuaBoards(ws, boardId, (b:any) => ({ ...b, isOpen: !b.isOpen })));
+  // Buka/tutup sub-papan; diingat di perangkat ini (lihat lib/tracker/sidebarBuka.ts).
+  const toggleBoard = (boardId: string) => {
+    const nilai = !cariBoardWs(boardId)?.isOpen;
+    simpanBuka(boardId, nilai);
+    setWorkspaces((ws:any) => petaSemuaBoards(ws, boardId, (b:any) => ({ ...b, isOpen: nilai })));
+  };
 
   // === REORDER + INSERT-BELOW + RENAME KOLOM (cloud-aware) ===
   const updateColumnLabel = (colId: string, label: string) => {
@@ -1239,7 +1341,9 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
         for (const { clone, groupId } of clones) {
           const grp = newGroups.find((g:any) => g.id === groupId);
           const pos = grp.items.findIndex((i:any) => i.id === clone.id);
-          itemRows.push({ id: clone.id, group_id: groupId, name: clone.name, position: pos, is_subitems_open: false });
+          // is_subitems_open mengikuti salinan di layar (dulu selalu false → setelah muat ulang
+          // salinan tiba-tiba terlipat, berbeda dari yang tampil saat diduplikat).
+          itemRows.push({ id: clone.id, group_id: groupId, name: clone.name, position: pos, is_subitems_open: !!clone.isSubItemsOpen });
           if (clone.description) metaCalls.push(dbSetItemMeta(supabase, clone.id, { description: clone.description }));
           tampungNilai(clone.id, columns, clone);
           const subs = clone.subItems || [];
@@ -1277,47 +1381,75 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
    * bukan milik grup, jadi salinannya otomatis memakai kolom yang sama.
    * Menyalinnya justru akan menggandakan kolom di seluruh papan.
    */
-  // Pindahkan grup ke board/sub-board lain, SEKALIGUS membawa nilai kolomnya
-  // (kolom dipetakan via label; kolom yang belum ada di board tujuan dibuat).
+  // Pindahkan grup ke board/sub-board lain, SEKALIGUS membawa nilai kolomnya.
+  // Kolom dipetakan via LABEL + TIPE (dulu label saja → "Status" bertipe teks bisa
+  // menerima nilai status). Kolom yang belum ada di board tujuan dibuat beserta
+  // seluruh labelnya; kolom yang sudah ada ditambah label yang dipakai grup ini
+  // tapi belum dikenal di sana (dulu tidak → pill status tampil tanpa warna).
+  // Grup diletakkan di urutan TERAKHIR board tujuan (posisinya ikut disimpan).
   const moveGroupToBoard = (groupId: string, targetBoardId: string) => {
-    if (!targetBoardId || targetBoardId === activeBoardId) return;
+    if (!activeBoardId || !targetBoardId || targetBoardId === activeBoardId) return;
+    const srcBoardId = activeBoardId;
     tandaiTulisSendiri();
-    const src = boardsDataMap[activeBoardId];
+    const src = boardsDataMap[srcBoardId];
     const tgt = boardsDataMap[targetBoardId];
     if (!src || !tgt) { pushToast('Board tujuan tak ditemukan.'); return; }
     const grup = (src.groups || []).find((g: any) => g.id === groupId);
     if (!grup) return;
 
-    const upper = (v: any) => String(v || '').trim().toUpperCase();
+    const kunci = (label: any, type: any) => `${String(label || '').trim().toUpperCase()}|${type || 'text'}`;
     const kolomBaru: any[] = [];
+    const labelBaru: { columnId: string; id: string; text: string; color: string; position: number }[] = [];
+    const jumlahLabel: Record<string, number> = {};
+    const posLabel = (colId: string) => {
+      if (!(colId in jumlahLabel)) jumlahLabel[colId] = (labels[colId] || []).length;
+      return jumlahLabel[colId]++;
+    };
     const setNilai: { itemId: string; colId: string; type: string; val: any }[] = [];
 
     const bangunPeta = (srcCols: any[], tgtCols: any[], scope: 'main' | 'sub') => {
-      const peta: Record<string, { id: string; type: string }> = {};
-      const byLabel: Record<string, any> = {};
-      (tgtCols || []).forEach((c: any) => { byLabel[upper(c.label)] = c; });
+      const peta: Record<string, { id: string; type: string; baru: boolean }> = {};
+      const byKunci: Record<string, any> = {};
+      (tgtCols || []).forEach((c: any) => { const k = kunci(c.label, c.type); if (!byKunci[k]) byKunci[k] = c; });
       let pos = (tgtCols || []).length;
       (srcCols || []).forEach((sc: any) => {
-        const match = byLabel[upper(sc.label)];
-        if (match) { peta[sc.id] = { id: match.id, type: match.type }; }
-        else {
-          const nid = newId();
-          const kol = { id: nid, label: sc.label, type: sc.type || 'text', width: sc.width || '130px' };
-          kolomBaru.push({ ...kol, scope, position: pos++ });
-          byLabel[upper(sc.label)] = kol;
-          peta[sc.id] = { id: nid, type: kol.type };
-        }
+        const k = kunci(sc.label, sc.type);
+        const match = byKunci[k];
+        if (match) { peta[sc.id] = { id: match.id, type: match.type, baru: !!match._baru }; return; }
+        const nid = newId();
+        const kol = { id: nid, label: sc.label, type: sc.type || 'text', width: sc.width || '130px', _baru: true };
+        kolomBaru.push({ ...kol, scope, position: pos++ });
+        byKunci[k] = kol;
+        peta[sc.id] = { id: nid, type: kol.type, baru: true };
+        // Kolom baru membawa SEMUA label kolom asal (warna sama).
+        for (const l of (labels[sc.id] || [])) labelBaru.push({ columnId: nid, id: newId(), text: l.text, color: l.color, position: posLabel(nid) });
       });
       return peta;
     };
     const petaMain = bangunPeta(src.columns || [], tgt.columns || [], 'main');
     const petaSub = bangunPeta(src.subColumns || [], tgt.subColumns || [], 'sub');
 
+    // Kolom tujuan yang SUDAH ada: tambahkan label yang dipakai grup ini tapi belum dikenal.
+    const pastikanLabel = (srcColId: string, tujuan: { id: string; type: string; baru: boolean }, v: any) => {
+      if (tujuan.baru || (tujuan.type !== 'status' && tujuan.type !== 'tags')) return;
+      const teks = (Array.isArray(v) ? v : [v]).filter((t: any) => typeof t === 'string' && t);
+      for (const t of teks) {
+        const sudah = (labels[tujuan.id] || []).some((l: any) => l.text === t) || labelBaru.some((l) => l.columnId === tujuan.id && l.text === t);
+        if (sudah) continue;
+        const warna = (labels[srcColId] || []).find((l: any) => l.text === t)?.color || LABEL_COLORS[0];
+        labelBaru.push({ columnId: tujuan.id, id: newId(), text: t, color: warna, position: posLabel(tujuan.id) });
+      }
+    };
+
+    const kosongV = (v: any) => v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
     const remapSub = (sub: any) => {
-      const baru: any = { id: sub.id, name: sub.name };
+      const baru: any = { id: sub.id, name: sub.name, description: sub.description };
       Object.keys(petaSub).forEach((sid) => {
         const v = sub[sid];
-        if (v !== undefined && v !== null && v !== '') { baru[petaSub[sid].id] = v; setNilai.push({ itemId: sub.id, colId: petaSub[sid].id, type: petaSub[sid].type, val: v }); }
+        if (kosongV(v)) return;
+        baru[petaSub[sid].id] = v;
+        pastikanLabel(sid, petaSub[sid], v);
+        setNilai.push({ itemId: sub.id, colId: petaSub[sid].id, type: petaSub[sid].type, val: v });
       });
       return baru;
     };
@@ -1325,33 +1457,57 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
       const baru: any = { id: it.id, name: it.name, isSubItemsOpen: it.isSubItemsOpen, description: it.description, subItems: (it.subItems || []).map(remapSub) };
       Object.keys(petaMain).forEach((sid) => {
         const v = it[sid];
-        if (v !== undefined && v !== null && v !== '') { baru[petaMain[sid].id] = v; setNilai.push({ itemId: it.id, colId: petaMain[sid].id, type: petaMain[sid].type, val: v }); }
+        if (kosongV(v)) return;
+        baru[petaMain[sid].id] = v;
+        pastikanLabel(sid, petaMain[sid], v);
+        setNilai.push({ itemId: it.id, colId: petaMain[sid].id, type: petaMain[sid].type, val: v });
       });
       return baru;
     };
     const grupBaru = { ...grup, items: (grup.items || []).map(remapItem) };
+    // Sesudah grup terakhir board tujuan. Posisi di database bisa berselang
+    // (mis. 0,2,5 setelah ada yang dihapus) → pakai yang terbesar, bukan jumlah grup.
+    const posisiTujuan = Math.max(-1, ...(tgt.groups || []).map((g: any, i: number) => {
+      const p = posServerRef.current[g.id];
+      return typeof p === 'number' ? Math.max(p, i) : i;
+    })) + 1;
+    posServerRef.current[groupId] = posisiTujuan;
     // Sel hasil pemetaan masih dalam perjalanan ke cloud → jangan tertimpa muat papan tujuan.
     setNilai.forEach((v) => pemuat.tandaiEdit(v.itemId, v.colId));
 
     setBoardsDataMap((prev: any) => {
-      const s0 = prev[activeBoardId], t0 = prev[targetBoardId];
+      const s0 = prev[srcBoardId], t0 = prev[targetBoardId];
       if (!s0 || !t0) return prev;
       const tCols = [...(t0.columns || [])];
       const tSub = [...(t0.subColumns || [])];
       kolomBaru.forEach((k) => { const c = { id: k.id, label: k.label, type: k.type, width: k.width }; if (k.scope === 'sub') tSub.push(c); else tCols.push(c); });
       return {
         ...prev,
-        [activeBoardId]: { ...s0, groups: (s0.groups || []).filter((g: any) => g.id !== groupId) },
-        [targetBoardId]: { ...t0, columns: tCols, subColumns: tSub, groups: [...(t0.groups || []), grupBaru] },
+        [srcBoardId]: { ...s0, groups: (s0.groups || []).filter((g: any) => g.id !== groupId) },
+        [targetBoardId]: { ...t0, columns: tCols, subColumns: tSub, groups: [...(t0.groups || []).filter((g: any) => g.id !== groupId), grupBaru] },
       };
     });
+    if (labelBaru.length) {
+      setLabels((prev: any) => {
+        const n = { ...prev };
+        for (const l of labelBaru) n[l.columnId] = [...(n[l.columnId] || []), { id: l.id, text: l.text, color: l.color }];
+        return n;
+      });
+    }
 
     if (cloudOn()) {
       (async () => {
         try {
           for (const k of kolomBaru) await dbAddColumn(supabase, { id: k.id, boardId: targetBoardId, scope: k.scope, label: k.label, type: k.type, width: k.width, position: k.position });
-          await dbMoveGroup(supabase, groupId, targetBoardId);
+          for (const l of labelBaru) await dbAddLabel(supabase, { id: l.id, columnId: l.columnId, text: l.text, color: l.color, position: l.position });
+          tandaiTulisSendiri();
+          await dbMoveGroup(supabase, groupId, targetBoardId, posisiTujuan);
           for (const v of setNilai) await dbSetCellValue(supabase, v.itemId, v.colId, v.type, v.val);
+          // Urutan grup yang tersisa di board asal dirapikan (tanpa celah) — dibaca
+          // dari layar SAAT INI (bisa sudah berubah selama proses berjalan).
+          const sisa = (petaRef.current[srcBoardId]?.groups || []).filter((g: any) => g.id !== groupId).map((g: any) => g.id);
+          if (sisa.length) await dbReindexGroups(supabase, sisa);
+          tandaiTulisSendiri();
         } catch (e: any) { pushToast('Gagal pindah grup di cloud: ' + (e?.message || e)); }
       })();
     }
@@ -1386,7 +1542,11 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
         for (let ii = 0; ii < items.length; ii++) {
           const it = items[ii];
           await dbAddItem(supabase, { id: it.id, groupId: idBaru, name: it.name, position: ii });
-          if (it.description) await dbSetItemMeta(supabase, it.id, { description: it.description });
+          // Brief & status buka sub-item disamakan dengan salinan di layar.
+          const meta: any = {};
+          if (it.description) meta.description = it.description;
+          if (it.isSubItemsOpen) meta.is_subitems_open = true;
+          if (Object.keys(meta).length) await dbSetItemMeta(supabase, it.id, meta);
 
           for (const col of columns) {
             const val = it[col.id];
@@ -1413,58 +1573,139 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   };
 
   // === VIEW INSTANCES (multi-view ala Monday) ===
+  // View & kolom tersembunyi tiap papan disimpan ke tabel board_views (bila
+  // tabelnya ada) supaya tidak hilang saat dimuat ulang dan sama bagi seluruh tim.
+  // Hanya manager yang menyimpan; papan yang view-nya belum pernah tersimpan
+  // (`viewsDariDb` belum true) disimpan LENGKAP pada perubahan pertamanya.
+  const viewsBolehSimpan = () => cloudOn() && viewsTersedia && currentUserRole === 'manager';
+  const aturViews = (bid: string, daftar: any[]) => {
+    viewsUbahRef.current.set(bid, Date.now());
+    setBoardsDataMap((p: any) => (p[bid] ? { ...p, [bid]: { ...p[bid], views: daftar } } : p));
+  };
+  // Simpanan view sebuah papan dijalankan BERURUTAN (antrean per papan) supaya
+  // klik cepat beruntun tidak saling mendahului di server.
+  const simpanViews = (bid: string, kerja: () => Promise<void>) => {
+    if (!viewsBolehSimpan()) return;
+    const sibuk = viewsSibukRef.current;
+    const antrean = antreanViewsRef.current;
+    sibuk.set(bid, (sibuk.get(bid) || 0) + 1);
+    const jalan = (antrean.get(bid) || Promise.resolve()).then(() => kerja());
+    const ekor = jalan.catch(() => {});
+    antrean.set(bid, ekor);
+    jalan
+      .then(() => setBoardsDataMap((p: any) => (p[bid] && !p[bid].viewsDariDb ? { ...p, [bid]: { ...p[bid], viewsDariDb: true } } : p)))
+      .catch((e: any) => pushToast('Gagal simpan view: ' + (e?.message || e)))
+      .finally(() => {
+        viewsUbahRef.current.set(bid, Date.now());
+        if (antrean.get(bid) === ekor) antrean.delete(bid);
+        const n = (sibuk.get(bid) || 1) - 1;
+        if (n > 0) { sibuk.set(bid, n); return; }
+        sibuk.delete(bid);
+        // Perubahan rekan yang tadi dilewati karena papan ini sedang disimpan → muat sekarang.
+        if (viewsTerlewatRef.current.delete(bid)) segarkanViewsRef.current?.();
+      });
+  };
+  // Papan yang view-nya belum pernah tersimpan → simpan LENGKAP; selain itu cukup sebagian.
+  const posisiView = (daftar: any[], id: string) => Math.max(0, daftar.findIndex((v: any) => v.id === id));
+  const idViewBaru = (awalan: string) => `view-${awalan}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+  const setHiddenColumns = (updater: any) => {
+    if (!activeBoardId) return;
+    const bid = activeBoardId;
+    const bd = boardsDataMap[bid];
+    if (!bd || !bd.views || !bd.views.length) return;
+    const v = bd.views.find((x: any) => x.id === activeViewId) || bd.views[0];
+    if (!v) return;
+    const lama = v.config?.hiddenColumns || [];
+    const isi = typeof updater === 'function' ? updater(lama) : updater;
+    const vBaru = { ...v, config: { ...(v.config || {}), hiddenColumns: Array.isArray(isi) ? isi : [] } };
+    const daftar = bd.views.map((x: any) => (x.id === v.id ? vBaru : x));
+    aturViews(bid, daftar);
+    // Hanya config view ini yang ditulis (nama/urutan buatan rekan tak tertimpa).
+    simpanViews(bid, () => (bd.viewsDariDb
+      ? dbUbahView(supabase, bid, v.id, { config: vBaru.config }, { view: vBaru, position: posisiView(daftar, v.id) })
+      : dbSimpanViews(supabase, bid, daftar)));
+  };
   const addView = (type: string, name?: string) => {
     if (!activeBoardId) return;
-    const id = `view-${type}-${Date.now()}`;
+    const bid = activeBoardId;
+    const bd = boardsDataMap[bid]; if (!bd) return;
+    const id = idViewBaru(type);
     const labelMap: any = { table: 'Table', kanban: 'Kanban', chart: 'Chart', gantt: 'Gantt', calendar: 'Calendar', workload: 'Workload' };
     const finalName = name || labelMap[type] || 'View';
-    setBoardsDataMap((p:any) => {
-      const bd = p[activeBoardId]; if (!bd) return p;
-      return { ...p, [activeBoardId]: { ...bd, views: [...(bd.views || []), { id, type, name: finalName, config: { hiddenColumns: [] } }] } };
-    });
+    const daftar = [...(bd.views || []), { id, type, name: finalName, config: { hiddenColumns: [] } }];
+    aturViews(bid, daftar);
     setActiveViewId(id);
+    simpanViews(bid, () => dbSimpanViews(supabase, bid, daftar, bd.viewsDariDb ? [id] : undefined));
   };
   const renameView = (id: string, name: string) => {
     if (!activeBoardId) return;
-    setBoardsDataMap((p:any) => {
-      const bd = p[activeBoardId]; if (!bd) return p;
-      return { ...p, [activeBoardId]: { ...bd, views: (bd.views || []).map((v:any) => v.id === id ? { ...v, name } : v) } };
-    });
+    const bid = activeBoardId;
+    const bd = boardsDataMap[bid]; if (!bd) return;
+    const daftar = (bd.views || []).map((v:any) => v.id === id ? { ...v, name } : v);
+    aturViews(bid, daftar);
+    const vBaru = daftar.find((v: any) => v.id === id);
+    if (!vBaru) return;
+    simpanViews(bid, () => (bd.viewsDariDb
+      ? dbUbahView(supabase, bid, id, { name }, { view: vBaru, position: posisiView(daftar, id) })
+      : dbSimpanViews(supabase, bid, daftar)));
   };
   const deleteView = (id: string) => {
     if (!activeBoardId) return;
-    const bd = boardsDataMap[activeBoardId];
+    const bid = activeBoardId;
+    const bd = boardsDataMap[bid];
     if (!bd || (bd.views || []).length <= 1) return; // jangan hapus view terakhir
-    const snap = boardsDataMap;
+    const idx = bd.views.findIndex((v:any) => v.id === id);
+    if (idx < 0) return;
+    const terhapus = bd.views[idx];
     const remaining = bd.views.filter((v:any) => v.id !== id);
-    setBoardsDataMap((p:any) => ({ ...p, [activeBoardId]: { ...p[activeBoardId], views: (p[activeBoardId].views || []).filter((v:any) => v.id !== id) } }));
+    aturViews(bid, remaining);
     if (activeViewId === id) setActiveViewId(remaining[0]?.id || '');
-    pushToast('View dihapus', () => setBoardsDataMap(snap));
+    simpanViews(bid, () => (bd.viewsDariDb ? dbHapusView(supabase, bid, id) : dbSimpanViews(supabase, bid, remaining)));
+    // Urungkan: kembalikan HANYA view itu ke posisinya (dulu seluruh papan
+    // dikembalikan ke salinan lama, sehingga perubahan lain ikut hilang).
+    pushToast('View dihapus', () => {
+      const kini = petaRef.current[bid];
+      if (!kini || (kini.views || []).some((v: any) => v.id === terhapus.id)) return;
+      const arr = [...(kini.views || [])];
+      arr.splice(Math.min(idx, arr.length), 0, terhapus);
+      aturViews(bid, arr);
+      simpanViews(bid, async () => {
+        if (!kini.viewsDariDb) { await dbSimpanViews(supabase, bid, arr); return; }
+        await dbSimpanViews(supabase, bid, arr, [terhapus.id]);
+        await dbUrutViews(supabase, bid, arr.map((v: any) => v.id));
+      });
+    });
   };
   const duplicateView = (id: string) => {
     if (!activeBoardId) return;
-    const newId = `view-dup-${Date.now()}`;
-    setBoardsDataMap((p:any) => {
-      const bd = p[activeBoardId]; if (!bd) return p;
-      const src = (bd.views || []).find((v:any) => v.id === id); if (!src) return p;
-      const idx = bd.views.findIndex((v:any) => v.id === id);
-      const copy = { ...src, id: newId, name: `${src.name} (Copy)`, config: { ...(src.config || {}), hiddenColumns: [...(src.config?.hiddenColumns || [])] } };
-      const arr = [...bd.views]; arr.splice(idx + 1, 0, copy);
-      return { ...p, [activeBoardId]: { ...bd, views: arr } };
-    });
+    const bid = activeBoardId;
+    const bd = boardsDataMap[bid]; if (!bd) return;
+    const src = (bd.views || []).find((v:any) => v.id === id); if (!src) return;
+    const newId = idViewBaru('dup');
+    const idx = bd.views.findIndex((v:any) => v.id === id);
+    const copy = { ...src, id: newId, name: `${src.name} (Copy)`, config: { ...(src.config || {}), hiddenColumns: [...(src.config?.hiddenColumns || [])] } };
+    const daftar = [...bd.views]; daftar.splice(idx + 1, 0, copy);
+    aturViews(bid, daftar);
     setActiveViewId(newId);
+    // Sisipkan salinan saja, lalu rapikan urutan (isi view lain tidak ditimpa).
+    simpanViews(bid, async () => {
+      if (!bd.viewsDariDb) { await dbSimpanViews(supabase, bid, daftar); return; }
+      await dbSimpanViews(supabase, bid, daftar, [newId]);
+      await dbUrutViews(supabase, bid, daftar.map((v: any) => v.id));
+    });
   };
   const reorderViews = (fromId: string, toId: string) => {
     if (!activeBoardId || !fromId || fromId === toId) return;
-    setBoardsDataMap((p:any) => {
-      const bd = p[activeBoardId]; if (!bd) return p;
-      const arr = [...(bd.views || [])];
-      const fi = arr.findIndex((v:any) => v.id === fromId);
-      const ti = arr.findIndex((v:any) => v.id === toId);
-      if (fi < 0 || ti < 0) return p;
-      const [m] = arr.splice(fi, 1); arr.splice(ti, 0, m);
-      return { ...p, [activeBoardId]: { ...bd, views: arr } };
-    });
+    const bid = activeBoardId;
+    const bd = boardsDataMap[bid]; if (!bd) return;
+    const arr = [...(bd.views || [])];
+    const fi = arr.findIndex((v:any) => v.id === fromId);
+    const ti = arr.findIndex((v:any) => v.id === toId);
+    if (fi < 0 || ti < 0) return;
+    const [m] = arr.splice(fi, 1); arr.splice(ti, 0, m);
+    aturViews(bid, arr);
+    simpanViews(bid, () => (bd.viewsDariDb ? dbUrutViews(supabase, bid, arr.map((v: any) => v.id)) : dbSimpanViews(supabase, bid, arr)));
   };
 
   const handleAddDynamicColumn = (target: 'main'|'sub', type: string, label: string) => {

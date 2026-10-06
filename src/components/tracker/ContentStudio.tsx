@@ -439,7 +439,9 @@ export default function ContentStudio() {
     if (!canManage) return;
     // Default: dijadwalkan pada tanggal aktif di kalender (jam 10.00). Masih DRAFT (di memori) —
     // baru masuk DB saat "Apply Brief". Jadi klik "Buat Brief" tak lagi bikin baris kosong.
-    const fallback = new Date(cursor.y, cursor.m, new Date().getMonth() === cursor.m ? new Date().getDate() : 1, 10, 0);
+    // Tanggal hari ini hanya dipakai bila kalender memang sedang di bulan & TAHUN ini.
+    const kini = new Date();
+    const fallback = new Date(cursor.y, cursor.m, (kini.getMonth() === cursor.m && kini.getFullYear() === cursor.y) ? kini.getDate() : 1, 10, 0);
     setOpen({
       id: 'draft-' + Date.now(),
       board_id: activeBoardId, title: 'Brief Konten Baru', status: 'Brief',
@@ -598,7 +600,8 @@ export default function ContentStudio() {
             <span className="text-sm font-bold text-gray-100 w-40 text-center">{MONTHS[cursor.m]} {cursor.y}</span>
             <button onClick={() => setCursor((c) => ({ y: c.m === 11 ? c.y + 1 : c.y, m: c.m === 11 ? 0 : c.m + 1 }))} className="p-1.5 rounded-lg bg-kartu-hover hover:bg-kartu-hover text-gray-400"><ChevronRight size={15} /></button>
           </div>
-          <span className="text-[11px] text-gray-500">{shown.filter((p) => p.publish_at && new Date(p.publish_at).getMonth() === cursor.m).length} konten bulan ini</span>
+          {/* Dihitung per bulan DAN tahun (dulu Oktober 2025 ikut terhitung di Oktober 2026). */}
+          <span className="text-[11px] text-gray-500">{shown.filter((p) => { if (!p.publish_at) return false; const d = new Date(p.publish_at); return d.getMonth() === cursor.m && d.getFullYear() === cursor.y; }).length} konten bulan ini</span>
         </div>
 
         <div className="grid grid-cols-7 gap-1.5 mb-1.5">

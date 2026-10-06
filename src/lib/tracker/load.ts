@@ -8,6 +8,8 @@
 //                          nilai sel. Ringan & tak membengkak seiring data sel.
 //    Nilai sel lalu dimuat seperlunya: loadSelItem (per item/papan),
 //    loadKolom (kolom tertentu lintas papan), loadIdItemSaya (tugas saya).
+import { muatViews } from './views';
+
 type SB = any;
 
 export type FullState = {
@@ -20,6 +22,10 @@ export type FullState = {
   currentUserRole: string;
   canContentHub?: boolean;
   canAcc?: boolean;
+  /** true = tabel board_views terbaca; false = belum dibuat; undefined = tak diketahui (gangguan sesaat). */
+  viewsTersedia?: boolean;
+  /** Posisi tiap baris di server (id → position): tree_nodes, groups, columns, column_options, items. */
+  posisi?: Record<string, number>;
 };
 
 const UKURAN = 1000;                 // batas baris per permintaan PostgREST (Supabase)
@@ -91,7 +97,7 @@ async function ambilMentah(supabase: SB, denganSel: boolean) {
     try { return await ambilSemua(supabase, 'items', KOLOM_ITEM, { urut: ['id'] }); }
     catch { return ambilAman(supabase, 'items', '*', ['id']); }
   };
-  const [ures, nodes, groups, columns, options, items, membersRows, accTargets, values, assignees] = await Promise.all([
+  const [ures, nodes, groups, columns, options, items, membersRows, accTargets, values, assignees, views] = await Promise.all([
     supabase.auth.getUser(),
     ambilAman(supabase, 'tree_nodes', '*', ['id']),
     ambilAman(supabase, 'groups', '*', ['id']),
@@ -102,12 +108,15 @@ async function ambilMentah(supabase: SB, denganSel: boolean) {
     ambilSemua(supabase, 'account_targets'),
     denganSel ? ambilSemua(supabase, 'item_values', 'item_id, column_id, value', { urut: URUT_NILAI }) : Promise.resolve([]),
     denganSel ? ambilSemua(supabase, 'item_assignees', 'item_id, column_id, member_id', { urut: URUT_TIM }) : Promise.resolve([]),
+    // View papan (tabel board_views). Tak pernah melempar galat (lihat views.ts).
+    denganSel ? Promise.resolve(null) : muatViews(supabase),
   ]);
-  return { ures, nodes, groups, columns, options, items, membersRows, accTargets, values, assignees };
+  return { ures, nodes, groups, columns, options, items, membersRows, accTargets, values, assignees, views };
 }
 
 function bangunState(m: any): FullState {
   const { ures, nodes, groups, columns, options, items, membersRows, accTargets, values, assignees } = m;
+  const viewsDb: Record<string, any[]> | null = m.views?.status === 'ada' ? m.views.peta : null;
   const currentUserId = ures?.data?.user?.id || null;
   const currentEmail = String(ures?.data?.user?.email || '').toLowerCase();
   const isAdminEmail = currentEmail.endsWith('@invisual.studio');
@@ -192,7 +201,8 @@ function bangunState(m: any): FullState {
       });
       return { id: g.id, title: g.title, color: g.color, isCollapsed: !!g.is_collapsed, itemLabel: g.item_label || 'Item Name', subItemLabel: g.sub_item_label || 'Subitem', items: tops };
     });
-    boardsDataMap[bn.id] = { groups: bgroups, columns: mainCols, subColumns: subCols };
+    const vDb = viewsDb?.[bn.id];
+    boardsDataMap[bn.id] = { groups: bgroups, columns: mainCols, subColumns: subCols, ...(vDb && vDb.length ? { views: vDb, viewsDariDb: true } : {}) };
   }
 
   const kids = (pid: any, kind: string) => nodes.filter((n: any) => n.parent_id === pid && n.kind === kind).slice().sort(byPos);
@@ -224,7 +234,16 @@ function bangunState(m: any): FullState {
     accountTargets[bid][ak] = Number(r.target) || 0;
   }
 
-  return { workspaces, boardsDataMap, accountTargets, labels, teamMembers, currentUserId, currentUserRole, canContentHub, canAcc };
+  // Posisi baris di server — dipakai pengenal gema realtime (posisi di database
+  // boleh berselang, mis. 0,2,3 setelah ada yang dihapus).
+  const posisi: Record<string, number> = {};
+  for (const daftar of [nodes, groups, columns, options, items]) {
+    for (const r of daftar || []) if (r && r.id != null && typeof r.position === 'number') posisi[r.id] = r.position;
+  }
+
+  const st = m.views?.status;
+  const viewsTersedia = st === 'ada' ? true : st === 'belum' ? false : undefined;
+  return { workspaces, boardsDataMap, accountTargets, labels, teamMembers, currentUserId, currentUserRole, canContentHub, canAcc, viewsTersedia, posisi };
 }
 
 /** Muat SEMUA (termasuk seluruh nilai sel). Dipakai halaman Pendapatan. */
@@ -407,10 +426,14 @@ export function terapkanTim(peta: Record<string, any>, antrian: Map<string, Set<
 
 /**
  * Gabungkan kerangka BARU (tanpa sel) dengan sel yang sudah ada di memori
- * (dicocokkan per id item, termasuk item yang pindah grup/papan). Views
- * papan lama dipertahankan (view kustom tak lagi hilang saat refresh).
+ * (dicocokkan per id item, termasuk item yang pindah grup/papan).
+ *
+ * View papan: yang berasal dari DATABASE (`viewsDariDb`) dipakai — itulah cara
+ * perubahan view rekan sampai ke layar. Selain itu (view bawaan, tabel
+ * board_views belum ada, atau view papan itu sedang disimpan dari tab ini =
+ * `sibuk`) view di memori dipertahankan, sehingga view kustom tak hilang saat refresh.
  */
-export function pertahankanSel(baru: Record<string, any>, lama: Record<string, any>): Record<string, any> {
+export function pertahankanSel(baru: Record<string, any>, lama: Record<string, any>, sibuk?: Set<string>): Record<string, any> {
   const idxLama = new Map<string, any>();
   for (const bid of Object.keys(lama || {})) {
     for (const g of (lama[bid]?.groups || [])) for (const it of (g.items || [])) {
@@ -426,8 +449,10 @@ export function pertahankanSel(baru: Record<string, any>, lama: Record<string, a
       ...g,
       items: (g.items || []).map((it: any) => ({ ...salin(it), subItems: (it.subItems || []).map(salin) })),
     }));
-    const viewsLama = lama?.[bid]?.views;
-    out[bid] = { ...bd, groups, ...(viewsLama && viewsLama.length ? { views: viewsLama } : {}) };
+    const bl = lama?.[bid];
+    const viewsLama = bl?.views;
+    const pakaiLama = !!(viewsLama && viewsLama.length) && (!bd.viewsDariDb || !!sibuk?.has(bid));
+    out[bid] = { ...bd, groups, ...(pakaiLama ? { views: viewsLama, viewsDariDb: !!bl.viewsDariDb } : {}) };
   }
   return out;
 }

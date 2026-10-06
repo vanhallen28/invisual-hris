@@ -4,6 +4,11 @@ import { useDashboard } from '@/components/tracker/DashboardContext';
 import { Search, Columns, LayoutGrid, BarChart3, CalendarDays, ListChecks } from 'lucide-react';
 
 const VIEW_TYPES = [
+  // Table & Overview dulu hanya ada sebagai view bawaan — sekali dihapus tak
+  // bisa ditambahkan lagi. Kini bisa dibuat ulang (mis. tabel kedua dengan
+  // kolom tersembunyi berbeda).
+  { type: 'table', label: 'Table', desc: 'Tabel item & kolom', icon: Columns },
+  { type: 'chart', label: 'Overview', desc: 'Ringkasan & grafik papan', icon: BarChart3 },
   { type: 'kanban', label: 'Kanban', desc: 'Kartu per status', icon: LayoutGrid },
   { type: 'calendar', label: 'Calendar', desc: 'Item per tanggal', icon: CalendarDays },
   { type: 'workload', label: 'Workload', desc: 'Beban kerja per orang', icon: ListChecks },
@@ -31,7 +36,7 @@ export default function ViewPicker({ onClose }: any) {
           {filtered.map(v => {
             const Icon = v.icon;
             return (
-              <button key={v.type} onClick={() => { addView(v.type); onClose(); }} className="flex items-center gap-3 px-2.5 py-2 hover:bg-white/5 rounded-lg text-left transition-colors group/vt">
+              <button key={v.type} onClick={() => { addView(v.type, v.type === 'chart' ? 'Overview' : undefined); onClose(); }} className="flex items-center gap-3 px-2.5 py-2 hover:bg-white/5 rounded-lg text-left transition-colors group/vt">
                 <span className="w-8 h-8 rounded-lg bg-kartu-hover group-hover/vt:bg-kartu-hover flex items-center justify-center text-blue-400 shrink-0 transition-colors"><Icon size={16} /></span>
                 <div className="min-w-0">
                   <div className="text-[13px] text-gray-200 font-semibold">{v.label}</div>

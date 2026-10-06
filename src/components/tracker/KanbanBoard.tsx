@@ -1,11 +1,11 @@
 'use client';
 import React from 'react';
-import { CalendarDays, LayoutGrid } from 'lucide-react';
+import { CalendarDays, LayoutGrid, ArrowRightLeft } from 'lucide-react';
 import { useDashboard } from '@/components/tracker/DashboardContext';
 import Avatar from '@/components/Avatar';
 
 export default function KanbanBoard() {
-  const { boardData, columns, subColumns, labels, handleUpdateItem, handleUpdateSubItem, draggedItem, setDraggedItem, dragOverColumn, setDragOverColumn, teamMembers, setDetailItem } = useDashboard();
+  const { boardData, columns, subColumns, labels, handleUpdateItem, handleUpdateSubItem, draggedItem, setDraggedItem, dragOverColumn, setDragOverColumn, teamMembers, setDetailItem, addLabelOption } = useDashboard();
 
   // Kanban groups by the board's Status column. Columns use generated ids,
   // so we resolve the real keys here instead of assuming fixed field names.
@@ -61,6 +61,21 @@ export default function KanbanBoard() {
     return (dk && r[dk]) || (tk && (r[tk]?.end || r[tk]?.start)) || null;
   };
 
+  // Pindahkan kartu ke status `teks`. Bila teks itu belum dikenal kolom status
+  // kartu tsb tapi ADA di kolom status pasangannya (induk ↔ sub-item), labelnya
+  // ditambahkan dulu — warna sama — agar pill tetap berwarna. Status yang labelnya
+  // sudah dihapus (tidak ada di mana pun) tidak dihidupkan lagi sebagai label.
+  const ubahStatus = (kartu: { groupId: string; itemId: string; subId?: string }, teks: string) => {
+    const kolom = kartu.subId ? subStatusKey : statusKey;
+    if (!kolom) return;
+    if (teks && !(labels[kolom] || []).some((l: any) => l.text === teks)) {
+      const asal = [...(labels[statusKey] || []), ...((subStatusKey && labels[subStatusKey]) || [])].find((l: any) => l.text === teks);
+      if (asal) addLabelOption?.(kolom, teks, asal.color);
+    }
+    if (kartu.subId) handleUpdateSubItem(kartu.groupId, kartu.itemId, kartu.subId, kolom, teks);
+    else handleUpdateItem(kartu.groupId, kartu.itemId, kolom, teks);
+  };
+
   const handleDragStart = (e: any, kartu: any) => {
     setDraggedItem(kartu.isSub
       ? { groupId: kartu.groupId, itemId: kartu.parentId, subId: kartu.id }
@@ -70,12 +85,8 @@ export default function KanbanBoard() {
   const handleDragOver = (e: any, status: string) => { e.preventDefault(); if (dragOverColumn !== status) setDragOverColumn(status); };
   const handleDrop = (e: any, status: string) => {
     e.preventDefault();
-    if (draggedItem?.subId) {
-      // Menggeser kartu aset menulis ke kolom status SUB, bukan kolom utama.
-      if (subStatusKey) handleUpdateSubItem(draggedItem.groupId, draggedItem.itemId, draggedItem.subId, subStatusKey, status);
-    } else if (draggedItem && statusKey) {
-      handleUpdateItem(draggedItem.groupId, draggedItem.itemId, statusKey, status);
-    }
+    // Menggeser kartu aset menulis ke kolom status SUB, bukan kolom utama.
+    if (draggedItem) ubahStatus(draggedItem, status);
     setDraggedItem(null); setDragOverColumn(null);
   };
 
@@ -89,7 +100,16 @@ export default function KanbanBoard() {
     );
   }
 
-  const statusColumns = [...(labels[statusKey] || []), { id: 'empty', text: '', color: 'bg-kartu-hover' }];
+  // Kolom papan Kanban = label status INDUK, lalu label status SUB-ITEM yang tak
+  // ada di induk, lalu status lain yang masih terpakai di kartu (label sudah
+  // dihapus). Dulu hanya label induk → kartu sub-item berstatus khusus hilang.
+  const statusColumns: any[] = [];
+  const sudahAda = new Set<string>();
+  const tambahKolom = (l: any, id: string) => { if (!l.text || sudahAda.has(l.text)) return; sudahAda.add(l.text); statusColumns.push({ id, text: l.text, color: l.color || 'bg-kartu-hover' }); };
+  (labels[statusKey] || []).forEach((l: any) => tambahKolom(l, l.id));
+  ((subStatusKey && labels[subStatusKey]) || []).forEach((l: any) => tambahKolom(l, 'sub-' + l.id));
+  semuaKartu.forEach((k: any) => { const t = bacaStatus(k); if (t) tambahKolom({ text: t }, 'lain-' + t); });
+  statusColumns.push({ id: 'empty', text: '', color: 'bg-kartu-hover' });
 
   return (
     <div className="flex gap-6 overflow-x-auto pb-8 flex-1 items-start mt-4">
@@ -105,7 +125,7 @@ export default function KanbanBoard() {
                  const due = formatDue(bacaTanggal(item));
                  const assignees = bacaPIC(item);
                  return (
-                 <div key={item.id} draggable onDragStart={e => handleDragStart(e, item)} onDragEnd={() => setDraggedItem(null)} onClick={() => setDetailItem(item.isSub ? { groupId: item.groupId, itemId: item.parentId, subItemId: item.id } : { groupId: item.groupId, itemId: item.id })} className="bg-kartu rounded-lg p-4 border border-white/10 cursor-pointer hover:border-blue-500/60 hover:bg-kartu-hover transition-all" style={{ borderLeftColor: item.groupColor, borderLeftWidth: '3px' }}>
+                 <div key={item.id} draggable onDragStart={e => handleDragStart(e, item)} onDragEnd={() => setDraggedItem(null)} onClick={() => setDetailItem(item.isSub ? { groupId: item.groupId, itemId: item.parentId, subItemId: item.id } : { groupId: item.groupId, itemId: item.id })} className="group/kartu bg-kartu rounded-lg p-4 border border-white/10 cursor-pointer hover:border-blue-500/60 hover:bg-kartu-hover transition-all" style={{ borderLeftColor: item.groupColor, borderLeftWidth: '3px' }}>
                     <div className="text-[10px] font-black uppercase tracking-wider mb-2" style={{ color: item.groupColor }}>{item.groupTitle}</div>
                     {item.isSub && <div className="text-[10px] text-gray-500 mb-1 truncate" title={item.parentName}>{item.parentName} ›</div>}
                     <h4 className="text-[14px] font-bold text-gray-100 mb-2">{item.name}</h4>
@@ -115,7 +135,23 @@ export default function KanbanBoard() {
                       </div>
                     )}
                     <div className="flex items-center justify-between pt-2 border-t border-white/10 text-[11px] text-gray-400">
+                      <div className="flex items-center gap-1.5 min-w-0">
                       {due ? <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${due.cls}`}><CalendarDays size={11}/> {due.label}</span> : <span className="text-gray-600">—</span>}
+                      {/* Pindah status tanpa seret — seret-lepas tidak jalan di layar sentuh. */}
+                      {(item.isSub ? subStatusKey : statusKey) && (
+                        <label onClick={(e) => e.stopPropagation()} title="Pindah status" className="relative flex items-center gap-1 px-1.5 py-0.5 rounded text-gray-500 hover:text-gray-200 hover:bg-white/5 cursor-pointer opacity-0 group-hover/kartu:opacity-100 [@media(hover:none)]:opacity-100 focus-within:opacity-100 transition-opacity">
+                          <ArrowRightLeft size={11} />
+                          <select
+                            aria-label="Pindah status"
+                            value={bacaStatus(item)}
+                            onChange={(e) => ubahStatus(item.isSub ? { groupId: item.groupId, itemId: item.parentId, subId: item.id } : { groupId: item.groupId, itemId: item.id }, e.target.value)}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full"
+                          >
+                            {statusColumns.map((sc: any) => <option key={sc.id} value={sc.text}>{sc.text || 'No Status'}</option>)}
+                          </select>
+                        </label>
+                      )}
+                      </div>
                       <div className="flex -space-x-1">{assignees.map((tid: string) => { const tm = teamMembers.find((t: any) => t.id === tid); return <Avatar key={tid} url={tm?.avatarUrl} name={tm?.name} initials={tm?.initials} className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white ${tm?.color || 'bg-kartu-hover'} border border-white/10`} />; })}</div>
                     </div>
                  </div>

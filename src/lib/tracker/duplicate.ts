@@ -7,6 +7,8 @@
 //   'item'     → ditambah item, subitem, isi sel, dan PIC
 //   'penuh'    → ditambah pembaruan/komentar tiap item
 
+import { salinViewsPapan } from './views';
+
 type SB = any;
 export type ModeDuplikat = 'struktur' | 'item' | 'penuh';
 
@@ -174,6 +176,9 @@ async function salinIsi(supabase: SB, sourceBoardId: string, boardId: string, mo
   });
   await sisip(supabase, 'groups', grupBaru);
   hasil.grup = grupBaru.length;
+
+  // ── 4b. View papan (Table/Kanban/…, kolom tersembunyi) — bila tabel board_views ada ──
+  await salinViewsPapan(supabase, sourceBoardId, boardId, petaKolom);
 
   if (mode === 'struktur') return;
 

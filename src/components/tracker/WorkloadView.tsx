@@ -16,6 +16,8 @@ export default function WorkloadView() {
   // beban jauh lebih ringan dari kenyataan.
   const subTeamCols = subColumns.filter((c: any) => c.type === 'team');
   const subStatusCols = subColumns.filter((c: any) => c.type === 'status');
+  const subDateCols = subColumns.filter((c: any) => c.type === 'date');
+  const subTlCols = subColumns.filter((c: any) => c.type === 'timeline');
 
   // Sub-item punya kolom statusnya sendiri, jadi warnanya harus dicari di
   // subColumns — kalau dipaksa lewat `itemStatus`, titiknya selalu abu.
@@ -28,14 +30,12 @@ export default function WorkloadView() {
     ? { groupId: group.id, itemId: parent.id, subItemId: row.id }
     : { groupId: group.id, itemId: row.id };
 
-  const itemStatus = (item: any) => {
-    for (const c of statusCols) { const v = item[c.id]; if (v) { const m = labels[c.id]?.find((l: any) => l.text === v); return { text: v, color: m?.color || 'bg-kartu-hover' }; } }
-    return null;
-  };
-  const isOverdue = (item: any) => {
+  // Sub-item memakai kolom tanggal/timeline SUB-nya sendiri (dulu dibaca dengan
+  // kolom induk → tenggat sub-item tak pernah terhitung "telat").
+  const isOverdue = (item: any, parent?: any) => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    for (const c of dateCols) { if (item[c.id]) { const d = new Date(item[c.id]); if (!isNaN(d.getTime()) && d < today) return true; } }
-    for (const c of tlCols) { const e = item[c.id]?.end || item[c.id]?.start; if (e) { const d = new Date(e); if (!isNaN(d.getTime()) && d < today) return true; } }
+    for (const c of (parent ? subDateCols : dateCols)) { if (item[c.id]) { const d = new Date(item[c.id]); if (!isNaN(d.getTime()) && d < today) return true; } }
+    for (const c of (parent ? subTlCols : tlCols)) { const e = item[c.id]?.end || item[c.id]?.start; if (e) { const d = new Date(e); if (!isNaN(d.getTime()) && d < today) return true; } }
     return false;
   };
 
@@ -46,7 +46,8 @@ export default function WorkloadView() {
   boardData.forEach((g: any) => (g.items || []).forEach((it: any) => {
     const ids = new Set<string>();
     teamCols.forEach((c: any) => (it[c.id] || []).forEach((id: string) => ids.add(id)));
-    if (ids.size === 0) { unassigned.push({ item: it, group: g }); return; }
+    // "Belum di-assign" hanya berarti bila induk memang punya kolom People.
+    if (ids.size === 0) { if (teamCols.length > 0) unassigned.push({ item: it, group: g }); return; }
     ids.forEach(id => { if (assignments[id]) assignments[id].push({ item: it, group: g }); });
   }));
 
@@ -62,7 +63,8 @@ export default function WorkloadView() {
   const maxLoad = Math.max(1, ...teamMembers.map((m: any) => assignments[m.id]?.length || 0));
   const rows = teamMembers.map((m: any) => ({ m, items: assignments[m.id] || [] })).sort((a: any, b: any) => b.items.length - a.items.length);
 
-  if (teamCols.length === 0) {
+  // Kosong hanya bila papan tak punya kolom People sama sekali (induk MAUPUN sub-item).
+  if (teamCols.length === 0 && subTeamCols.length === 0) {
     return (
       <div className="bg-kartu border border-white/10 rounded-xl p-10 flex flex-col items-center justify-center text-center">
         <Users size={40} className="text-blue-500/30 mb-4" />
@@ -82,8 +84,9 @@ export default function WorkloadView() {
         {rows.map(({ m, items }: any) => {
           const byStatus: Record<string, { color: string; count: number }> = {};
           let noStatus = 0;
-          items.forEach(({ item }: any) => { const s = itemStatus(item); if (s) { if (!byStatus[s.text]) byStatus[s.text] = { color: s.color, count: 0 }; byStatus[s.text].count++; } else noStatus++; });
-          const overdue = items.filter(({ item }: any) => isOverdue(item)).length;
+          // Status sub-item dibaca dari kolom status SUB (dulu dari kolom induk → selalu "tanpa status").
+          items.forEach(({ item, parent }: any) => { const s = statusBaris(item, parent); if (s) { if (!byStatus[s.text]) byStatus[s.text] = { color: s.color, count: 0 }; byStatus[s.text].count++; } else noStatus++; });
+          const overdue = items.filter(({ item, parent }: any) => isOverdue(item, parent)).length;
           const pct = (items.length / maxLoad) * 100;
           return (
             <div key={m.id} className="px-4 py-3">

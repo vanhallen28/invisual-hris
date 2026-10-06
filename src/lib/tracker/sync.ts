@@ -86,11 +86,19 @@ export async function dbAddColumn(supabase: SB, p: { id: string; boardId: string
   if (error) throw new Error(error.message);
 }
 
+// Pesan untuk penghapusan yang "berhasil" tapi 0 baris (biasanya RLS).
+const TOLAK_DIAM = (tabel: string) =>
+  `Tidak ada baris terhapus di server (0 baris) — kemungkinan diblokir aturan keamanan (RLS)/izin tabel ${tabel}, atau sudah dihapus orang lain.`;
+
 // Hapus kolom (cascade: column_options, item_values, item_assignees ikut terhapus)
+// .select() → baris yang benar-benar terhapus. 0 baris = penghapusan ditolak
+// diam-diam (RLS/izin) → dilaporkan, supaya kolom tak "muncul lagi" tanpa sebab.
 export async function dbDeleteColumn(supabase: SB, columnId: string) {
-  const { error } = await supabase.from('columns').delete().eq('id', columnId);
+  const { data, error } = await supabase.from('columns').delete().eq('id', columnId).select('id');
   if (error) throw new Error(error.message);
+  if (Array.isArray(data) && data.length === 0) throw new Error(TOLAK_DIAM('columns'));
 }
+
 
 // Tambah opsi/label (status/dropdown)
 export async function dbAddLabel(supabase: SB, p: { id: string; columnId: string; text: string; color: string; position: number }) {
@@ -127,14 +135,19 @@ export async function dbUpdateGroup(supabase: SB, groupId: string, patch: Record
 }
 
 // Hapus grup (cascade: items -> item_values/assignees ikut terhapus)
+// (Item/sub-item TIDAK dicek begini: menghapus induk ikut menghapus sub-itemnya,
+// sehingga hapus sub-item berikutnya wajar mengenai 0 baris.)
 export async function dbDeleteGroup(supabase: SB, groupId: string) {
-  const { error } = await supabase.from('groups').delete().eq('id', groupId);
+  const { data, error } = await supabase.from('groups').delete().eq('id', groupId).select('id');
   if (error) throw new Error(error.message);
+  if (Array.isArray(data) && data.length === 0) throw new Error(TOLAK_DIAM('groups'));
 }
 
 // Pindahkan grup ke board lain (item ikut lewat group_id)
-export async function dbMoveGroup(supabase: SB, groupId: string, boardId: string) {
-  const { error } = await supabase.from('groups').update({ board_id: boardId }).eq('id', groupId);
+export async function dbMoveGroup(supabase: SB, groupId: string, boardId: string, position?: number) {
+  const patch: Record<string, any> = { board_id: boardId };
+  if (typeof position === 'number') patch.position = position;   // urutan di board tujuan
+  const { error } = await supabase.from('groups').update(patch).eq('id', groupId);
   if (error) throw new Error(error.message);
 }
 

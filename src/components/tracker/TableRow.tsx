@@ -6,7 +6,10 @@ import InlineEdit from './InlineEdit';
 import TableCell from './TableCell';
 import ColumnCenterMenu from './ColumnCenter';
 
-export default function TableRow({ item, group, gridTemplateColumns, subGridTemplateColumns, addColMenuTarget, setAddColMenuTarget }: any) {
+// paksaBuka / subAsli: dipakai MainTable saat filter Person/Status hanya cocok
+// di sub-item — baris dibentangkan di TAMPILAN saja dan ringkasan progres tetap
+// menghitung SEMUA sub-item (bukan hanya yang lolos filter).
+export default function TableRow({ item, group, gridTemplateColumns, subGridTemplateColumns, addColMenuTarget, setAddColMenuTarget, paksaBuka = false, subAsli }: any) {
   const { 
     boardData, setBoardData, setBoardsDataMap, activeBoardId, columns, subColumns, setSubColumns, hiddenColumns,
     selectedItems, setSelectedItems, draggedItem, setDraggedItem, 
@@ -26,8 +29,10 @@ export default function TableRow({ item, group, gridTemplateColumns, subGridTemp
 
   // (4) Rollup progress sub-item — pakai kolom sub bertipe checkbox bila ada
   const doneCol = subColumns.find((c:any) => c.type === 'checkbox');
-  const subTotal = item.subItems?.length || 0;
-  const subDone = doneCol ? (item.subItems || []).filter((s:any) => s[doneCol.id]).length : 0;
+  const subRingkas = subAsli || item.subItems || [];
+  const subTotal = subRingkas.length;
+  const subDone = doneCol ? subRingkas.filter((s:any) => s[doneCol.id]).length : 0;
+  const subTerbuka = !!item.isSubItemsOpen || paksaBuka;
 
   // (2) Enter-to-add — tambah baris baru tepat DI BAWAH baris saat ini.
   // Pakai updater FUNGSIONAL setBoardsDataMap agar TIDAK menimpa rename yang baru
@@ -54,7 +59,7 @@ export default function TableRow({ item, group, gridTemplateColumns, subGridTemp
         </div>
         
         <div className="px-3 py-1.5 flex items-center border-r border-white/10 min-w-0 group/cell justify-between gap-2 sticky left-[40px] z-[15] bg-kartu group-hover/row:bg-kartu">
-          <button onClick={() => handleUpdateItem(group.id, item.id, 'isSubItemsOpen', !item.isSubItemsOpen)} title={item.isSubItemsOpen ? 'Sembunyikan subitem' : 'Tampilkan subitem'} className={`p-0.5 rounded shrink-0 transition-colors ${item.isSubItemsOpen ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}><ChevronDown size={14} className={`transition-transform ${item.isSubItemsOpen ? '' : '-rotate-90'}`} /></button>
+          <button onClick={() => { if (!paksaBuka) handleUpdateItem(group.id, item.id, 'isSubItemsOpen', !item.isSubItemsOpen); }} title={paksaBuka ? 'Dibentangkan karena filter' : item.isSubItemsOpen ? 'Sembunyikan subitem' : 'Tampilkan subitem'} className={`p-0.5 rounded shrink-0 transition-colors ${subTerbuka ? 'bg-blue-500/20 text-blue-400' : 'text-gray-500 hover:text-gray-300'}`}><ChevronDown size={14} className={`transition-transform ${subTerbuka ? '' : '-rotate-90'}`} /></button>
           <div className="flex-1 min-w-0">
             <InlineEdit value={item.name} onSave={(newVal: string) => handleUpdateItem(group.id, item.id, 'name', newVal)} onEnter={addItemBelow} textClassName="font-medium text-gray-200 text-left truncate" />
           </div>
@@ -90,7 +95,7 @@ export default function TableRow({ item, group, gridTemplateColumns, subGridTemp
       </div>
 
       {/* ====== CONTAINER SUB-ITEM ====== */}
-      {item.isSubItemsOpen && (
+      {subTerbuka && (
         <div className={`flex flex-col bg-kartu pl-[44px] pr-2 py-3 shadow-inner relative ${isSubRowActive ? 'z-20' : 'z-10'}`}>
           
           <div className="absolute left-[22px] top-0 bottom-[20px] w-[2px] z-0 opacity-50 pointer-events-none" style={{ backgroundColor: group.color }}></div>
