@@ -75,18 +75,75 @@ export async function simpanFotoAbsen(
   }
 }
 
-/** Tautan sementara (1 jam) untuk sekumpulan path. Gagal → peta kosong. */
-export async function urlFotoAbsen(supabase: SB, paths: (string | null | undefined)[]): Promise<Record<string, string>> {
+/**
+ * Tautan sementara (1 jam) untuk sekumpulan path foto absen.
+ *   1. Langsung ke Supabase Storage dengan sesi HR (aturan storage: HR + pemilik).
+ *   2. Path yang ditolak di langkah 1 dimintakan ke /api/foto-absen/url (server,
+ *      khusus HR) — cadangan bila aturan storage di proyek belum sesuai.
+ * `hilang` = path yang tercatat di absensi tetapi berkasnya tidak ada di storage.
+ * `ditolak` = path yang bukan pola foto absen (tidak akan pernah bisa dibuka).
+ * Tidak pernah melempar galat.
+ */
+export async function ambilUrlFotoAbsen(
+  supabase: SB,
+  paths: (string | null | undefined)[],
+): Promise<{ url: Record<string, string>; hilang: Set<string>; ditolak: Set<string> }> {
   const unik = Array.from(new Set(paths.filter((x): x is string => !!x)));
-  const out: Record<string, string> = {};
-  if (!unik.length) return out;
+  const url: Record<string, string> = {};
+  const hilang = new Set<string>();
+  const ditolak = new Set<string>();
+  if (!unik.length) return { url, hilang, ditolak };
+
   try {
     for (let i = 0; i < unik.length; i += 100) {
       const { data } = await supabase.storage.from(BUCKET_FOTO_ABSEN).createSignedUrls(unik.slice(i, i + 100), 3600);
-      (data || []).forEach((d: any) => { if (d?.signedUrl && d?.path) out[d.path] = d.signedUrl; });
+      (data || []).forEach((d: any) => { if (d?.signedUrl && d?.path) url[d.path] = d.signedUrl; });
     }
-  } catch { /* diamkan */ }
-  return out;
+  } catch { /* lanjut ke cadangan server */ }
+
+  const sisa = unik.filter((p) => !url[p]);
+  if (sisa.length) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      if (token) {
+        for (let i = 0; i < sisa.length; i += 200) {
+          const res = await fetch("/api/foto-absen/url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ paths: sisa.slice(i, i + 200) }),
+          });
+          if (!res.ok) continue;
+          const j = await res.json().catch(() => null);
+          Object.entries(j?.url || {}).forEach(([p, u]) => { if (typeof u === "string" && u) url[p] = u; });
+          (Array.isArray(j?.hilang) ? j.hilang : []).forEach((p: any) => { if (typeof p === "string") hilang.add(p); });
+          (Array.isArray(j?.ditolak) ? j.ditolak : []).forEach((p: any) => { if (typeof p === "string") ditolak.add(p); });
+        }
+      }
+    } catch { /* diamkan */ }
+  }
+  return { url, hilang, ditolak };
+}
+
+/** Tautan sementara (1 jam) untuk sekumpulan path. Gagal → peta kosong. */
+export async function urlFotoAbsen(supabase: SB, paths: (string | null | undefined)[]): Promise<Record<string, string>> {
+  return (await ambilUrlFotoAbsen(supabase, paths)).url;
+}
+
+/**
+ * Tunggu sebuah proses paling lama `ms` milidetik, lalu lanjut apa pun hasilnya.
+ * Dipakai agar unggahan selfie sempat selesai sebelum tombol absen selesai
+ * "memuat" (karyawan sering langsung menutup aplikasi setelah absen), tanpa
+ * pernah menahan absensi lebih lama dari batas ini.
+ */
+export function tungguMaksimal<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
+  return new Promise((selesai) => {
+    const t = setTimeout(() => selesai(undefined), ms);
+    p.then(
+      (v) => { clearTimeout(t); selesai(v); },
+      () => { clearTimeout(t); selesai(undefined); },
+    );
+  });
 }
 
 /** Selisih hari (b − a) untuk tanggal "YYYY-MM-DD". */

@@ -15,6 +15,7 @@ import { excludeOwners } from "@/lib/owners";
 import { ambilAturanJamKerja } from "@/lib/jamKerja";
 import { GaleriFotoAbsen } from "@/components/FotoAbsen";
 import { mintaBersihkanFotoLama } from "@/lib/fotoAbsen";
+import AvatarKaryawan from "@/components/AvatarKaryawan";
 
 // Cek apakah HARI INI termasuk dalam periode izin/cuti.
 // Kolom `tanggal` berupa string: "2025-07-16", "2025-07-16 s/d 2025-07-20",
@@ -27,6 +28,27 @@ function coversToday(tanggalStr: string, todayISO: string) {
   const end = dates.length > 1 ? dates[1] : dates[0];
   return todayISO >= start && todayISO <= end;
 }
+
+// Satu baris absensi per karyawan (data diurutkan jam masuk terbaru → baris pertama dipakai).
+function unikPerKaryawan(rows: any[] | null | undefined) {
+  const hasil: any[] = [];
+  const seen = new Set();
+  (rows || []).forEach((absen) => {
+    if (!seen.has(absen.idKaryawan)) {
+      seen.add(absen.idKaryawan);
+      hasil.push(absen);
+    }
+  });
+  return hasil;
+}
+
+// "HH:MM" untuk pengurutan linimasa (menerima "9:05" / "09.05").
+function jamUrut(v: any) {
+  const m = String(v ?? "").match(/(\d{1,2})[:.](\d{2})/);
+  return m ? `${m[1]!.padStart(2, "0")}:${m[2]}` : String(v ?? "");
+}
+
+const KELAS_AVATAR = "w-9 h-9 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-sm";
 
 // Sel bento — memakai kelas bersama `kartu-glow` (didefinisikan di globals.css),
 // kelas yang SAMA dipakai semua halaman lain. Satu sumber: kalau diubah di
@@ -62,6 +84,10 @@ export default function AdminDashboardPage() {
   const [approvedLeaves, setApprovedLeaves] = useState<any[]>([]);
   const [remoteToday, setRemoteToday] = useState<any[]>([]);  // WFH/WFC disetujui hari ini
   const [todayAttendances, setTodayAttendances] = useState<any[]>([]);
+  // Salinan khusus "Log absensi live" yang disegarkan otomatis (clock-in & clock-out
+  // terbaru). Sengaja TERPISAH dari todayAttendances agar angka kartu, cincin
+  // kehadiran, anomali & export tetap seperti semula (dihitung saat halaman dimuat).
+  const [absenLog, setAbsenLog] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -88,6 +114,8 @@ export default function AdminDashboardPage() {
   const [anomalyList, setAnomalyList] = useState<any[]>([]);
   // Galeri foto selfie absensi (dibuka dari "Log absensi live"); fokusId = karyawan yang diklik
   const [galeriFoto, setGaleriFoto] = useState<{ fokusId: string | null } | null>(null);
+  // Saringan "Log absensi live": semua kejadian / hanya clock-in / hanya clock-out
+  const [saringLog, setSaringLog] = useState<"semua" | "masuk" | "pulang">("semua");
 
   const todayDate = new Date().toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const todayISO = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(); // tanggal LOKAL (WIB), bukan UTC
@@ -167,16 +195,7 @@ export default function AdminDashboardPage() {
       const { data: approvedData } = await supabase.from("approvals").select("*").in("status", ["Disetujui", "Menunggu"]).neq("jenis", "Izin Terlambat");
       const { data: attendanceData } = await supabase.from("attendance").select("*").eq("tanggal", todayISO).order("waktuMasuk", { ascending: false });
 
-      const uniqueAttendances: any[] = [];
-      const seenIds = new Set();
-      if (attendanceData) {
-        attendanceData.forEach((absen) => {
-          if (!seenIds.has(absen.idKaryawan)) {
-            seenIds.add(absen.idKaryawan);
-            uniqueAttendances.push(absen);
-          }
-        });
-      }
+      const uniqueAttendances: any[] = unikPerKaryawan(attendanceData);
 
       // Owner dikecualikan dari statistik operasional (headcount, absensi, anomali)
       const activeEmployees = excludeOwners(empData?.filter(e => e.isAktif ?? true) || []);
@@ -192,6 +211,7 @@ export default function AdminDashboardPage() {
       setApprovedLeaves(menutupiHariIni.filter((a: any) => !isRemote(a.jenis) && !sudahAbsenIds.has(a.idKaryawan)));
       setRemoteToday(menutupiHariIni.filter((a: any) => isRemote(a.jenis)));
       setTodayAttendances(uniqueAttendances);
+      setAbsenLog(uniqueAttendances);
 
       const detectedAnomalies: any[] = [];
       
@@ -229,10 +249,21 @@ export default function AdminDashboardPage() {
         setPendingApprovals(data || []);
       } catch { /* diamkan */ }
     };
-    const iv = setInterval(segarkanPending, 20000);
-    window.addEventListener('focus', segarkanPending);
-    document.addEventListener('visibilitychange', segarkanPending);
-    return () => { clearInterval(iv); window.removeEventListener('focus', segarkanPending); document.removeEventListener('visibilitychange', segarkanPending); };
+    // Log absensi live: clock-in & clock-out terbaru ikut muncul tanpa muat ulang halaman.
+    const segarkanAbsen = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      try {
+        const d = new Date();
+        const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const { data, error } = await supabase.from("attendance").select("*").eq("tanggal", iso).order("waktuMasuk", { ascending: false });
+        if (!error && data) setAbsenLog(unikPerKaryawan(data));
+      } catch { /* diamkan */ }
+    };
+    const segarkan = () => { segarkanPending(); segarkanAbsen(); };
+    const iv = setInterval(segarkan, 20000);
+    window.addEventListener('focus', segarkan);
+    document.addEventListener('visibilitychange', segarkan);
+    return () => { clearInterval(iv); window.removeEventListener('focus', segarkan); document.removeEventListener('visibilitychange', segarkan); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -436,6 +467,18 @@ export default function AdminDashboardPage() {
   const belumAbsen = belumAbsenList.length;
   const sedangRemote = (e: any) => (!!e.idKaryawan && remoteIds.has(String(e.idKaryawan))) || remoteNama.has(normNama(e.nama));
 
+  // Log absensi live: clock-in & clock-out jadi satu linimasa, kejadian terbaru di atas.
+  const kejadianAbsen = absenLog.flatMap((a: any) => {
+    const ev: { kunci: string; jenis: "masuk" | "pulang"; jam: string; a: any }[] = [];
+    const k = String(a.id ?? a.idKaryawan ?? a.nama);
+    if (a.waktuMasuk) ev.push({ kunci: `masuk-${k}`, jenis: "masuk", jam: jamUrut(a.waktuMasuk), a });
+    if (a.waktuKeluar) ev.push({ kunci: `pulang-${k}`, jenis: "pulang", jam: jamUrut(a.waktuKeluar), a });
+    return ev;
+  }).sort((x, y) => y.jam.localeCompare(x.jam) || (x.jenis === y.jenis ? 0 : x.jenis === "pulang" ? -1 : 1));
+  const jumlahMasukLog = kejadianAbsen.filter((e) => e.jenis === "masuk").length;
+  const jumlahPulangLog = kejadianAbsen.filter((e) => e.jenis === "pulang").length;
+  const kejadianTampil = saringLog === "semua" ? kejadianAbsen : kejadianAbsen.filter((e) => e.jenis === saringLog);
+
   // Judul jendela rincian sesuai kategori yang diklik.
   const JUDUL_RINCIAN: Record<string, string> = {
     total: "Total karyawan", hadir: "Tepat waktu", terlambat: "Terlambat",
@@ -525,7 +568,7 @@ export default function AdminDashboardPage() {
                 {telatMenungguKeputusan.map((req: any) => (
                   <div key={req.id} className="bg-black/20 border border-amber-500/15 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-2.5">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="w-9 h-9 shrink-0 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-300 font-bold border border-amber-500/30">{req.nama?.charAt(0).toUpperCase() || "?"}</div>
+                      <AvatarKaryawan id={req.idKaryawan} nama={req.nama} className="w-9 h-9 shrink-0 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-300 font-bold border border-amber-500/30" />
                       <div className="min-w-0">
                         <h4 className="font-bold text-white text-sm truncate">{req.nama}</h4>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -660,7 +703,7 @@ export default function AdminDashboardPage() {
                   {pendingApprovals.map((req) => (
                     <div key={req.id} className="bg-white/[0.03] border border-white/5 p-3.5 rounded-xl flex flex-col gap-2 transition-colors hover:border-white/15">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 shrink-0 rounded-full bg-primer-terang/20 flex items-center justify-center text-tint font-bold border border-primer-terang/30">{req.nama?.charAt(0).toUpperCase() || "?"}</div>
+                        <AvatarKaryawan id={req.idKaryawan} nama={req.nama} className="w-9 h-9 shrink-0 rounded-full bg-primer-terang/20 flex items-center justify-center text-tint font-bold border border-primer-terang/30" />
                         <div className="min-w-0">
                           <h4 className="font-bold text-white text-sm truncate">{req.nama}</h4>
                           <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded font-bold uppercase mt-1 inline-block">{req.jenis}</span>
@@ -687,46 +730,81 @@ export default function AdminDashboardPage() {
               )}
             </BentoCell>
 
-            {/* Log absensi live */}
+            {/* Log absensi live — clock-in & clock-out (riwayat pulang) dalam satu linimasa */}
             <BentoCell className="col-span-2">
-              <div className="flex justify-between items-center mb-5 border-b border-white/5 pb-4">
+              <div className="flex justify-between items-center gap-3 mb-4 border-b border-white/5 pb-4">
                 <h3 className="text-base font-bold text-white">Log absensi live</h3>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-gray-500">{todayAttendances.length} tercatat</span>
+                  <span className="text-[11px] text-gray-500">{absenLog.length} tercatat</span>
                   <button
                     type="button"
                     onClick={() => setGaleriFoto({ fokusId: null })}
                     title="Lihat foto selfie absensi (7 hari terakhir)"
-                    className="flex items-center gap-1.5 text-[11px] font-bold text-tint bg-primer/10 hover:bg-primer/20 border border-primer/30 px-2.5 py-1 rounded-lg transition-colors"
+                    className="flex items-center gap-1.5 text-[11px] font-bold text-tint bg-primer/10 hover:bg-primer/20 border border-primer/30 px-2.5 py-1 rounded-lg transition-colors shrink-0"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
                     Foto absen
                   </button>
                 </div>
               </div>
-              <div className="relative border-l border-white/10 ml-3 space-y-5 max-h-[280px] overflow-y-auto custom-scrollbar">
-                {todayAttendances.slice(0, 8).map((absen, idx) => (
-                  <div key={`log-${absen.id}`} className="relative pl-6 animate-in slide-in-from-left-2" style={{ animationDelay: `${idx * 50}ms` }}>
-                    <div className={`absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full ring-4 ring-latar ${absen.status === 'Terlambat' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-white">{absen.nama}</p>
-                      {absen.mode_kerja && absen.mode_kerja !== "Kantor" && (
-                        <span className="text-[9px] font-bold uppercase tracking-wide bg-primer/15 text-tint-redup px-1.5 py-0.5 rounded border border-primer/30">{absen.mode_kerja}</span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setGaleriFoto({ fokusId: String(absen.idKaryawan ?? "") })}
-                        title={absen.foto_masuk || absen.foto_keluar ? "Lihat foto absen" : "Foto absen (belum ada)"}
-                        aria-label={`Lihat foto absen ${absen.nama}`}
-                        className={`ml-auto shrink-0 p-1 rounded-md transition-colors ${absen.foto_masuk || absen.foto_keluar ? "text-tint hover:bg-primer/20" : "text-gray-600 hover:text-gray-400 hover:bg-white/5"}`}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
-                      </button>
-                    </div>
-                    <span className="text-[10px] bg-white/5 text-gray-300 px-2 py-0.5 rounded font-mono border border-white/10 mt-1 inline-block">Masuk {absen.waktuMasuk}</span>
-                  </div>
+              <div role="group" aria-label="Saring log absensi" className="flex gap-1.5 mb-4 relative z-30">
+                {([
+                  ["semua", "Semua", kejadianAbsen.length],
+                  ["masuk", "Masuk", jumlahMasukLog],
+                  ["pulang", "Pulang", jumlahPulangLog],
+                ] as const).map(([kunci, label, n]) => (
+                  <button
+                    key={kunci}
+                    type="button"
+                    aria-pressed={saringLog === kunci}
+                    onClick={() => setSaringLog(kunci)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${saringLog === kunci ? "bg-primer text-white" : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"}`}
+                  >
+                    {label} <span className={saringLog === kunci ? "text-white/70" : "text-gray-500"}>{n}</span>
+                  </button>
                 ))}
-                {todayAttendances.length === 0 && <p className="text-xs text-gray-500 pl-6 italic">Belum ada yang absen hari ini.</p>}
+              </div>
+              <div className="relative border-l border-white/10 ml-3 space-y-4 max-h-[280px] overflow-y-auto custom-scrollbar">
+                {kejadianTampil.map((ev, idx) => {
+                  const absen = ev.a;
+                  const pulang = ev.jenis === "pulang";
+                  const adaFoto = pulang ? !!absen.foto_keluar : !!absen.foto_masuk;
+                  return (
+                    <div key={ev.kunci} className="relative pl-6 animate-in slide-in-from-left-2" style={{ animationDelay: `${Math.min(idx, 10) * 50}ms` }}>
+                      <div className={`absolute left-[-5px] top-[11px] w-2.5 h-2.5 rounded-full ring-4 ring-latar ${pulang ? "bg-tint-redup" : absen.status === 'Terlambat' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
+                      <div className="flex items-start gap-2.5">
+                        <AvatarKaryawan id={absen.idKaryawan} nama={absen.nama} className="w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-xs" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-white truncate">{absen.nama}</p>
+                            {absen.mode_kerja && absen.mode_kerja !== "Kantor" && (
+                              <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-primer/15 text-tint-redup px-1.5 py-0.5 rounded border border-primer/30">{absen.mode_kerja}</span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setGaleriFoto({ fokusId: String(absen.idKaryawan ?? "") })}
+                              title={adaFoto ? `Lihat foto ${pulang ? "pulang" : "masuk"}` : `Foto ${pulang ? "pulang" : "masuk"} (belum ada)`}
+                              aria-label={`Lihat foto absen ${absen.nama}`}
+                              className={`ml-auto shrink-0 p-1 rounded-md transition-colors ${adaFoto ? "text-tint hover:bg-primer/20" : "text-gray-600 hover:text-gray-400 hover:bg-white/5"}`}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
+                            </button>
+                          </div>
+                          {pulang ? (
+                            <span className="text-[10px] bg-primer/10 text-tint-redup px-2 py-0.5 rounded font-mono border border-primer/25 mt-1 inline-block">Pulang {absen.waktuKeluar}</span>
+                          ) : (
+                            <span className="text-[10px] bg-white/5 text-gray-300 px-2 py-0.5 rounded font-mono border border-white/10 mt-1 inline-block">Masuk {absen.waktuMasuk}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {absenLog.length === 0 ? (
+                  <p className="text-xs text-gray-500 pl-6 italic">Belum ada yang absen hari ini.</p>
+                ) : kejadianTampil.length === 0 ? (
+                  <p className="text-xs text-gray-500 pl-6 italic">{saringLog === "pulang" ? "Belum ada yang clock-out hari ini." : "Belum ada yang clock-in hari ini."}</p>
+                ) : null}
               </div>
             </BentoCell>
           </div>
@@ -934,8 +1012,8 @@ export default function AdminDashboardPage() {
               {activeModal === "total" && (
                 <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
                   {employees.map((emp, i) => (
-                    <div key={emp.idKaryawan || emp.id || i} className="flex justify-between items-center p-3 bg-input rounded-lg border border-white/5">
-                      <div><p className="font-bold text-sm text-white">{emp.nama}</p><p className="text-[10px] text-gray-500 font-mono mt-0.5">{emp.idKaryawan} • {emp.jabatan}</p></div>
+                    <div key={emp.idKaryawan || emp.id || i} className="flex justify-between items-center gap-3 p-3 bg-input rounded-lg border border-white/5">
+                      <div className="flex items-center gap-3 min-w-0"><AvatarKaryawan id={emp.idKaryawan} nama={emp.nama} className={KELAS_AVATAR} /><div className="min-w-0"><p className="font-bold text-sm text-white">{emp.nama}</p><p className="text-[10px] text-gray-500 font-mono mt-0.5">{emp.idKaryawan} • {emp.jabatan}</p></div></div>
                       <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-1 rounded font-bold">Aktif</span>
                     </div>
                   ))}
@@ -944,8 +1022,8 @@ export default function AdminDashboardPage() {
               {activeModal === "hadir" && (
                 <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
                   {onTimeToday.map((absen, i) => (
-                    <div key={absen.id || `ot-${i}`} className="flex justify-between items-center p-3 bg-input rounded-lg border border-white/5 border-l-2 border-l-green-500">
-                      <div><p className="font-bold text-sm text-white">{absen.nama}</p><p className="text-[10px] text-gray-500">{absen.lokasi || "Lokasi Terverifikasi"}</p></div>
+                    <div key={absen.id || `ot-${i}`} className="flex justify-between items-center gap-3 p-3 bg-input rounded-lg border border-white/5 border-l-2 border-l-green-500">
+                      <div className="flex items-center gap-3 min-w-0"><AvatarKaryawan id={absen.idKaryawan} nama={absen.nama} className={KELAS_AVATAR} /><div className="min-w-0"><p className="font-bold text-sm text-white">{absen.nama}</p><p className="text-[10px] text-gray-500">{absen.lokasi || "Lokasi Terverifikasi"}</p></div></div>
                       <span className="text-xs font-mono text-green-400">{absen.waktuMasuk} WIB</span>
                     </div>
                   ))}
@@ -955,8 +1033,8 @@ export default function AdminDashboardPage() {
               {activeModal === "terlambat" && (
                 <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
                   {lateToday.map((absen, i) => (
-                    <div key={absen.id || `lt-${i}`} className="flex justify-between items-center p-3 bg-input rounded-lg border border-white/5 border-l-2 border-l-yellow-500">
-                      <div><p className="font-bold text-sm text-white">{absen.nama}</p><p className="text-[10px] text-gray-500">{absen.lokasi}</p></div>
+                    <div key={absen.id || `lt-${i}`} className="flex justify-between items-center gap-3 p-3 bg-input rounded-lg border border-white/5 border-l-2 border-l-yellow-500">
+                      <div className="flex items-center gap-3 min-w-0"><AvatarKaryawan id={absen.idKaryawan} nama={absen.nama} className={KELAS_AVATAR} /><div className="min-w-0"><p className="font-bold text-sm text-white">{absen.nama}</p><p className="text-[10px] text-gray-500">{absen.lokasi}</p></div></div>
                       <span className="text-xs font-mono text-amber-400">{absen.waktuMasuk} WIB</span>
                     </div>
                   ))}
@@ -971,8 +1049,7 @@ export default function AdminDashboardPage() {
                     const buka = bukaAlasan === kunci;
                     return (
                       <div key={kunci} onClick={() => setBukaAlasan(buka ? null : kunci)} className="flex flex-col p-3 bg-input rounded-lg border border-white/5 border-l-2 border-l-red-500 cursor-pointer hover:bg-white/5 transition-colors">
-                        <div className="flex justify-between items-center"><p className="font-bold text-sm text-white">{leave.nama}</p><span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded font-bold uppercase">{leave.jenis}</span></div>
-                        <p className="text-[10px] text-gray-500 mt-1">{leave.tanggal}</p>
+                        <div className="flex justify-between items-center gap-3"><div className="flex items-center gap-3 min-w-0"><AvatarKaryawan id={leave.idKaryawan} nama={leave.nama} className={KELAS_AVATAR} /><div className="min-w-0"><p className="font-bold text-sm text-white">{leave.nama}</p><p className="text-[10px] text-gray-500 mt-0.5">{leave.tanggal}</p></div></div><span className="shrink-0 text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded font-bold uppercase">{leave.jenis}</span></div>
                         {buka && <p className="text-[11px] text-gray-300 mt-2 pt-2 border-t border-white/10 italic whitespace-pre-wrap break-words">{leave.alasan ? `"${leave.alasan}"` : "Tidak ada keterangan."}</p>}
                       </div>
                     );
@@ -985,9 +1062,12 @@ export default function AdminDashboardPage() {
                   {belumAbsenList.length > 0 && <p className="text-[10px] text-gray-500 mb-1">Karyawan aktif yang belum clock-in hari ini (yang sedang sakit/cuti tidak termasuk).</p>}
                   {belumAbsenList.map((emp: any, i: number) => (
                     <div key={emp.idKaryawan || emp.id || `ba-${i}`} className="flex justify-between items-center gap-3 p-3 bg-input rounded-lg border border-white/5 border-l-2 border-l-white/30">
-                      <div className="min-w-0">
-                        <p className="font-bold text-sm text-white truncate">{emp.nama}</p>
-                        <p className="text-[10px] text-gray-500 font-mono mt-0.5 truncate">{emp.idKaryawan || "-"} • {emp.jabatan || "-"}</p>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <AvatarKaryawan id={emp.idKaryawan} nama={emp.nama} className={KELAS_AVATAR} />
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm text-white truncate">{emp.nama}</p>
+                          <p className="text-[10px] text-gray-500 font-mono mt-0.5 truncate">{emp.idKaryawan || "-"} • {emp.jabatan || "-"}</p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {sedangRemote(emp) && <span className="text-[10px] bg-primer/15 text-tint-redup px-2 py-1 rounded font-bold uppercase">WFH/WFC</span>}
@@ -1008,8 +1088,7 @@ export default function AdminDashboardPage() {
                     const buka = bukaAlasan === kunci;
                     return (
                       <div key={kunci} onClick={() => setBukaAlasan(buka ? null : kunci)} className="flex flex-col p-3 bg-input rounded-lg border border-white/5 border-l-2 border-l-primer cursor-pointer hover:bg-white/5 transition-colors">
-                        <div className="flex justify-between items-center"><p className="font-bold text-sm text-white">{leave.nama}</p><span className="text-[10px] bg-primer/15 text-tint-redup px-2 py-1 rounded font-bold uppercase">{leave.jenis}</span></div>
-                        <p className="text-[10px] text-gray-500 mt-1">{leave.tanggal}</p>
+                        <div className="flex justify-between items-center gap-3"><div className="flex items-center gap-3 min-w-0"><AvatarKaryawan id={leave.idKaryawan} nama={leave.nama} className={KELAS_AVATAR} /><div className="min-w-0"><p className="font-bold text-sm text-white">{leave.nama}</p><p className="text-[10px] text-gray-500 mt-0.5">{leave.tanggal}</p></div></div><span className="shrink-0 text-[10px] bg-primer/15 text-tint-redup px-2 py-1 rounded font-bold uppercase">{leave.jenis}</span></div>
                         {buka && <p className="text-[11px] text-gray-300 mt-2 pt-2 border-t border-white/10 italic whitespace-pre-wrap break-words">{leave.alasan ? `"${leave.alasan}"` : "Tidak ada keterangan."}</p>}
                       </div>
                     );

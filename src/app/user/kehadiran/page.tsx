@@ -7,7 +7,7 @@ import { TOLERANSI_TELAT_MENIT, JAM_KERJA_JAM, jamPulangDariClockIn } from "@/li
 import { ambilAturanJamKerja, teksDurasi } from "@/lib/jamKerja";
 import { jarakMeter, ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
 import { pushNotify } from "@/lib/push";
-import { simpanFotoAbsen } from "@/lib/fotoAbsen";
+import { simpanFotoAbsen, tungguMaksimal } from "@/lib/fotoAbsen";
 import { statusRemoteHariIni, modeBawaan, keteranganRemote } from "@/lib/kerjaRemote";
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
@@ -366,7 +366,7 @@ export default function UserKehadiranPage() {
       }]);
       if (error) throw error;
       // Simpan selfie (latar belakang; gagal pun absen tetap tercatat)
-      simpanFotoAbsen(supabase, { dataUrl: fotoMasuk, jenis: "masuk", tanggal: todayISO, idKaryawan: safeId });
+      const fotoTersimpan = simpanFotoAbsen(supabase, { dataUrl: fotoMasuk, jenis: "masuk", tanggal: todayISO, idKaryawan: safeId });
       showToast("success", `Clock-In berhasil dicatat pada ${timeString} WIB.`);
       pushNotify(supabase, { toAdmins: true, title: "Absen Masuk", body: `${currentUser?.nama || "Karyawan"} clock-in ${timeString} (${statusKehadiran})`, url: "/admin/kehadiran", tag: "absen" });
       // Terlambat + alasan wajib terisi → otomatis buat pengajuan Izin Terlambat (Menunggu) → masuk antrean manajer.
@@ -383,7 +383,9 @@ export default function UserKehadiranPage() {
         const { error: e2 } = await supabase.from("approvals").insert([req]);
         if (!e2) pushNotify(supabase, { toAdmins: true, title: "Izin Terlambat", body: `${currentUser?.nama || "Karyawan"} clock-in terlambat ${timeString} — ${alasanTelatWajib.trim()}`, url: "/admin/dashboard", tag: "pengajuan" });
       }
-      await fetchDashboardData(safeId);
+      // Tahan tombol sebentar (maks 8 dtk) agar unggahan selfie sempat selesai
+      // sebelum karyawan menutup aplikasi. Absen sendiri SUDAH tercatat di atas.
+      await Promise.all([fetchDashboardData(safeId), tungguMaksimal(fotoTersimpan, 8000)]);
     } catch (err: any) {
       if (err?.code === "23505") { showToast("info", "Anda sudah tercatat absen masuk hari ini."); await fetchDashboardData(safeId); }
       else showToast("error", "Gagal merekam absensi: " + err.message);
@@ -411,10 +413,10 @@ export default function UserKehadiranPage() {
     try {
       const { error } = await supabase.from("attendance").update({ waktuKeluar: timeString }).eq("id", todayAttendance.id);
       if (error) throw error;
-      simpanFotoAbsen(supabase, { dataUrl: fotoKeluar, jenis: "keluar", tanggal: todayAttendance.tanggal || todayISO, idKaryawan: safeId, idAbsen: todayAttendance.id });
+      const fotoTersimpan = simpanFotoAbsen(supabase, { dataUrl: fotoKeluar, jenis: "keluar", tanggal: todayAttendance.tanggal || todayISO, idKaryawan: safeId, idAbsen: todayAttendance.id });
       showToast("success", `Clock-Out berhasil: ${timeString} WIB. Hati-hati di jalan!`);
       pushNotify(supabase, { toAdmins: true, title: "Absen Pulang", body: `${currentUser?.nama || "Karyawan"} clock-out ${timeString}`, url: "/admin/kehadiran", tag: "absen" });
-      await fetchDashboardData(safeId);
+      await Promise.all([fetchDashboardData(safeId), tungguMaksimal(fotoTersimpan, 8000)]);
     } catch (err: any) {
       showToast("error", "Gagal merekam jam pulang: " + err.message);
     } finally {

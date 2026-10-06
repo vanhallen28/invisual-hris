@@ -12,6 +12,7 @@ import { type Rentang, periodeGaji, hariDalamRentang, labelRentang, jumlahHari }
 import { unduhBerkas } from "@/lib/keuangan/cetak";
 import { csvRekapKehadiran } from "@/lib/rekapKehadiranCsv";
 import { FotoAbsenPasangan } from "@/components/FotoAbsen";
+import AvatarKaryawan from "@/components/AvatarKaryawan";
 
 type StatusKehadiran = "Hadir" | "Telat" | "Alpa" | "Cuti/Sakit" | "WFH" | "Libur" | "-";
 type Sel = { iso: string; status: StatusKehadiran; att?: any; leave?: any };
@@ -27,6 +28,7 @@ const dariIso = (iso: string) => { const [y, m, d] = iso.split("-").map(Number);
 const tglPendek = (iso: string) => { const d = dariIso(iso); return `${HARI[d.getDay()].slice(0, 3)}, ${d.getDate()} ${BULAN[d.getMonth()].slice(0, 3)}`; };
 const tglPanjang = (iso: string) => { const d = dariIso(iso); return `${HARI[d.getDay()]}, ${d.getDate()} ${BULAN[d.getMonth()]} ${d.getFullYear()}`; };
 const normNama = (v: any) => String(v ?? "").trim().toLowerCase();
+const KELAS_AVATAR = "w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-xs";
 // Rentang bawaan = periode tutup-buku 21 → 20 (lihat lib/rentangTanggal), HR bebas memilih rentang lain.
 
 // Ambil rentang tanggal dari string approvals ("2026-07-16" atau "2026-07-16 s/d 2026-07-20").
@@ -203,7 +205,7 @@ export default function AdminKehadiranPage() {
     const count: Record<string, number> = {};
     attendance.forEach((a) => { if (terlambat(a, fleksibelIds(employees))) count[a.idKaryawan] = (count[a.idKaryawan] || 0) + 1; });
     return employees
-      .map((e) => ({ nama: rapikanNama(e.nama), totalTelat: count[e.idKaryawan] || 0 }))
+      .map((e) => ({ id: e.idKaryawan, nama: rapikanNama(e.nama), totalTelat: count[e.idKaryawan] || 0 }))
       .filter((x) => x.totalTelat > 0)
       .sort((a, b) => b.totalTelat - a.totalTelat)
       .slice(0, 5);
@@ -218,7 +220,7 @@ export default function AdminKehadiranPage() {
       else hadir[a.idKaryawan] = (hadir[a.idKaryawan] || 0) + 1;
     });
     return employees
-      .map((e) => ({ nama: rapikanNama(e.nama), hadir: hadir[e.idKaryawan] || 0, telat: telat[e.idKaryawan] || 0 }))
+      .map((e) => ({ id: e.idKaryawan, nama: rapikanNama(e.nama), hadir: hadir[e.idKaryawan] || 0, telat: telat[e.idKaryawan] || 0 }))
       .filter((x) => x.telat === 0 && x.hadir > 0)
       .sort((a, b) => b.hadir - a.hadir)
       .slice(0, 5);
@@ -369,7 +371,10 @@ export default function AdminKehadiranPage() {
               <p className="text-xs text-gray-600">Tidak ada keterlambatan di rentang ini. 🎉</p>
             ) : seringTelat.map((emp: any, idx: number) => (
               <div key={idx} className="flex justify-between items-center bg-kartu-hover p-3 rounded-xl border border-white/10">
-                <span className="text-sm font-semibold text-gray-200 truncate mr-2">{emp.nama}</span>
+                <div className="flex items-center gap-2.5 min-w-0 mr-2">
+                  <AvatarKaryawan id={emp.id} nama={emp.nama} className={KELAS_AVATAR} />
+                  <span className="text-sm font-semibold text-gray-200 truncate">{emp.nama}</span>
+                </div>
                 <span className="bg-yellow-500/20 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-500/20 shrink-0">{emp.totalTelat}x Telat</span>
               </div>
             ))}
@@ -393,9 +398,12 @@ export default function AdminKehadiranPage() {
               const key = row.id || `${row.idKaryawan}|${row.tanggal}`;
               return (
                 <div key={idx} className="flex justify-between items-center bg-kartu-hover p-3 rounded-xl border border-white/10 gap-2">
-                  <div className="min-w-0">
-                    <span className="text-sm font-semibold text-gray-200 block truncate">{namaResmi(row.idKaryawan, employees, row.nama)}</span>
-                    <span className="text-[10px] text-gray-500">{row.tanggal} · Masuk {row.waktuMasuk || "-"}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <AvatarKaryawan id={row.idKaryawan} nama={namaResmi(row.idKaryawan, employees, row.nama)} className={KELAS_AVATAR} />
+                    <div className="min-w-0">
+                      <span className="text-sm font-semibold text-gray-200 block truncate">{namaResmi(row.idKaryawan, employees, row.nama)}</span>
+                      <span className="text-[10px] text-gray-500">{row.tanggal} · Masuk {row.waktuMasuk || "-"}</span>
+                    </div>
                   </div>
                   <button
                     onClick={() => closeSession(row)}
@@ -425,7 +433,10 @@ export default function AdminKehadiranPage() {
               <p className="text-xs text-gray-600">Belum ada data absensi di rentang ini.</p>
             ) : palingDisiplin.map((emp: any, idx: number) => (
               <div key={idx} className="flex justify-between items-center bg-kartu-hover p-3 rounded-xl border border-white/10 gap-2">
-                <span className="text-sm font-semibold text-gray-200 truncate">{emp.nama}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <AvatarKaryawan id={emp.id} nama={emp.nama} className={KELAS_AVATAR} />
+                  <span className="text-sm font-semibold text-gray-200 truncate">{emp.nama}</span>
+                </div>
                 <span className="bg-green-500/20 text-green-400 text-xs font-bold px-2 py-1 rounded border border-green-500/20 shrink-0">{emp.hadir} hari tepat waktu</span>
               </div>
             ))}
@@ -492,14 +503,20 @@ export default function AdminKehadiranPage() {
                 barisTampil.map((emp) => (
                   <tr key={emp.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="px-6 py-3 sticky left-0 bg-kartu z-10 shadow-[5px_0_10px_rgba(0,0,0,0.3)] border-r border-white/5 min-w-[190px]">
-                      <p className="font-bold text-white text-sm truncate max-w-[200px]">{emp.nama}</p>
-                      <p className="text-[10px] text-gray-500 truncate max-w-[200px]">{emp.divisi}</p>
-                      <p className="text-[10px] font-bold mt-0.5 flex gap-2 whitespace-nowrap" title="Hadir · Telat · Izin/Cuti/WFH · Alpa">
-                        <span className="text-green-400">H {emp.hitung.hadir}</span>
-                        <span className="text-yellow-400">T {emp.hitung.telat}</span>
-                        <span className="text-purple-400">I {emp.hitung.izin}</span>
-                        <span className="text-red-400">A {emp.hitung.alpa}</span>
-                      </p>
+                      <div className="flex items-center gap-2.5">
+                        {/* ponsel: avatar disembunyikan agar kolom nama tetap ramping */}
+                        <AvatarKaryawan id={emp.id} nama={emp.nama} className="hidden sm:flex w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/10 text-white items-center justify-center font-bold text-xs" />
+                        <div className="min-w-0">
+                          <p className="font-bold text-white text-sm truncate max-w-[200px]">{emp.nama}</p>
+                          <p className="text-[10px] text-gray-500 truncate max-w-[200px]">{emp.divisi}</p>
+                          <p className="text-[10px] font-bold mt-0.5 flex gap-2 whitespace-nowrap" title="Hadir · Telat · Izin/Cuti/WFH · Alpa">
+                            <span className="text-green-400">H {emp.hitung.hadir}</span>
+                            <span className="text-yellow-400">T {emp.hitung.telat}</span>
+                            <span className="text-purple-400">I {emp.hitung.izin}</span>
+                            <span className="text-red-400">A {emp.hitung.alpa}</span>
+                          </p>
+                        </div>
+                      </div>
                     </td>
                     {emp.sel.map((x: Sel, index: number) => (
                       <td key={index} className={`px-1 py-3 text-center border-l border-white/5 border-dashed ${x.iso === todayISO ? "bg-primer-terang/[0.06]" : ""}`}>
@@ -550,9 +567,12 @@ export default function AdminKehadiranPage() {
                     return (
                       <div key={row.id} className="bg-input rounded-lg border border-white/5 overflow-hidden">
                         <button type="button" onClick={() => setBukaOrang(buka ? null : row.id)} className="w-full flex justify-between items-center gap-3 p-3 text-left hover:bg-white/5 transition-colors">
-                          <div className="min-w-0">
-                            <p className="font-bold text-sm text-white truncate">{row.nama}</p>
-                            <p className="text-[10px] text-gray-500 truncate">{row.divisi}</p>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <AvatarKaryawan id={row.id} nama={row.nama} className={KELAS_AVATAR} />
+                            <div className="min-w-0">
+                              <p className="font-bold text-sm text-white truncate">{row.nama}</p>
+                              <p className="text-[10px] text-gray-500 truncate">{row.divisi}</p>
+                            </div>
                           </div>
                           <span className={`text-xs font-bold shrink-0 ${KATEGORI[rincian].warna}`}>{hari.length} {KATEGORI[rincian].satuan} {buka ? "▴" : "▾"}</span>
                         </button>
@@ -593,9 +613,12 @@ export default function AdminKehadiranPage() {
           <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setDetailSel(null)}>
             <div className="bg-kartu rounded-xl border border-white/10 w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
               <div className="p-4 border-b border-white/5 bg-kartu-hover flex justify-between items-start gap-3">
-                <div className="min-w-0">
-                  <p className="font-bold text-white text-sm truncate">{baris.nama}</p>
-                  <p className="text-[11px] text-gray-500">{tglPanjang(x.iso)}</p>
+                <div className="flex items-center gap-3 min-w-0">
+                  <AvatarKaryawan id={baris.id} nama={baris.nama} className="w-10 h-10 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-sm" />
+                  <div className="min-w-0">
+                    <p className="font-bold text-white text-sm truncate">{baris.nama}</p>
+                    <p className="text-[11px] text-gray-500">{tglPanjang(x.iso)}</p>
+                  </div>
                 </div>
                 <button onClick={() => setDetailSel(null)} className="text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
               </div>

@@ -8,7 +8,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { rapikanNama } from "@/lib/nama";
-import { urlFotoAbsen, fotoKedaluwarsa, UMUR_FOTO_HARI } from "@/lib/fotoAbsen";
+import { ambilUrlFotoAbsen, fotoKedaluwarsa, UMUR_FOTO_HARI } from "@/lib/fotoAbsen";
+import AvatarKaryawan from "@/components/AvatarKaryawan";
 
 const HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 const BULAN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
@@ -37,14 +38,14 @@ function Lightbox({ src, onTutup }: { src: string; onTutup: () => void }) {
 }
 
 /** Satu kotak foto (masuk/pulang) dengan semua keadaannya. */
-function KotakFoto({ label, jam, path, url, memuat, kedaluwarsa, belumPulang, onBuka }: {
-  label: string; jam?: string | null; path?: string | null; url?: string; memuat: boolean; kedaluwarsa: boolean; belumPulang?: boolean; onBuka: (u: string) => void;
+function KotakFoto({ label, jam, path, url, memuat, kedaluwarsa, belumPulang, hilang, onBuka, onRusak }: {
+  label: string; jam?: string | null; path?: string | null; url?: string; memuat: boolean; kedaluwarsa: boolean; belumPulang?: boolean; hilang?: boolean; onBuka: (u: string) => void; onRusak?: (path: string) => void;
 }) {
   const [rusak, setRusak] = useState(false);
   let pesan = "";
   if (!path) pesan = kedaluwarsa ? `Sudah terhapus otomatis (> ${UMUR_FOTO_HARI} hari)` : belumPulang ? "Belum clock-out" : "Tidak ada foto";
   else if (memuat) pesan = "Memuat…";
-  else if (!url || rusak) pesan = kedaluwarsa ? `Sudah terhapus otomatis (> ${UMUR_FOTO_HARI} hari)` : "Foto tidak bisa dibuka";
+  else if (!url || rusak) pesan = kedaluwarsa ? `Sudah terhapus otomatis (> ${UMUR_FOTO_HARI} hari)` : hilang ? "Berkas foto tidak ditemukan di penyimpanan" : "Foto tidak bisa dibuka";
   return (
     <div className="min-w-0">
       <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">{label}{jam ? <span className="text-gray-300 normal-case font-mono ml-1">{jam}</span> : null}</p>
@@ -55,7 +56,7 @@ function KotakFoto({ label, jam, path, url, memuat, kedaluwarsa, belumPulang, on
       ) : (
         <button type="button" onClick={() => onBuka(url!)} className="block w-full aspect-[3/4] rounded-lg overflow-hidden border border-white/10 hover:border-primer-terang focus:outline-none focus:ring-2 focus:ring-primer-terang" title="Perbesar">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={url} alt={`Foto ${label.toLowerCase()}`} onError={() => setRusak(true)} className="w-full h-full object-cover" loading="lazy" />
+          <img src={url} alt={`Foto ${label.toLowerCase()}`} onError={() => { setRusak(true); if (path) onRusak?.(path); }} className="w-full h-full object-cover" loading="lazy" />
         </button>
       )}
     </div>
@@ -65,28 +66,38 @@ function KotakFoto({ label, jam, path, url, memuat, kedaluwarsa, belumPulang, on
 /** Foto masuk & pulang dari satu baris attendance. */
 export function FotoAbsenPasangan({ att, hariIni }: { att: any; hariIni: string }) {
   const [url, setUrl] = useState<Record<string, string>>({});
+  const [hilang, setHilang] = useState<Set<string>>(() => new Set());
+  const [ditolak, setDitolak] = useState<Set<string>>(() => new Set());
+  const [rusakSet, setRusakSet] = useState<Set<string>>(() => new Set());
   const [memuat, setMemuat] = useState(true);
   const [besar, setBesar] = useState<string | null>(null);
+  const [ulang, setUlang] = useState(0);
   const fm = att?.foto_masuk || null, fk = att?.foto_keluar || null;
 
   useEffect(() => {
     let hidup = true;
     (async () => {
       setMemuat(true);
-      const u = await urlFotoAbsen(supabase, [fm, fk]);
-      if (hidup) { setUrl(u); setMemuat(false); }
+      setRusakSet(new Set());
+      const h = await ambilUrlFotoAbsen(supabase, [fm, fk]);
+      if (hidup) { setUrl(h.url); setHilang(h.hilang); setDitolak(h.ditolak); setMemuat(false); }
     })();
     return () => { hidup = false; };
-  }, [fm, fk]);
+  }, [fm, fk, ulang]);
 
   const lama = fotoKedaluwarsa(att?.tanggal || hariIni, hariIni);
+  const tandaiRusak = (p: string) => setRusakSet((s) => (s.has(p) ? s : new Set(s).add(p)));
+  const bisaDiulang = !memuat && !lama && [fm, fk].some((p) => p && (rusakSet.has(p) || (!url[p] && !hilang.has(p) && !ditolak.has(p))));
   return (
     <div>
       <div className="grid grid-cols-2 gap-3">
-        <KotakFoto label="Masuk" jam={att?.waktuMasuk} path={fm} url={fm ? url[fm] : undefined} memuat={memuat} kedaluwarsa={lama} onBuka={setBesar} />
-        <KotakFoto label="Pulang" jam={att?.waktuKeluar} path={fk} url={fk ? url[fk] : undefined} memuat={memuat} kedaluwarsa={lama} belumPulang={!att?.waktuKeluar} onBuka={setBesar} />
+        <KotakFoto key={`m-${ulang}`} label="Masuk" jam={att?.waktuMasuk} path={fm} url={fm ? url[fm] : undefined} memuat={memuat} kedaluwarsa={lama} hilang={!!fm && hilang.has(fm)} onBuka={setBesar} onRusak={tandaiRusak} />
+        <KotakFoto key={`k-${ulang}`} label="Pulang" jam={att?.waktuKeluar} path={fk} url={fk ? url[fk] : undefined} memuat={memuat} kedaluwarsa={lama} belumPulang={!att?.waktuKeluar} hilang={!!fk && hilang.has(fk)} onBuka={setBesar} onRusak={tandaiRusak} />
       </div>
-      <p className="text-[10px] text-gray-600 mt-2">Foto disimpan {UMUR_FOTO_HARI} hari, lalu terhapus otomatis.</p>
+      <p className="text-[10px] text-gray-600 mt-2">
+        Foto disimpan {UMUR_FOTO_HARI} hari, lalu terhapus otomatis.
+        {bisaDiulang && <> <button type="button" onClick={() => setUlang((n) => n + 1)} className="font-bold text-tint hover:text-white underline underline-offset-2">Muat ulang foto</button></>}
+      </p>
       {besar && <Lightbox src={besar} onTutup={() => setBesar(null)} />}
     </div>
   );
@@ -97,6 +108,9 @@ export function GaleriFotoAbsen({ hariIni, fokusId, onTutup }: { hariIni: string
   const [tanggal, setTanggal] = useState(hariIni);
   const [baris, setBaris] = useState<any[]>([]);
   const [url, setUrl] = useState<Record<string, string>>({});
+  const [hilang, setHilang] = useState<Set<string>>(() => new Set());
+  const [ditolak, setDitolak] = useState<Set<string>>(() => new Set());
+  const [rusakSet, setRusakSet] = useState<Set<string>>(() => new Set());
   const [memuat, setMemuat] = useState(true);
   const [galat, setGalat] = useState("");
   const [cari, setCari] = useState("");
@@ -111,16 +125,18 @@ export function GaleriFotoAbsen({ hariIni, fokusId, onTutup }: { hariIni: string
   useEffect(() => {
     let hidup = true;
     (async () => {
-      setMemuat(true); setGalat("");
+      setMemuat(true); setGalat(""); setRusakSet(new Set());
       const { data, error } = await supabase.from("attendance").select("*").eq("tanggal", tanggal).order("waktuMasuk", { ascending: true });
       if (!hidup) return;
       if (error) { setGalat(error.message); setBaris([]); setMemuat(false); return; }
       const lihat = new Set<string>();
       const unik = (data || []).filter((a: any) => { const k = String(a.idKaryawan ?? a.id); if (lihat.has(k)) return false; lihat.add(k); return true; });
       setBaris(unik);
-      const u = await urlFotoAbsen(supabase, unik.flatMap((a: any) => [a.foto_masuk, a.foto_keluar]));
+      const h = await ambilUrlFotoAbsen(supabase, unik.flatMap((a: any) => [a.foto_masuk, a.foto_keluar]));
       if (!hidup) return;
-      setUrl(u);
+      setUrl(h.url);
+      setHilang(h.hilang);
+      setDitolak(h.ditolak);
       setMemuat(false);
     })();
     return () => { hidup = false; };
@@ -140,6 +156,14 @@ export function GaleriFotoAbsen({ hariIni, fokusId, onTutup }: { hariIni: string
   }, [baris, cari, fokusId]);
 
   const adaFoto = baris.filter((a) => a.foto_masuk || a.foto_keluar).length;
+  // Foto yang tercatat tetapi tautannya belum didapat / gambarnya gagal dimuat (mis. tautan
+  // 1 jam sudah kedaluwarsa) — bukan karena berkasnya memang hilang atau lewat masa simpan
+  // → tawarkan "Muat ulang".
+  const tandaiRusak = (p: string) => setRusakSet((s) => (s.has(p) ? s : new Set(s).add(p)));
+  const gagalDimuat = baris.reduce((n, a) => {
+    if (fotoKedaluwarsa(a.tanggal || tanggal, hariIni)) return n;
+    return n + [a.foto_masuk, a.foto_keluar].filter((p) => p && (rusakSet.has(p) || (!url[p] && !hilang.has(p) && !ditolak.has(p)))).length;
+  }, 0);
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={onTutup}>
@@ -166,7 +190,14 @@ export function GaleriFotoAbsen({ hariIni, fokusId, onTutup }: { hariIni: string
           </div>
           <div className="flex items-center justify-between gap-3">
             <input value={cari} onChange={(e) => setCari(e.target.value)} placeholder="Cari nama…" className="bg-latar border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-primer-terang w-48" />
-            {!memuat && !galat && <span className="text-[11px] text-gray-500">{baris.length} absen · {adaFoto} dengan foto</span>}
+            {!memuat && !galat && (
+              <span className="text-[11px] text-gray-500 text-right">
+                {baris.length} absen · {adaFoto} dengan foto
+                {gagalDimuat > 0 && (
+                  <> · <button type="button" onClick={() => setUlang((n) => n + 1)} className="font-bold text-tint hover:text-white underline underline-offset-2">{gagalDimuat} gagal dimuat — muat ulang</button></>
+                )}
+              </span>
+            )}
           </div>
         </div>
 
@@ -188,15 +219,18 @@ export function GaleriFotoAbsen({ hariIni, fokusId, onTutup }: { hariIni: string
                 return (
                   <div key={a.id ?? a.idKaryawan} className={`rounded-xl border p-3 bg-input ${fokus ? "border-primer-terang ring-1 ring-primer-terang/50" : "border-white/10"}`}>
                     <div className="flex items-center justify-between gap-2 mb-2.5">
-                      <p className="text-sm font-bold text-white truncate">{rapikanNama(a.nama)}</p>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <AvatarKaryawan id={a.idKaryawan} nama={rapikanNama(a.nama)} className="w-7 h-7 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-[11px]" />
+                        <p className="text-sm font-bold text-white truncate">{rapikanNama(a.nama)}</p>
+                      </div>
                       <div className="flex items-center gap-1 shrink-0">
                         {a.mode_kerja && a.mode_kerja !== "Kantor" && <span className="text-[9px] font-bold uppercase bg-primer/15 text-tint-redup px-1.5 py-0.5 rounded border border-primer/30">{a.mode_kerja}</span>}
                         <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${a.status === "Terlambat" ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-green-500/10 text-green-400 border-green-500/20"}`}>{a.status || "-"}</span>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <KotakFoto label="Masuk" jam={a.waktuMasuk} path={a.foto_masuk} url={a.foto_masuk ? url[a.foto_masuk] : undefined} memuat={false} kedaluwarsa={lama} onBuka={setBesar} />
-                      <KotakFoto label="Pulang" jam={a.waktuKeluar} path={a.foto_keluar} url={a.foto_keluar ? url[a.foto_keluar] : undefined} memuat={false} kedaluwarsa={lama} belumPulang={!a.waktuKeluar} onBuka={setBesar} />
+                      <KotakFoto key={`m-${a.foto_masuk || ""}-${ulang}`} label="Masuk" jam={a.waktuMasuk} path={a.foto_masuk} url={a.foto_masuk ? url[a.foto_masuk] : undefined} memuat={false} kedaluwarsa={lama} hilang={!!a.foto_masuk && hilang.has(a.foto_masuk)} onBuka={setBesar} onRusak={tandaiRusak} />
+                      <KotakFoto key={`k-${a.foto_keluar || ""}-${ulang}`} label="Pulang" jam={a.waktuKeluar} path={a.foto_keluar} url={a.foto_keluar ? url[a.foto_keluar] : undefined} memuat={false} kedaluwarsa={lama} belumPulang={!a.waktuKeluar} hilang={!!a.foto_keluar && hilang.has(a.foto_keluar)} onBuka={setBesar} onRusak={tandaiRusak} />
                     </div>
                   </div>
                 );

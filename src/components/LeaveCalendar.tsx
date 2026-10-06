@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { rapikanNama } from "@/lib/nama";
 import { useToast } from "@/components/Toast";
 import { putuskanPengajuan } from "@/lib/keputusanIzin";
+import AvatarKaryawan from "@/components/AvatarKaryawan";
 
 const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const HARI = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
@@ -325,6 +326,7 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
                       className="flex items-center gap-3 bg-kartu border border-white/10 rounded-xl p-2.5 cursor-pointer hover:border-white/20 hover:bg-white/[0.04] transition-colors focus:outline-none focus:ring-2 focus:ring-primer-terang"
                     >
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: sc.dot }} />
+                      <AvatarKaryawan id={l.idKaryawan} nama={rapikanNama(l.nama)} className="hidden sm:flex w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/10 text-white items-center justify-center font-bold text-xs" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-white truncate">{rapikanNama(l.nama)} <span className="text-[10px] font-normal text-gray-500">· {l.jenis}</span></p>
                         <p className="text-[10px] text-gray-500 truncate">{l.tanggal}{l.alasan ? ` — ${l.alasan}` : ""}</p>
@@ -363,9 +365,12 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
                     onKeyDown={(e) => { if (e.key === "Enter") setRincianId(l.id); }}
                     className="bg-input rounded-lg border border-white/5 p-3 cursor-pointer hover:border-white/20 transition-colors">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-white truncate">{rapikanNama(l.nama)}</p>
-                        <p className="text-[11px] text-gray-400 truncate">{l.jenis}</p>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <AvatarKaryawan id={l.idKaryawan} nama={rapikanNama(l.nama)} className="w-9 h-9 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-sm" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{rapikanNama(l.nama)}</p>
+                          <p className="text-[11px] text-gray-400 truncate">{l.jenis}</p>
+                        </div>
                       </div>
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${sc.bg} ${sc.t} shrink-0`}>{l.status}</span>
                     </div>
@@ -396,9 +401,12 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
           <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setRincianId(null)}>
             <div className="bg-kartu rounded-xl border border-white/10 w-full max-w-md shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
               <div className="p-4 border-b border-white/5 bg-kartu-hover flex justify-between items-start gap-3">
-                <div className="min-w-0">
-                  <p className="font-bold text-white text-sm truncate">{rapikanNama(rincian.nama)}</p>
-                  <div className="flex items-center gap-2 mt-0.5">{chipJenis(rincian.kat)}<span className={`text-[9px] font-bold px-2 py-0.5 rounded ${sc.bg} ${sc.t}`}>{rincian.status}</span></div>
+                <div className="flex items-center gap-3 min-w-0">
+                  <AvatarKaryawan id={rincian.idKaryawan} nama={rapikanNama(rincian.nama)} className="w-10 h-10 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-sm" />
+                  <div className="min-w-0">
+                    <p className="font-bold text-white text-sm truncate">{rapikanNama(rincian.nama)}</p>
+                    <div className="flex items-center gap-2 mt-0.5">{chipJenis(rincian.kat)}<span className={`text-[9px] font-bold px-2 py-0.5 rounded ${sc.bg} ${sc.t}`}>{rincian.status}</span></div>
+                  </div>
                 </div>
                 <button onClick={() => setRincianId(null)} className="text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0" title="Tutup"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
               </div>
