@@ -12,7 +12,7 @@ export default function MainTable() {
     searchQuery, setSearchQuery, sortConfig, setSortConfig, teamMembers, labels,
     isHideMenuOpen, setIsHideMenuOpen, triggerConfirm, handleDeleteColumn, HEX_COLORS,
     toggleGroupSelection, handleAddItem, handleAddGroup, updateGroup, handleDeleteGroup, duplicateGroup, moveGroupToBoard, reorderColumns, reorderGroups, updateColumnLabel, openDropdown,
-    activeBoardId, workspaces, supabase
+    activeBoardId, workspaces, supabase, selectedItems
   } = useDashboard();
 
   const [addColMenuTarget, setAddColMenuTarget] = useState<{ type: 'main'|'sub', id: string } | null>(null);
@@ -85,6 +85,41 @@ export default function MainTable() {
   const peopleColId = columns.find((c:any) => c.type === 'team')?.id;
   const statusColId = columns.find((c:any) => c.type === 'status')?.id;
   const statusOptions = statusColId ? (labels[statusColId] || []) : [];
+
+  // ── Pencarian: nama item, nama sub-item, dan isi sel teks/tags/status ──
+  // (dulu memeriksa i.tags yang tidak pernah ada & mengabaikan sub-item)
+  const teksSel = (v: any): string => {
+    if (v == null) return '';
+    if (typeof v === 'string' || typeof v === 'number') return String(v);
+    if (Array.isArray(v)) return v.filter((x) => typeof x === 'string' || typeof x === 'number').join(' ');
+    return '';
+  };
+  const cocokCari = (it: any, kata: string): boolean => {
+    if (String(it?.name || '').toLowerCase().includes(kata)) return true;
+    for (const c of columns) if (c.type !== 'team' && teksSel(it?.[c.id]).toLowerCase().includes(kata)) return true;
+    return (it?.subItems || []).some((sb: any) => String(sb?.name || '').toLowerCase().includes(kata));
+  };
+  // ── Urutkan sesuai tipe kolom; nilai sama → urutan asli (stabil) ──
+  const kunciUrut = (it: any, col: any): string | number => {
+    const v = it?.[col?.id];
+    if (!col) return teksSel(v).toLowerCase();
+    if (col.type === 'timeline') return String(v?.start || '');
+    if (col.type === 'number' || col.type === 'numbers') { const n = parseFloat(String(v ?? '').replace(',', '.')); return isFinite(n) ? n : Number.NEGATIVE_INFINITY; }
+    if (col.type === 'team') return (Array.isArray(v) ? v : []).map((id: string) => teamMembers.find((m: any) => m.id === id)?.name || '').join(',').toLowerCase();
+    return teksSel(v).toLowerCase();
+  };
+  const urutkan = (arr: any[]) => {
+    if (!sortConfig?.key) return arr;
+    const col = columns.find((c: any) => c.id === sortConfig.key);
+    const arah = sortConfig.direction === 'desc' ? -1 : 1;
+    return arr.map((it, idx) => ({ it, idx, k: kunciUrut(it, col) })).sort((a, b) => {
+      const kosongA = a.k === '' || a.k === Number.NEGATIVE_INFINITY, kosongB = b.k === '' || b.k === Number.NEGATIVE_INFINITY;
+      if (kosongA !== kosongB) return kosongA ? 1 : -1;          // kosong selalu di bawah
+      if (a.k < b.k) return -1 * arah;
+      if (a.k > b.k) return 1 * arah;
+      return a.idx - b.idx;
+    }).map((x) => x.it);
+  };
   const activeFilters = (filterPerson ? 1 : 0) + (filterStatus ? 1 : 0);
 
   const lebarKolom = (c: any) => (resize?.id === c.id ? `${resize.w}px` : (c.width || '130px'));
@@ -179,10 +214,10 @@ export default function MainTable() {
       <div className="flex flex-col gap-10">
         {boardData.map((group:any) => {
           let filteredItems = group.items;
-          if (searchQuery) filteredItems = group.items.filter((i: any) => i.name?.toLowerCase().includes(searchQuery.toLowerCase()) || i.tags?.some((t:string) => t.toLowerCase().includes(searchQuery.toLowerCase())));
+          if (searchQuery.trim()) { const kata = searchQuery.trim().toLowerCase(); filteredItems = group.items.filter((i: any) => cocokCari(i, kata)); }
           if (filterPerson && peopleColId) filteredItems = filteredItems.filter((i: any) => Array.isArray(i[peopleColId]) && i[peopleColId].includes(filterPerson));
           if (filterStatus && statusColId) filteredItems = filteredItems.filter((i: any) => i[statusColId] === filterStatus);
-          if (sortConfig) filteredItems = [...filteredItems].sort((a:any,b:any) => { let vA = a[sortConfig.key]||''; let vB = b[sortConfig.key]||''; if(sortConfig.key==='timeline'){vA=a.timeline?.start||'';vB=b.timeline?.start||'';} return vA<vB?(sortConfig.direction==='asc'?-1:1):(sortConfig.direction==='asc'?1:-1); });
+          if (sortConfig) filteredItems = urutkan(filteredItems);
 
           // Any popup (status/dropdown/people/timeline cell, or an add-column menu)
           // open inside THIS group? If so, lift the whole group above sibling groups
@@ -224,10 +259,10 @@ export default function MainTable() {
                   </div>
                 )}
                 <button onClick={() => duplicateGroup(group.id)} title="Duplikat grup beserta isinya"
-                  className="opacity-0 group-hover/board:opacity-100 text-gray-600 hover:text-blue-400 p-1 transition-opacity"><Copy size={14}/></button>
+                  className="opacity-0 group-hover/board:opacity-100 [@media(hover:none)]:opacity-100 text-gray-600 hover:text-blue-400 p-1 transition-opacity"><Copy size={14}/></button>
                 <button onClick={() => { setMovePicker(group.id); setMoveSearch(''); }} title="Pindahkan grup ke board / sub-board lain"
-                  className="opacity-0 group-hover/board:opacity-100 text-gray-600 hover:text-emerald-400 p-1 transition-opacity"><FolderInput size={14}/></button>
-                <button onClick={() => triggerConfirm('Hapus Grup', 'Hapus grup ini?', () => handleDeleteGroup(group.id))} className="opacity-0 group-hover/board:opacity-100 text-gray-600 hover:text-red-400 p-1 transition-opacity"><Trash2 size={14}/></button>
+                  className="opacity-0 group-hover/board:opacity-100 [@media(hover:none)]:opacity-100 text-gray-600 hover:text-emerald-400 p-1 transition-opacity"><FolderInput size={14}/></button>
+                <button onClick={() => triggerConfirm('Hapus Grup', 'Hapus grup ini?', () => handleDeleteGroup(group.id))} className="opacity-0 group-hover/board:opacity-100 [@media(hover:none)]:opacity-100 text-gray-600 hover:text-red-400 p-1 transition-opacity"><Trash2 size={14}/></button>
               </div>
 
               {!group.isCollapsed && (
@@ -237,7 +272,7 @@ export default function MainTable() {
 
                   {/* HEADER TABEL UTAMA */}
                   <div className={`grid items-center border-b border-white/10 bg-kartu-hover text-[11px] font-bold text-gray-400 uppercase select-none rounded-t-md relative ${addColMenuTarget?.id === group.id ? 'z-40' : 'z-10'}`} style={{ gridTemplateColumns }}>
-                    <div className="px-2 py-3 flex justify-center pl-[6px] sticky left-0 z-20 bg-kartu-hover"><input type="checkbox" onChange={() => toggleGroupSelection(group)} className="rounded bg-latar border-white/10 text-blue-500 cursor-pointer w-3.5 h-3.5" /></div>
+                    <div className="px-2 py-3 flex justify-center pl-[6px] sticky left-0 z-20 bg-kartu-hover"><input type="checkbox" checked={filteredItems.length > 0 && filteredItems.every((i: any) => (selectedItems || []).includes(i.id))} onChange={() => toggleGroupSelection({ ...group, items: filteredItems })} title="Pilih semua baris yang tampil" className="rounded bg-latar border-white/10 text-blue-500 cursor-pointer w-3.5 h-3.5" /></div>
                     
                     <div className="px-3 py-3 border-r border-white/10 flex items-center justify-between gap-1 group/namecol transition-colors min-w-0 sticky left-[40px] z-20 bg-kartu-hover relative">
                        <span onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setResize({ id: '__nama', mulaiX: e.clientX, mulaiW: lebarNamaAktif, w: lebarNamaAktif }); }} onClick={(e) => e.stopPropagation()} title="Tarik untuk melebarkan kolom" className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500/70 active:bg-blue-500 transition-colors z-30" />
@@ -258,8 +293,13 @@ export default function MainTable() {
                         <div className="flex-1 min-w-0 flex items-center justify-center">
                           <InlineEdit value={col.label} onSave={(newVal: string) => updateColumnLabel(col.id, newVal)} textClassName="text-center hover:text-white truncate" className="text-center text-xs" />
                         </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover/col:opacity-100 transition-opacity shrink-0">
-                           <button onClick={()=>setSortConfig((s:any)=>({key:col.id, direction: s?.direction==='asc'?'desc':'asc'}))} className="text-gray-500 hover:text-blue-400 shrink-0"><ChevronDown size={12}/></button>
+                        <div className="flex items-center gap-1 opacity-0 group-hover/col:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity shrink-0">
+                           <button
+                             onClick={()=>setSortConfig((s:any)=> s?.key !== col.id ? { key: col.id, direction: 'asc' } : s.direction === 'asc' ? { key: col.id, direction: 'desc' } : null)}
+                             title={sortConfig?.key === col.id ? (sortConfig.direction === 'asc' ? 'Urut naik — klik untuk turun' : 'Urut turun — klik untuk batal') : 'Urutkan'}
+                             className={`shrink-0 ${sortConfig?.key === col.id ? 'text-blue-400' : 'text-gray-500 hover:text-blue-400'}`}>
+                             <ChevronDown size={12} className={sortConfig?.key === col.id && sortConfig.direction === 'asc' ? 'rotate-180' : ''}/>
+                           </button>
                            <button onClick={()=>triggerConfirm('Hapus Kolom', `Yakin ingin menghapus kolom ${col.label}?`, () => handleDeleteColumn(col.id))} className="text-gray-500 hover:text-red-400 shrink-0"><Trash2 size={12}/></button>
                         </div>
                         <span onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setResize({ id: col.id, mulaiX: e.clientX, mulaiW: (parseInt(col.width) || 130), w: (parseInt(col.width) || 130) }); }} onClick={(e) => e.stopPropagation()} title="Tarik untuk melebarkan kolom" className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500/70 active:bg-blue-500 transition-colors z-30" />

@@ -28,10 +28,17 @@ export default function AntreanAcc() {
     if (isManager || canAcc) void muatKolomLintas?.(TIPE_ANTREAN);
   }, [isManager, canAcc]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // workspace → tahun → bulan → papan (+ sub-papan). Dulu tingkat "tahun"
+  // terlewat sehingga semua brief berlabel "Board".
   const boardMeta: Record<string, any> = {};
-  (workspaces || []).forEach((y: any) =>
-    (y.months || []).forEach((mo: any) =>
-      (mo.boards || []).forEach((b: any) => { boardMeta[b.id] = { name: b.name }; })));
+  const catatPapan = (bs: any[], induk: string) => (bs || []).forEach((b: any) => {
+    const nama = induk ? `${induk} › ${b.name}` : b.name;
+    boardMeta[b.id] = { name: nama };
+    catatPapan(b.boards, nama);
+  });
+  (workspaces || []).forEach((ws: any) =>
+    (ws.years || []).forEach((y: any) =>
+      (y.months || []).forEach((mo: any) => catatPapan(mo.boards, ''))));
 
   const { menunggu, disetujui, perluUpload } = kumpulkanBrief(boardsDataMap, boardMeta);
 

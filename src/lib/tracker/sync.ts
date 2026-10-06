@@ -41,6 +41,10 @@ export async function dbSetCellValue(supabase: SB, itemId: string, columnId: str
     { onConflict: 'item_id,column_id' }
   );
   if (up.error) {
+    // Galat lain (RLS, jaringan, dst.) dilempar apa adanya — dulu SEMUA galat
+    // memicu hapus-lalu-sisip, sehingga bila sisip ikut gagal nilai lama hilang.
+    const tanpaUnik = up.error.code === '42P10' || /ON CONFLICT/i.test(String(up.error.message || ''));
+    if (!tanpaUnik) throw new Error(up.error.message);
     // Fallback bila UNIQUE (item_id, column_id) belum ada di DB sehingga upsert
     // onConflict ditolak: hapus baris lama lalu sisipkan. Nilai tetap tersimpan
     // walau constraint belum dipasang. (Jalankan perbaiki-nilai-sel.sql agar

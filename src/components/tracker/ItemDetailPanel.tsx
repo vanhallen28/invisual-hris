@@ -95,9 +95,20 @@ function fieldIcon(type: string) {
 }
 
 // Editor nilai per tipe kolom — semua menyimpan lewat setVal -> handleUpdateItem
-function renderField(col: any, item: any, labels: any, teamMembers: any[], setVal: (f: string, v: any) => void, isManager: boolean, currentUserId: string) {
+function renderField(col: any, item: any, labels: any, teamMembers: any[], setVal: (f: string, v: any) => void, isManager: boolean, currentUserId: string, bukaDok?: () => void) {
   const v = item[col.id];
   const opts = labels[col.id] || [];
+  // Kolom dokumen (Google-Docs-like): dulu jatuh ke isian teks → HTML mentah
+  // tampil & mengetik di sana menimpa dokumen. Sekarang tombol buka dokumen.
+  if (col.type === 'gdocs') {
+    const ada = typeof v === 'string' && v.replace(/<[^>]*>/g, '').trim().length > 0;
+    return (
+      <button type="button" onClick={() => bukaDok?.()} disabled={!bukaDok}
+        className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-md transition-colors ${ada ? 'bg-blue-500/15 text-blue-300 hover:bg-blue-500/25' : 'bg-kartu/50 border border-white/10 text-gray-400 hover:text-gray-200'}`}>
+        <FileText size={13} className="shrink-0" /> {ada ? 'Buka dokumen' : 'Tulis dokumen'}
+      </button>
+    );
+  }
 
   if (col.type === 'status') {
     return (
@@ -246,7 +257,8 @@ export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
                 {columns.map((col: any) => (
                   <div key={col.id} className="grid grid-cols-[120px_1fr] gap-3 items-start">
                     <div className="text-xs font-semibold text-gray-400 pt-1.5 truncate flex items-center gap-1.5">{fieldIcon(col.type)} {col.label}</div>
-                    <div className="min-w-0">{renderField(col, item, labels, teamMembers, setVal, isManager, currentUserId)}</div>
+                    <div className="min-w-0">{renderField(col, item, labels, teamMembers, setVal, isManager, currentUserId,
+                      () => openDocEditor({ scope: 'main', groupId: detailItem.groupId, itemId: item.id, subItemId: undefined, dbItemId: item.id, columnId: col.id, value: typeof item[col.id] === 'string' ? item[col.id] : '', title: `${item.name || 'Item'} — ${col.label}` }))}</div>
                   </div>
                 ))}
 
@@ -281,7 +293,7 @@ export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
                       // sub-item terbaca tanpa perlu dibentangkan satu per satu.
                       const cuplikan = subColumns
                         .filter((c: any) => c.type === 'status' || c.type === 'tags')
-                        .map((c: any) => (labels[c.id] || []).find((o: any) => o.id === sub[c.id]))
+                        .flatMap((c: any) => { const nilai = sub[c.id]; const teks = Array.isArray(nilai) ? nilai : [nilai]; return (labels[c.id] || []).filter((o: any) => teks.includes(o.text)); })
                         .filter(Boolean)
                         .slice(0, 3);
 
@@ -334,7 +346,8 @@ export default function ItemDetailPanel({ push = false }: { push?: boolean }) {
                               {subColumns.map((col: any) => (
                                 <div key={col.id} className="grid grid-cols-[110px_1fr] gap-3 items-start">
                                   <div className="text-[11px] font-semibold text-gray-400 pt-1.5 truncate flex items-center gap-1.5">{fieldIcon(col.type)} {col.label}</div>
-                                  <div className="min-w-0">{renderField(col, sub, labels, teamMembers, setSubVal, isManager, currentUserId)}</div>
+                                  <div className="min-w-0">{renderField(col, sub, labels, teamMembers, setSubVal, isManager, currentUserId,
+                                    () => openDocEditor({ scope: 'sub', groupId: detailItem.groupId, itemId: item.id, subItemId: sub.id, dbItemId: sub.id, columnId: col.id, value: typeof sub[col.id] === 'string' ? sub[col.id] : '', title: `${sub.name || 'Sub-item'} — ${col.label}` }))}</div>
                                 </div>
                               ))}
                             </div>

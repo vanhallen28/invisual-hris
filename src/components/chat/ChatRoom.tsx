@@ -99,9 +99,12 @@ function TaskPicker({ onPick, onClose }: any) {
 function CreateTaskModal({ message, onDone, onClose }: any) {
   const { supabase, workspaces, boardsDataMap, teamMembers, pushToast, refreshData }: any = useDashboard();
   const boards: any[] = [];
-  (workspaces || []).forEach((w: any) => (w.years || []).forEach((y: any) => (y.months || []).forEach((mo: any) => (mo.boards || []).forEach((b: any) => {
-    boards.push({ id: b.id, label: `${y.name} › ${mo.name} › ${b.name}` });
-  }))));
+  // Sub-papan (mis. MARKETPLACE › Adiw) ikut bisa dipilih.
+  const tambahPapan = (bs: any[], awalan: string) => (bs || []).forEach((b: any) => {
+    boards.push({ id: b.id, label: `${awalan} › ${b.name}` });
+    tambahPapan(b.boards, `${awalan} › ${b.name}`);
+  });
+  (workspaces || []).forEach((w: any) => (w.years || []).forEach((y: any) => (y.months || []).forEach((mo: any) => tambahPapan(mo.boards, `${y.name} › ${mo.name}`))));
 
   const [boardId, setBoardId] = useState(boards[0]?.id || '');
   const [groupId, setGroupId] = useState('');
@@ -121,8 +124,9 @@ function CreateTaskModal({ message, onDone, onClose }: any) {
       await dbAddItem(supabase, { id, groupId, name: title.trim(), position: (grp?.items?.length || 0) });
 
       if (pic) {
-        const peopleCol = (boardsDataMap[boardId].columns || []).find((c: any) => c.type === 'people');
-        if (peopleCol) await dbSetCellValue(supabase, id, peopleCol.id, 'people', [pic]);
+        // Kolom PIC = tipe 'team' di aplikasi → disimpan ke item_assignees.
+        const peopleCol = (boardsDataMap[boardId]?.columns || []).find((c: any) => c.type === 'team' || c.type === 'people');
+        if (peopleCol) await dbSetCellValue(supabase, id, peopleCol.id, 'team', [pic]);
       }
       await setTaskRef(supabase, message.id, id);
       if (refreshData) await refreshData();

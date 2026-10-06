@@ -73,7 +73,7 @@ export default function ViewTabs() {
             ) : (
               <button onClick={() => setActiveViewId(v.id)} onDoubleClick={() => setEditingId(v.id)} className="outline-none">{v.name}</button>
             )}
-            <button onClick={() => setMenuFor(menuFor === v.id ? null : v.id)} className="opacity-0 group-hover/tab:opacity-100 text-gray-500 hover:text-gray-200 transition-opacity shrink-0"><MoreHorizontal size={14} /></button>
+            <button onClick={() => setMenuFor(menuFor === v.id ? null : v.id)} className="opacity-0 group-hover/tab:opacity-100 [@media(hover:none)]:opacity-100 text-gray-500 hover:text-gray-200 transition-opacity shrink-0"><MoreHorizontal size={14} /></button>
             {menuFor === v.id && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setMenuFor(null)}></div>

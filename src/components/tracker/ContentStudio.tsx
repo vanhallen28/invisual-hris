@@ -470,6 +470,8 @@ export default function ContentStudio() {
   const remove = async (id: string) => {
     setPosts((p) => p.filter((x) => x.id !== id));
     setOpen(null);
+    // Draf yang belum pernah disimpan cukup dibuang dari layar (belum ada di database).
+    if (String(id).startsWith('draft-')) { pushToast('Draf dibuang'); return; }
     try { await deleteContent(supabase, id); pushToast('Konten dihapus'); }
     catch (e: any) { pushToast('Gagal hapus: ' + (e?.message || e)); }
   };

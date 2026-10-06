@@ -32,11 +32,23 @@ export default function TableCell({ type, item, group, col }: any) {
       for (const l of (labels[c.id] || [])) {
         if (ada.has(l.text)) continue;
         ada.add(l.text);
-        keluar.push(l);
+        keluar.push({ ...l, _kolom: c.id });   // kolom PEMILIK label (untuk hapus/ubah warna)
       }
     }
-    return keluar.length ? keluar : (labels[col.id] || []);
+    return keluar.length ? keluar : (labels[col.id] || []).map((l: any) => ({ ...l, _kolom: col.id }));
   }, [col.label, col.id, columns, subColumns, labels]);
+
+  // Ubah warna label bersama: semua kembarannya (teks sama, nama kolom sama) ikut,
+  // supaya warna di level item & sub-item tetap identik.
+  const ubahWarnaBersama = (l: any, warna: string) => {
+    const nama = String(col.label || '').trim().toLowerCase();
+    let ada = false;
+    for (const c of [...(columns || []), ...(subColumns || [])]) {
+      if (String(c.label || '').trim().toLowerCase() !== nama) continue;
+      for (const x of (labels[c.id] || [])) if (x.text === l.text) { updateLabelColor(c.id, x.id, warna); ada = true; }
+    }
+    if (!ada) updateLabelColor(l._kolom || col.id, l.id, warna);
+  };
 
   const isSub = type === 'sub';
   const actualItemId = isSub ? item.parentId : item.id;
@@ -174,13 +186,13 @@ export default function TableCell({ type, item, group, col }: any) {
                          </div>
                          <div className="flex items-center gap-2 shrink-0">
                            {hasMulti && <Check size={12} className="text-blue-500"/>}
-                           <button onClick={(e) => { e.stopPropagation(); triggerConfirm('Hapus Label', `Hapus opsi label "${l.text}"?`, () => handleDeleteLabel(col.id, l.id)); }} className="opacity-0 group-hover/menuitem:opacity-100 p-0.5 text-gray-500 hover:text-red-400 transition-opacity shrink-0"><Trash2 size={13}/></button>
+                           <button onClick={(e) => { e.stopPropagation(); triggerConfirm('Hapus Label', `Hapus opsi label "${l.text}"?`, () => handleDeleteLabel(l._kolom || col.id, l.id)); }} className="opacity-0 group-hover/menuitem:opacity-100 [@media(hover:none)]:opacity-100 p-0.5 text-gray-500 hover:text-red-400 transition-opacity shrink-0"><Trash2 size={13}/></button>
                          </div>
                        </div>
                        {colorPickerFor === l.id && (
                          <div className="flex flex-wrap gap-1.5 px-3 py-2 mb-1" onClick={e=>e.stopPropagation()}>
                            {LABEL_COLORS.map((c: string) => (
-                             <button key={c} onClick={(e) => { e.stopPropagation(); updateLabelColor(col.id, l.id, c); setColorPickerFor(null); }} className={`w-5 h-5 rounded-md ${c} transition-all ${l.color === c ? 'ring-2 ring-white' : 'hover:ring-2 hover:ring-white/50'}`}></button>
+                             <button key={c} onClick={(e) => { e.stopPropagation(); ubahWarnaBersama(l, c); setColorPickerFor(null); }} className={`w-5 h-5 rounded-md ${c} transition-all ${l.color === c ? 'ring-2 ring-white' : 'hover:ring-2 hover:ring-white/50'}`}></button>
                            ))}
                          </div>
                        )}

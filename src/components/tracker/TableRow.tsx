@@ -70,7 +70,7 @@ export default function TableRow({ item, group, gridTemplateColumns, subGridTemp
               )}
             </div>
           )}
-          <button onClick={() => setDetailItem({ groupId: group.id, itemId: item.id })} className="opacity-0 group-hover/cell:opacity-100 p-1 text-gray-500 hover:text-blue-400 transition-opacity shrink-0"><MessageSquare size={13}/></button>
+          <button onClick={() => setDetailItem({ groupId: group.id, itemId: item.id })} className="opacity-0 group-hover/cell:opacity-100 [@media(hover:none)]:opacity-100 p-1 text-gray-500 hover:text-blue-400 transition-opacity shrink-0"><MessageSquare size={13}/></button>
         </div>
 
         {columns.map((col:any) => !hiddenColumns.includes(col.id) && (
@@ -79,7 +79,7 @@ export default function TableRow({ item, group, gridTemplateColumns, subGridTemp
         
         {/* FITUR ADD COL DAN TRASH SEJAJAR DI SINI */}
         <div className="flex items-center justify-center border-r border-white/10 relative">
-          <div className="opacity-0 group-hover/row:opacity-100 flex items-center gap-1.5 transition-opacity">
+          <div className="opacity-0 group-hover/row:opacity-100 [@media(hover:none)]:opacity-100 flex items-center gap-1.5 transition-opacity">
             <button onClick={() => setAddColMenuTarget({type: 'main', id: item.id})} className="text-gray-500 hover:text-blue-400 p-1" title="Add Column"><Plus size={14}/></button>
             <button onClick={() => triggerConfirm('Hapus Item', `Hapus "${item.name}"?`, () => handleDeleteItem(group.id, item.id))} className="text-gray-500 hover:text-red-400 p-1" title="Delete Item"><Trash2 size={14}/></button>
           </div>
@@ -115,7 +115,7 @@ export default function TableRow({ item, group, gridTemplateColumns, subGridTemp
                     mengubah state di layar tanpa menyimpan ke database, jadi
                     nama barunya hilang begitu papan tersinkron ulang. */}
                 <div className="flex-1 min-w-0 flex items-center justify-center"><InlineEdit value={col.label} onSave={(newVal: string) => updateColumnLabel(col.id, newVal)} textClassName="text-center hover:text-white truncate" className="text-center text-[10px]" /></div>
-                <button onClick={()=>triggerConfirm('Hapus Kolom Sub', `Hapus kolom ${col.label}?`, () => handleDeleteSubColumn(col.id))} className="text-gray-500 hover:text-red-400 opacity-0 group-hover/subcol:opacity-100 transition-opacity shrink-0 ml-1"><Trash2 size={11}/></button>
+                <button onClick={()=>triggerConfirm('Hapus Kolom Sub', `Hapus kolom ${col.label}?`, () => handleDeleteSubColumn(col.id))} className="text-gray-500 hover:text-red-400 opacity-0 group-hover/subcol:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity shrink-0 ml-1"><Trash2 size={11}/></button>
               </div>
             ))}
             <div className="relative flex h-full z-10 border-l border-white/10">
@@ -141,7 +141,7 @@ export default function TableRow({ item, group, gridTemplateColumns, subGridTemp
                   
                   {/* FITUR ADD COL DAN TRASH SEJAJAR UNTUK SUB-ITEM */}
                   <div className="flex items-center justify-center border-r border-white/10 relative z-10">
-                    <div className="opacity-0 group-hover/subrow:opacity-100 flex items-center gap-1.5 transition-opacity">
+                    <div className="opacity-0 group-hover/subrow:opacity-100 [@media(hover:none)]:opacity-100 flex items-center gap-1.5 transition-opacity">
                       <button onClick={() => setAddColMenuTarget({type: 'sub', id: sub.id})} className="text-gray-500 hover:text-blue-400 p-1" title="Add Column"><Plus size={13}/></button>
                       <button onClick={() => triggerConfirm('Hapus Sub', `Hapus "${sub.name}"?`, () => handleDeleteSubItem(group.id, item.id, sub.id))} className="text-gray-500 hover:text-red-400 p-1" title="Delete Subitem"><Trash2 size={13}/></button>
                     </div>

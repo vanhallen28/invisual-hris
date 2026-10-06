@@ -259,7 +259,8 @@ export function searchTasks(boardsDataMap: any, q: string, limit = 10) {
 export function taskMeta(boardsDataMap: any, boardId: string, item: any, labels: any) {
   const cols = boardsDataMap?.[boardId]?.columns || [];
   const statusCol = cols.find((c: any) => c.type === 'status');
-  const peopleCol = cols.find((c: any) => c.type === 'people');
+  // Kolom PIC bertipe 'team' di sisi aplikasi ('people' hanya nama di database).
+  const peopleCol = cols.find((c: any) => c.type === 'team' || c.type === 'people');
   const timeCol = cols.find((c: any) => c.type === 'timeline' || c.type === 'date');
 
   const status = statusCol ? item[statusCol.id] : '';
@@ -269,7 +270,8 @@ export function taskMeta(boardsDataMap: any, boardId: string, item: any, labels:
 
   const people: string[] = peopleCol ? (item[peopleCol.id] || []) : [];
   const tl = timeCol ? item[timeCol.id] : null;
-  const due = Array.isArray(tl) ? tl[1] : tl;
+  // Timeline disimpan sebagai { start, end }; dukung juga bentuk lama (array/teks).
+  const due = Array.isArray(tl) ? tl[1] : (tl && typeof tl === 'object' ? (tl.end || tl.start || null) : tl);
 
   return { status, statusColor, people, due };
 }

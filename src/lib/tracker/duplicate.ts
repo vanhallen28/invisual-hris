@@ -33,14 +33,29 @@ function potong<T>(arr: T[], n: number): T[][] {
   return out;
 }
 
-// Ambil baris bertahap — daftar ID panjang tak boleh dikirim sekaligus.
+// Urutan stabil per tabel — wajib untuk paginasi (tanpa ORDER BY, halaman
+// berikutnya bisa melompati / mengulang baris).
+const URUT: Record<string, string[]> = {
+  item_values: ['item_id', 'column_id'],
+  item_assignees: ['item_id', 'column_id', 'member_id'],
+};
+
+// Ambil baris bertahap — daftar ID panjang tak boleh dikirim sekaligus, dan
+// Supabase memotong hasil di 1000 baris per permintaan. Dulu tanpa paginasi:
+// papan besar tersalin sebagian (isi sel, PIC, komentar hilang diam-diam).
 async function ambil(supabase: SB, tabel: string, kolom: string, ids: string[]) {
   if (!ids.length) return [];
   const hasil: any[] = [];
-  for (const bagian of potong(ids, 150)) {
-    const { data, error } = await supabase.from(tabel).select('*').in(kolom, bagian);
-    if (error) throw new Error(`Gagal membaca ${tabel}: ${error.message}`);
-    hasil.push(...(data || []));
+  const urut = URUT[tabel] || ['id'];
+  for (const bagian of potong(ids, 100)) {
+    for (let dari = 0, put = 0; put < 200; put++, dari += 1000) {
+      let q = supabase.from(tabel).select('*').in(kolom, bagian);
+      for (const k of urut) q = q.order(k, { ascending: true });
+      const { data, error } = await q.range(dari, dari + 999);
+      if (error) throw new Error(`Gagal membaca ${tabel}: ${error.message}`);
+      hasil.push(...(data || []));
+      if (!data || data.length < 1000) break;
+    }
   }
   return hasil;
 }
@@ -60,6 +75,7 @@ export type HasilDuplikat = {
   item: number;
   subitem: number;
   pembaruan: number;
+  subPapan: number;            // jumlah sub-papan yang ikut tersalin
 };
 
 export async function duplicateBoard(
@@ -68,6 +84,16 @@ export async function duplicateBoard(
   newName: string,
   mode: ModeDuplikat,
   targetMonthId?: string,      // bulan tujuan; kosong = bulan yang sama
+): Promise<HasilDuplikat> {
+  return salinPapan(supabase, sourceBoardId, newName, mode, targetMonthId);
+}
+
+async function salinPapan(
+  supabase: SB,
+  sourceBoardId: string,
+  newName: string,
+  mode: ModeDuplikat,
+  targetMonthId?: string,
 ): Promise<HasilDuplikat> {
   const nama = newName.trim();
   if (!nama) throw new Error('Nama papan baru tidak boleh kosong');
@@ -94,7 +120,32 @@ export async function duplicateBoard(
     if (error) throw new Error(`Gagal membuat papan: ${error.message}`);
   }
 
-  const hasil: HasilDuplikat = { boardId, kolom: 0, grup: 0, item: 0, subitem: 0, pembaruan: 0 };
+  const hasil: HasilDuplikat = { boardId, kolom: 0, grup: 0, item: 0, subitem: 0, pembaruan: 0, subPapan: 0 };
+  try {
+    await salinIsi(supabase, sourceBoardId, boardId, mode, hasil);
+
+    // ── 8. Sub-papan (mis. MARKETPLACE › Adiw, Febia, …) ikut tersalin ──
+    const { data: anakPapan, error: eAnak } = await supabase
+      .from('tree_nodes').select('id, name, position')
+      .eq('parent_id', sourceBoardId).eq('kind', 'board')
+      .order('position', { ascending: true });
+    if (eAnak) throw new Error(`Gagal membaca sub-papan: ${eAnak.message}`);
+    for (const a of anakPapan || []) {
+      const h = await salinPapan(supabase, a.id, a.name || 'Board', mode, boardId);
+      hasil.subPapan += 1 + h.subPapan;
+      hasil.kolom += h.kolom; hasil.grup += h.grup; hasil.item += h.item;
+      hasil.subitem += h.subitem; hasil.pembaruan += h.pembaruan;
+    }
+  } catch (e) {
+    // Gagal di tengah jalan → buang papan setengah jadi (isi ikut terhapus
+    // lewat cascade) supaya tidak tertinggal salinan yang tidak lengkap.
+    try { await supabase.from('tree_nodes').delete().eq('id', boardId); } catch { /* diamkan */ }
+    throw e;
+  }
+  return hasil;
+}
+
+async function salinIsi(supabase: SB, sourceBoardId: string, boardId: string, mode: ModeDuplikat, hasil: HasilDuplikat): Promise<void> {
 
   // ── 2. Kolom (main + sub) ─────────────────────────────────
   const kolomLama = await ambil(supabase, 'columns', 'board_id', [sourceBoardId]);
@@ -124,7 +175,7 @@ export async function duplicateBoard(
   await sisip(supabase, 'groups', grupBaru);
   hasil.grup = grupBaru.length;
 
-  if (mode === 'struktur') return hasil;
+  if (mode === 'struktur') return;
 
   // ── 5. Item & subitem ─────────────────────────────────────
   const itemLama = await ambil(supabase, 'items', 'group_id', Object.keys(petaGrup));
@@ -162,7 +213,7 @@ export async function duplicateBoard(
       item_id: petaItem[a.item_id], column_id: petaKolom[a.column_id], member_id: a.member_id,
     })));
 
-  if (mode !== 'penuh') return hasil;
+  if (mode !== 'penuh') return;
 
   // ── 7. Pembaruan / komentar ───────────────────────────────
   // Dibungkus try/catch: bila tabelnya belum ada, duplikasi tetap dianggap berhasil.
@@ -177,6 +228,4 @@ export async function duplicateBoard(
     }));
     hasil.pembaruan = updLama.length;
   } catch { /* diamkan — pembaruan bersifat pelengkap */ }
-
-  return hasil;
 }

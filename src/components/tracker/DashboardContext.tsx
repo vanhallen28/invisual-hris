@@ -199,6 +199,9 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc'|'desc' } | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  // Centang baris milik board yang sedang dibuka saja: saat pindah board, pilihan
+  // dikosongkan (dulu tetap tersimpan → "Hapus" massal menghapus item board lain).
+  useEffect(() => { setSelectedItems((p) => (p.length ? [] : p)); }, [activeBoardId]);
   const [inlineCreate, setInlineCreate] = useState<any>({ type: '', parentId: null });
   const [inputValue, setInputValue] = useState('');
   const [updatePanelOpen, setUpdatePanelOpen] = useState<any>(null);
@@ -340,7 +343,13 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
         for (const w of s.workspaces) {
           for (const y of (w.years || [])) {
             for (const m of (y.months || [])) {
-              if ((m.boards || []).some((b: any) => b.id === chosen)) { wsActive = w.id; y.isOpen = true; m.isOpen = true; }
+              // Termasuk sub-papan: buka juga papan induknya agar terlihat di sidebar.
+              const bukaInduk = (bs: any[]): boolean => (bs || []).some((b: any) => {
+                if (b.id === chosen) return true;
+                if (bukaInduk(b.boards)) { b.isOpen = true; return true; }
+                return false;
+              });
+              if (bukaInduk(m.boards)) { wsActive = w.id; y.isOpen = true; m.isOpen = true; }
             }
           }
         }
@@ -576,50 +585,78 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   let activeBoardName = '';
   let activeBoardPath: { year: string; month: string; board: string } | null = null;
   if (activeBoardId) {
-    for (const year of workspaces[0]?.years || []) {
-      for (const month of year.months || []) {
-        const b = month.boards?.find((x:any) => x.id === activeBoardId);
-        if (b) { activeBoardName = b.name; activeBoardPath = { year: year.name, month: month.name, board: b.name }; break; }
+    // Telusuri sampai sub-papan (mis. MARKETPLACE › Adiw) — dulu hanya papan
+    // tingkat atas, sehingga judul & breadcrumb sub-papan kosong.
+    const jalur = (bs: any[]): any[] | null => {
+      for (const b of (bs || [])) {
+        if (b.id === activeBoardId) return [b];
+        const x = jalur(b.boards);
+        if (x) return [b, ...x];
       }
-      if (activeBoardPath) break;
+      return null;
+    };
+    cari: for (const w of workspaces || []) for (const year of w.years || []) for (const month of year.months || []) {
+      const j = jalur(month.boards);
+      if (j) {
+        const daun = j[j.length - 1];
+        activeBoardName = daun.name;
+        activeBoardPath = { year: year.name, month: month.name, board: j.map((b: any) => b.name).join(' › ') };
+        break cari;
+      }
     }
   }
 
   const triggerConfirm = (title: string, message: string, action: () => void) => setConfirmModal({ isOpen: true, title, message, onConfirm: () => { action(); setConfirmModal(null); } });
   // === 1e: simpan perubahan sel/nama ke cloud (fire-and-forget) ===
   const cloudOn = () => !!supabase && isLoaded && !!authUser;
-  const persistItemField = async (scope: 'main' | 'sub', itemId: string, field: string, val: any) => {
+  const persistItemField = async (scope: 'main' | 'sub', itemId: string, field: string, val: any, boardId?: string | null) => {
     if (!cloudOn()) return;
     try {
       if (field === 'name') { await dbUpdateItemName(supabase, itemId, val); return; }
       if (field === 'isSubItemsOpen') { await dbSetItemMeta(supabase, itemId, { is_subitems_open: !!val }); return; }
       if (field === 'description') { await dbSetItemMeta(supabase, itemId, { description: val }); return; }
-      const cols = scope === 'main' ? columns : subColumns;
+      // Kolom diambil dari board PEMILIK item (bukan selalu board aktif) — dulu
+      // ubah status dari My Tasks / ACC di Antrean untuk board lain tak tersimpan.
+      const bdPemilik = boardId && boardId !== activeBoardId ? boardsDataMap[boardId] : null;
+      const cols = bdPemilik
+        ? (scope === 'main' ? (bdPemilik.columns || []) : (bdPemilik.subColumns || []))
+        : (scope === 'main' ? columns : subColumns);
       const col = cols.find((c: any) => c.id === field);
       if (!col) return; // bukan kolom dikenal -> lewati
       await dbSetCellValue(supabase, itemId, field, col.type, val);
     } catch (e: any) { pushToast('Gagal simpan ke cloud: ' + (e?.message || e)); }
   };
 
+  // Board pemilik sebuah grup: board aktif bila grup ada di sana, selain itu
+  // dicari di semua board yang sudah dimuat (My Tasks & Antrean lintas-board).
+  const boardPemilikGrup = (map: any, gId: string): string | null => {
+    if (activeBoardId && (map?.[activeBoardId]?.groups || []).some((g:any) => g.id === gId)) return activeBoardId;
+    for (const bid of Object.keys(map || {})) if ((map[bid]?.groups || []).some((g:any) => g.id === gId)) return bid;
+    return null;
+  };
   const handleUpdateItem = (gId: string, iId: string, field: string, val: any) => {
+    const bid = boardPemilikGrup(boardsDataMap, gId) || activeBoardId;
     setBoardsDataMap((prev:any) => {
-      if (!activeBoardId || !prev[activeBoardId]) return prev;
-      const bd = prev[activeBoardId];
+      const b = boardPemilikGrup(prev, gId) || activeBoardId;
+      if (!b || !prev[b]) return prev;
+      const bd = prev[b];
       const groups = bd.groups.map((g:any) => g.id !== gId ? g : { ...g, items: g.items.map((i:any) => i.id === iId ? { ...i, [field]: val } : i) });
-      return { ...prev, [activeBoardId]: { ...bd, groups } };
+      return { ...prev, [b]: { ...bd, groups } };
     });
     pemuat.tandaiEdit(iId, field);
-    persistItemField('main', iId, field, val);
+    persistItemField('main', iId, field, val, bid);
   };
   const handleUpdateSubItem = (gId: string, iId: string, sId: string, field: string, val: any) => {
+    const bid = boardPemilikGrup(boardsDataMap, gId) || activeBoardId;
     setBoardsDataMap((prev:any) => {
-      if (!activeBoardId || !prev[activeBoardId]) return prev;
-      const bd = prev[activeBoardId];
-      const groups = bd.groups.map((g:any) => g.id !== gId ? g : { ...g, items: g.items.map((i:any) => i.id === iId ? { ...i, subItems: i.subItems.map((s:any) => s.id === sId ? { ...s, [field]: val } : s) } : i) });
-      return { ...prev, [activeBoardId]: { ...bd, groups } };
+      const b = boardPemilikGrup(prev, gId) || activeBoardId;
+      if (!b || !prev[b]) return prev;
+      const bd = prev[b];
+      const groups = bd.groups.map((g:any) => g.id !== gId ? g : { ...g, items: g.items.map((i:any) => i.id === iId ? { ...i, subItems: (i.subItems || []).map((s:any) => s.id === sId ? { ...s, [field]: val } : s) } : i) });
+      return { ...prev, [b]: { ...bd, groups } };
     });
     pemuat.tandaiEdit(sId, field);
-    persistItemField('sub', sId, field, val);
+    persistItemField('sub', sId, field, val, bid);
   };
   const handleDeleteItem = (gId: string, iId: string) => {
     tandaiTulisSendiri();
@@ -851,12 +888,29 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   };
   const deleteNode = (kind: 'year'|'month'|'board', nodeId: string) => {
     tandaiTulisSendiri();
+    // Semua board yang ikut terhapus (termasuk sub-board di dalamnya) dibuang
+    // juga dari memori — dulu tetap muncul di My Tasks/Antrean & board aktif
+    // bisa menunjuk ke board yang sudah tidak ada.
+    const idTerhapus = new Set<string>();
+    const kumpul = (bs: any[]) => (bs || []).forEach((b:any) => { idTerhapus.add(b.id); kumpul(b.boards); });
+    const cariBoard = (bs: any[]): any => { for (const b of (bs || [])) { if (b.id === nodeId) return b; const x = cariBoard(b.boards); if (x) return x; } return null; };
+    for (const w of workspaces) for (const y of (w.years || [])) {
+      if (kind === 'year' && y.id === nodeId) (y.months || []).forEach((m:any) => kumpul(m.boards));
+      for (const m of (y.months || [])) {
+        if (kind === 'month' && m.id === nodeId) kumpul(m.boards);
+        if (kind === 'board') { const b = cariBoard(m.boards); if (b) kumpul([b]); }
+      }
+    }
     setWorkspaces(workspaces.map((w:any) => {
       if (kind === 'year') return { ...w, years: (w.years || []).filter((y:any) => y.id !== nodeId) };
       if (kind === 'month') return { ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).filter((m:any) => m.id !== nodeId) })) };
       return { ...w, years: (w.years || []).map((y:any) => ({ ...y, months: (y.months || []).map((m:any) => ({ ...m, boards: hapusBoards(m.boards || [], nodeId) })) })) };
     }));
-    if (kind === 'board') { const nm = { ...boardsDataMap }; delete nm[nodeId]; setBoardsDataMap(nm); if (activeBoardId === nodeId) setActiveBoardId(null); }
+    if (kind === 'board') idTerhapus.add(nodeId);
+    if (idTerhapus.size) {
+      setBoardsDataMap((prev:any) => { const nm = { ...prev }; idTerhapus.forEach((id) => { delete nm[id]; }); return nm; });
+      if (activeBoardId && idTerhapus.has(activeBoardId)) setActiveBoardId(null);
+    }
     pushToast((kind === 'year' ? 'Tahun' : kind === 'month' ? 'Bulan' : 'Board') + ' dihapus');
     if (cloudOn()) dbDeleteTreeNode(supabase, nodeId).catch((e:any) => pushToast('Gagal hapus di cloud: ' + (e?.message || e)));
   };
@@ -1118,7 +1172,12 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
     }
   };
 
-  const handleBulkDelete = (ids: string[]) => {
+  const handleBulkDelete = (idsMasuk: string[]) => {
+    // Hanya item/sub-item yang memang ada di board yang sedang dibuka.
+    const diBoard = new Set<string>();
+    boardData.forEach((g:any) => (g.items || []).forEach((i:any) => { diBoard.add(i.id); (i.subItems || []).forEach((s:any) => diBoard.add(s.id)); }));
+    const ids = (idsMasuk || []).filter((id) => diBoard.has(id));
+    if (!ids.length) { setSelectedItems([]); return; }
     tandaiTulisSendiri();
     setBoardData(boardData.map((g:any) => ({ ...g, items: g.items.filter((i:any) => !ids.includes(i.id)).map((i:any) => ({ ...i, subItems: i.subItems?.filter((s:any) => !ids.includes(s.id)) || [] })) })));
     setSelectedItems([]);
@@ -1186,7 +1245,8 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
           const subs = clone.subItems || [];
           for (let si = 0; si < subs.length; si++) {
             const sub = subs[si];
-            subRows.push({ id: sub.id, group_id: groupId, parent_item_id: clone.id, name: sub.name, position: si });
+            // description = brief sub-item; dulu tak ikut tersimpan → hilang setelah muat ulang
+            subRows.push({ id: sub.id, group_id: groupId, parent_item_id: clone.id, name: sub.name, position: si, ...(sub.description ? { description: sub.description } : {}) });
             tampungNilai(sub.id, subColumns, sub);
           }
         }
@@ -1338,6 +1398,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
           for (let ai = 0; ai < anakList.length; ai++) {
             const anak = anakList[ai];
             await dbAddSubItem(supabase, { id: anak.id, groupId: idBaru, parentItemId: it.id, name: anak.name, position: ai });
+            if (anak.description) await dbSetItemMeta(supabase, anak.id, { description: anak.description });
             for (const col of subColumns) {
               const val = anak[col.id];
               if (val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0)) continue;
@@ -1426,17 +1487,26 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   };
 
   const copyParentColumns = () => {
+    // MENAMBAHKAN kolom induk yang belum ada di sub-item (label + tipe sama
+    // dianggap sudah ada). Dulu kolom sub lama DIGANTI di layar tapi tetap ada
+    // di database → setelah muat ulang kolom lama muncul lagi berdampingan.
+    const kunci = (c: any) => `${String(c.label || '').trim().toLowerCase()}|${c.type}`;
+    const sudahAda = new Set(subColumns.map(kunci));
+    const sumber = columns.filter((c: any) => !sudahAda.has(kunci(c)));
+    if (!sumber.length) { pushToast('Semua kolom induk sudah ada di sub-item'); return; }
     const idMap: Record<string, string> = {};
-    const mapped = columns.map((c:any) => { const nid = newId(); idMap[c.id] = nid; return { ...c, id: nid }; });
-    setSubColumns(mapped);
+    const mapped = sumber.map((c:any) => { const nid = newId(); idMap[c.id] = nid; return { ...c, id: nid }; });
+    const awal = subColumns.length;
+    setSubColumns([...subColumns, ...mapped]);
     const newLabels = { ...labels };
-    columns.forEach((c:any) => { if (labels[c.id]) newLabels[idMap[c.id]] = labels[c.id].map((l:any) => ({ ...l, id: newId() })); });
+    sumber.forEach((c:any) => { if (labels[c.id]) newLabels[idMap[c.id]] = labels[c.id].map((l:any) => ({ ...l, id: newId() })); });
     setLabels(newLabels);
+    pushToast(`${mapped.length} kolom induk disalin ke sub-item`);
     if (cloudOn() && activeBoardId) {
       (async () => {
         for (let i = 0; i < mapped.length; i++) {
           const c = mapped[i];
-          await dbAddColumn(supabase, { id: c.id, boardId: activeBoardId, scope: 'sub', label: c.label, type: c.type, width: c.width || '130px', position: i });
+          await dbAddColumn(supabase, { id: c.id, boardId: activeBoardId, scope: 'sub', label: c.label, type: c.type, width: c.width || '130px', position: awal + i });
           const lbls = newLabels[c.id] || [];
           for (let j = 0; j < lbls.length; j++) { await dbAddLabel(supabase, { id: lbls[j].id, columnId: c.id, text: lbls[j].text, color: lbls[j].color, position: j }); }
         }

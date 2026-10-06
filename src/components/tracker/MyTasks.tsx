@@ -14,11 +14,15 @@ export default function MyTasks() {
 
   // Peta boardId -> info board (untuk menampilkan asal tugas)
   const boardMeta: Record<string, any> = {};
+  // Termasuk sub-papan (mis. MARKETPLACE › Adiw) — dulu tertulis "Board".
+  const catatPapan = (bs: any[], induk: string, y: any, mo: any) => (bs || []).forEach((b: any) => {
+    const nama = induk ? `${induk} › ${b.name}` : b.name;
+    boardMeta[b.id] = { name: nama, year: y.name, month: mo.name };
+    catatPapan(b.boards, nama, y, mo);
+  });
   (workspaces || []).forEach((ws: any) =>
     (ws.years || []).forEach((y: any) =>
-      (y.months || []).forEach((mo: any) =>
-        (mo.boards || []).forEach((b: any) => { boardMeta[b.id] = { name: b.name, year: y.name, month: mo.name }; })
-      )
+      (y.months || []).forEach((mo: any) => catatPapan(mo.boards, '', y, mo))
     )
   );
 

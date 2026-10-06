@@ -46,6 +46,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
       if (r.item) rincian.push(`${r.item} item`);
       if (r.subitem) rincian.push(`${r.subitem} subitem`);
       if (r.pembaruan) rincian.push(`${r.pembaruan} pembaruan`);
+      if (r.subPapan) rincian.push(`${r.subPapan} sub-papan`);
       pushToast(`Papan "${dupName.trim()}" dibuat — ${rincian.join(', ')}`);
       setDupBoard(null);
       setMobileOpen?.(false);
@@ -66,6 +67,8 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
 
   const saveSidebarEdit = () => {
     if (!editingCell) return;
+    // Nama kosong tidak disimpan (dulu papan bisa jadi tanpa nama).
+    if (!String(editValue || '').trim()) { setEditingCell(null); return; }
     renameNode(editingCell.type, editingCell.id, editValue);
     setEditingCell(null);
   };
@@ -86,7 +89,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
       <div key={board.id} className="flex flex-col gap-0.5">
         <div onClick={() => openBoard(board.id)} style={{ marginLeft: depth * 12 }} className={`flex items-center justify-between w-full text-left px-2 py-1.5 rounded text-xs font-medium tracking-wide transition-colors cursor-pointer group/board ${activeBoardId === board.id ? 'bg-primer text-blue-200 border-l-2 border-blue-500' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}>
           {editingCell?.type === 'board' && editingCell?.id === board.id ? (
-            <input autoFocus value={editValue} onChange={e => setEditValue(e.target.value)} onBlur={saveSidebarEdit} onKeyDown={e => { if (e.key === 'Enter') saveSidebarEdit(); else if (e.key === 'Escape') setEditingCell(null); }} className="bg-kartu border border-blue-500 text-xs px-1 py-0.5 rounded w-full outline-none text-white" />
+            <input autoFocus value={editValue} onClick={e => e.stopPropagation()} onChange={e => setEditValue(e.target.value)} onBlur={saveSidebarEdit} onKeyDown={e => { if (e.key === 'Enter') saveSidebarEdit(); else if (e.key === 'Escape') setEditingCell(null); }} className="bg-kartu border border-blue-500 text-xs px-1 py-0.5 rounded w-full outline-none text-white" />
           ) : (
             <div className="flex items-center gap-1 truncate flex-1 py-0.5">
               {punyaSub ? (
@@ -96,7 +99,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
               <span className="truncate">{board.name}</span>
             </div>
           )}
-          <div className="flex items-center gap-0.5 opacity-0 group-hover/board:opacity-100 transition-opacity">
+          <div className="flex items-center gap-0.5 opacity-0 group-hover/board:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity">
             <button onClick={(e) => { e.stopPropagation(); setInlineCreate({ type: 'board', parentId: board.id }); setInputValue(''); if (!board.isOpen) toggleBoard(board.id); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors" title="Tambah sub-board"><Plus size={12} /></button>
             <button onClick={(e) => { e.stopPropagation(); bukaDuplikat(board, parentId, depth > 0); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors" title="Duplikat papan"><Copy size={11} /></button>
             <button onClick={(e) => { e.stopPropagation(); setEditingCell({ type: 'board', id: board.id }); setEditValue(board.name); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors"><Pencil size={11} /></button>
@@ -121,9 +124,17 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
     (y.months || []).map((m: any) => ({ id: m.id, label: `${y.name} › ${m.name}` }))
   );
   const namaBulan = (id: string) => daftarBulan.find((b: any) => b.id === id)?.label || 'Pilih bulan';
+  // Pencarian ikut menelusuri sub-papan (mis. "Adiw" di dalam MARKETPLACE):
+  // papan induk tetap tampil & terbuka bila ada sub-papan yang cocok.
+  const saringPapan = (bs: any[]): any[] => (bs || []).flatMap((b: any) => {
+    const anak = saringPapan(b.boards);
+    if (String(b.name || '').toLowerCase().includes(q)) return [anak.length ? { ...b, isOpen: true } : b];
+    if (anak.length) return [{ ...b, boards: anak, isOpen: true }];
+    return [];
+  });
   const filteredYears = (activeWs?.years || []).map((year: any) => {
     const months = (year.months || []).map((month: any) => {
-      const boards = q ? (month.boards || []).filter((b: any) => b.name.toLowerCase().includes(q)) : (month.boards || []);
+      const boards = q ? saringPapan(month.boards || []) : (month.boards || []);
       return { ...month, boards, _open: q ? boards.length > 0 : month.isOpen };
     }).filter((m: any) => (q ? m.boards.length > 0 : true));
     return { ...year, months, _open: q ? months.length > 0 : year.isOpen };
@@ -183,7 +194,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
                 ) : (
                   <div className="flex items-center gap-1.5 flex-1 cursor-pointer" onClick={() => toggleYear(year.id)}><ChevronDown size={14} className={`transition-transform ${year._open ? '' : '-rotate-90'}`} /><span className="text-[11px] font-bold uppercase tracking-wider truncate">{year.name}</span></div>
                 )}
-                <div className="flex items-center gap-0.5 opacity-0 group-hover/year:opacity-100 transition-opacity">
+                <div className="flex items-center gap-0.5 opacity-0 group-hover/year:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity">
                   <button onClick={(e) => { e.stopPropagation(); setEditingCell({ type: 'year', id: year.id }); setEditValue(year.name); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors"><Pencil size={13}/></button>
                   <button onClick={(e) => { e.stopPropagation(); setInlineCreate({ type: 'month', parentId: year.id }); setInputValue(''); if(!year.isOpen) toggleYear(year.id); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors" title="Add Month Folder"><Plus size={15}/></button>
                   <button onClick={(e) => { e.stopPropagation(); triggerConfirm('Delete Year', `Hapus tahun "${year.name}"?`, () => handleDeleteYear(year.id)); }} className="p-1 text-gray-600 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
@@ -202,7 +213,7 @@ export default function Sidebar({ mobileOpen, setMobileOpen }: any) {
                         ) : (
                           <div className="flex items-center gap-1.5 flex-1 cursor-pointer pl-1" onClick={() => toggleMonth(year.id, month.id)}><ChevronDown size={12} className={`transition-transform ${month._open ? '' : '-rotate-90'}`} /><span className="text-[10px] font-bold uppercase tracking-wider truncate">{month.name}</span></div>
                         )}
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover/month:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover/month:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity">
                           <button onClick={(e) => { e.stopPropagation(); setEditingCell({ type: 'month', id: month.id }); setEditValue(month.name); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors"><Pencil size={11}/></button>
                           <button onClick={(e) => { e.stopPropagation(); setInlineCreate({ type: 'board', parentId: month.id }); setInputValue(''); if(!month.isOpen) toggleMonth(year.id, month.id); }} className="p-1 text-gray-600 hover:text-blue-400 transition-colors" title="Add Project"><Plus size={13}/></button>
                           <button onClick={(e) => { e.stopPropagation(); triggerConfirm('Delete Month', `Hapus bulan "${month.name}"?`, () => handleDeleteMonth(year.id, month.id)); }} className="p-1 text-gray-600 hover:text-red-400 transition-colors"><Trash2 size={11}/></button>
