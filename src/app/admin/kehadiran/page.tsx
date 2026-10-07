@@ -13,9 +13,10 @@ import { unduhBerkas } from "@/lib/keuangan/cetak";
 import { csvRekapKehadiran } from "@/lib/rekapKehadiranCsv";
 import { FotoAbsenPasangan } from "@/components/FotoAbsen";
 import AvatarKaryawan from "@/components/AvatarKaryawan";
+import KartuLipat from "@/components/kehadiran/KartuLipat";
+import { hariUntukKartu, labelTanggalPendek, type Sel, type StatusKehadiran, type IdKartu } from "@/lib/kehadiranKartu";
 
-type StatusKehadiran = "Hadir" | "Telat" | "Alpa" | "Cuti/Sakit" | "WFH" | "Libur" | "-";
-type Sel = { iso: string; status: StatusKehadiran; att?: any; leave?: any };
+// Tipe Sel & StatusKehadiran kini bersama di lib/kehadiranKartu (bentuknya sama persis).
 type Kategori = "hadir" | "telat" | "izin" | "alpa";
 
 const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -87,6 +88,11 @@ export default function AdminKehadiranPage() {
   const [bukaOrang, setBukaOrang] = useState<string | null>(null);
   const [detailSel, setDetailSel] = useState<{ baris: any; sel: Sel } | null>(null);
   const [cariNama, setCariNama] = useState("");
+  // Baris yang sedang melebar di tiga kartu anomali (satu per kartu). Nilai = idKaryawan,
+  // atau kunci baris absensi untuk Lupa Clock-Out.
+  const [bukaBaris, setBukaBaris] = useState<Partial<Record<IdKartu, string | null>>>({});
+  const toggleBaris = (kartu: IdKartu, kunci: string) =>
+    setBukaBaris((b) => ({ ...b, [kartu]: b[kartu] === kunci ? null : kunci }));
 
   const fetchData = async () => {
     const nomor = ++nomorMuat.current;
@@ -174,6 +180,22 @@ export default function AdminKehadiranPage() {
       };
     });
   }, [employees, attendance, leaves, periodeHari, todayISO]);
+
+  // idKaryawan → hari absen (untuk rincian tanggal di kartu anomali). Dibangun dari baris
+  // `attendance` dengan fungsi terlambat() yang SAMA dengan seringTelat/palingDisiplin,
+  // sehingga jumlah tanggal yang melebar selalu = angka di chip (heatmap meringkas per hari).
+  const petaAbsen = useMemo(() => {
+    const fleks = fleksibelIds(employees);
+    const m = new Map<string, Sel[]>();
+    attendance.forEach((a) => {
+      const id = String(a?.idKaryawan ?? "");
+      if (!id) return;
+      const sel: Sel = { iso: String(a.tanggal || "").slice(0, 10), status: terlambat(a, fleks) ? "Telat" : "Hadir", att: a };
+      const ada = m.get(id);
+      if (ada) ada.push(sel); else m.set(id, [sel]);
+    });
+    return m;
+  }, [attendance, employees]);
 
   // ── RINGKASAN PERIODE ──
   const summary = useMemo(() => {
@@ -284,6 +306,20 @@ export default function AdminKehadiranPage() {
     return labelStatus(x.status);
   };
 
+  // Panel tanggal di bawah baris kartu anomali — dalam aliran dokumen biasa (bukan fixed/absolute).
+  const panelHari = (hari: Sel[]) => (
+    <div className="mt-2 ml-0 sm:ml-10 max-h-48 overflow-y-auto space-y-1 text-[11px] text-gray-400 mo-fade-up" data-panel-hari>
+      {hari.length === 0 ? <p className="italic">Rincian tidak tersedia.</p> : hari.map((x, i) => (
+        <p key={x.att?.id ?? `${x.iso}#${i}`}><span className="text-gray-300 font-semibold">{labelTanggalPendek(x.iso)}</span> · {ketHari(x)}</p>
+      ))}
+    </div>
+  );
+  const kelasChip = (aktif: boolean, nada: "kuning" | "hijau") =>
+    "text-xs font-bold px-2 py-1 rounded border shrink-0 transition-colors cursor-pointer " +
+    (nada === "kuning"
+      ? (aktif ? "bg-yellow-500/30 text-yellow-300 border-yellow-400/60 ring-1 ring-yellow-400/60" : "bg-yellow-500/20 text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/30")
+      : (aktif ? "bg-green-500/30 text-green-300 border-green-400/60 ring-1 ring-green-400/60" : "bg-green-500/20 text-green-400 border-green-500/20 hover:bg-green-500/30"));
+
   const monthLabel = labelRentang(rentang);
   const barisTampil = cariNama.trim() ? heatmapData.filter((r) => normNama(r.nama).includes(normNama(cariNama))) : heatmapData;
 
@@ -310,7 +346,7 @@ export default function AdminKehadiranPage() {
           <p className="text-gray-400 text-sm">Analitik kedisiplinan dari data absensi asli — {monthLabel} ({jumlahHari(rentang)} hari).</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <RentangTanggal nilai={rentang} onChange={setRentang} hariIni={todayISO} />
+          <RentangTanggal nilai={rentang} onChange={(r) => { setRentang(r); setBukaBaris({}); }} hariIni={todayISO} />
           <button
             type="button"
             onClick={unduhRekap}
@@ -353,58 +389,56 @@ export default function AdminKehadiranPage() {
         })}
       </div>
 
-      {/* SMART ANOMALY CENTER — data nyata */}
+      {/* SMART ANOMALY CENTER — data nyata; kartu bisa dilipat, chip status membuka rincian tanggal */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <div className="p-6 relative overflow-hidden group hover:border-yellow-500/30 transition-all rounded-xl border border-white/10 bg-white/[0.03] duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
-          <div className="absolute -right-10 -top-10 w-32 h-32 bg-yellow-500/10 rounded-full blur-3xl"></div>
-          <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4 relative z-10">
-            <div className="w-10 h-10 rounded-full bg-yellow-500/10 text-yellow-500 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2.25V15m0 0l-3-3m3 3l3-3m-3 3V12M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </div>
-            <div><h2 className="font-bold text-white text-sm">Sering Terlambat</h2><p className="text-[10px] text-gray-400 uppercase tracking-widest">Peringatan</p></div>
-          </div>
-          <div className="space-y-3 relative z-10">
-            {isLoading ? (
-              <p className="text-xs text-gray-600">Memuat…</p>
-            ) : seringTelat.length === 0 ? (
-              <p className="text-xs text-gray-600">Tidak ada keterlambatan di rentang ini. 🎉</p>
-            ) : seringTelat.map((emp: any, idx: number) => (
-              <div key={idx} className="flex justify-between items-center bg-kartu-hover p-3 rounded-xl border border-white/10">
-                <div className="flex items-center gap-2.5 min-w-0 mr-2">
-                  <AvatarKaryawan id={emp.id} nama={emp.nama} className={KELAS_AVATAR} />
-                  <span className="text-sm font-semibold text-gray-200 truncate">{emp.nama}</span>
+        <KartuLipat id="telat" judul="Sering Terlambat" sub="Peringatan" nada="kuning"
+          ringkas={isLoading ? "…" : seringTelat.length === 0 ? "Tidak ada" : `${seringTelat.length} orang`}
+          ikon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2.25V15m0 0l-3-3m3 3l3-3m-3 3V12M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}>
+          {isLoading ? (
+            <p className="text-xs text-gray-600">Memuat…</p>
+          ) : seringTelat.length === 0 ? (
+            <p className="text-xs text-gray-600">Tidak ada keterlambatan di rentang ini. 🎉</p>
+          ) : seringTelat.map((emp: any, idx: number) => {
+            const aktif = bukaBaris.telat === String(emp.id);
+            return (
+              <div key={String(emp.id) || `idx-${idx}`} className="bg-kartu-hover p-3 rounded-xl border border-white/10">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2.5 min-w-0 mr-2">
+                    <AvatarKaryawan id={emp.id} nama={emp.nama} className={KELAS_AVATAR} />
+                    <span className="text-sm font-semibold text-gray-200 truncate">{emp.nama}</span>
+                  </div>
+                  <button type="button" aria-expanded={aktif} onClick={() => toggleBaris("telat", String(emp.id))} title="Lihat tanggal terlambat" className={kelasChip(aktif, "kuning")}>
+                    {emp.totalTelat}x Telat
+                  </button>
                 </div>
-                <span className="bg-yellow-500/20 text-yellow-400 text-xs font-bold px-2 py-1 rounded border border-yellow-500/20 shrink-0">{emp.totalTelat}x Telat</span>
+                {aktif && panelHari(hariUntukKartu(petaAbsen.get(String(emp.id)) || [], "telat"))}
               </div>
-            ))}
-          </div>
-        </div>
+            );
+          })}
+        </KartuLipat>
 
-        <div className="p-6 relative overflow-hidden group hover:border-red-500/30 transition-all rounded-xl border border-white/10 bg-white/[0.03] duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
-          <div className="absolute -right-10 -top-10 w-32 h-32 bg-red-500/10 rounded-full blur-3xl"></div>
-          <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4 relative z-10">
-            <div className="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </div>
-            <div><h2 className="font-bold text-white text-sm">Lupa Clock-Out</h2><p className="text-[10px] text-gray-400 uppercase tracking-widest">Tindakan</p></div>
-          </div>
-          <div className="space-y-3 relative z-10">
-            {isLoading ? (
-              <p className="text-xs text-gray-600">Memuat…</p>
-            ) : lupaClockOut.length === 0 ? (
-              <p className="text-xs text-gray-600">Semua sesi absensi tertutup rapi.</p>
-            ) : lupaClockOut.map((row: any, idx: number) => {
-              const key = row.id || `${row.idKaryawan}|${row.tanggal}`;
-              return (
-                <div key={idx} className="flex justify-between items-center bg-kartu-hover p-3 rounded-xl border border-white/10 gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <AvatarKaryawan id={row.idKaryawan} nama={namaResmi(row.idKaryawan, employees, row.nama)} className={KELAS_AVATAR} />
+        <KartuLipat id="lupa" judul="Lupa Clock-Out" sub="Tindakan" nada="merah"
+          ringkas={isLoading ? "…" : lupaClockOut.length === 0 ? "Rapi" : `${lupaClockOut.length} sesi`}
+          ikon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}>
+          {isLoading ? (
+            <p className="text-xs text-gray-600">Memuat…</p>
+          ) : lupaClockOut.length === 0 ? (
+            <p className="text-xs text-gray-600">Semua sesi absensi tertutup rapi.</p>
+          ) : lupaClockOut.map((row: any) => {
+            const key = row.id || `${row.idKaryawan}|${row.tanggal}`;
+            const aktif = bukaBaris.lupa === String(key);
+            const nama = namaResmi(row.idKaryawan, employees, row.nama);
+            return (
+              <div key={key} className="bg-kartu-hover p-3 rounded-xl border border-white/10">
+                <div className="flex justify-between items-center gap-2">
+                  <button type="button" aria-expanded={aktif} onClick={() => toggleBaris("lupa", String(key))} title="Lihat rincian sesi" className="flex items-center gap-2.5 min-w-0 text-left cursor-pointer">
+                    <AvatarKaryawan id={row.idKaryawan} nama={nama} className={KELAS_AVATAR} />
                     <div className="min-w-0">
-                      <span className="text-sm font-semibold text-gray-200 block truncate">{namaResmi(row.idKaryawan, employees, row.nama)}</span>
+                      <span className={`text-sm font-semibold block truncate ${aktif ? "text-white" : "text-gray-200"}`}>{nama}</span>
                       <span className="text-[10px] text-gray-500">{row.tanggal} · Masuk {row.waktuMasuk || "-"}</span>
                     </div>
-                  </div>
+                  </button>
                   <button
                     onClick={() => closeSession(row)}
                     disabled={closingId === key}
@@ -413,35 +447,41 @@ export default function AdminKehadiranPage() {
                     {closingId === key ? "…" : "Tutup Sesi"}
                   </button>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="p-6 relative overflow-hidden group hover:border-green-500/30 transition-all rounded-xl border border-white/10 bg-white/[0.03] duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
-          <div className="absolute -right-10 -top-10 w-32 h-32 bg-green-500/10 rounded-full blur-3xl"></div>
-          <div className="flex items-center gap-3 mb-5 border-b border-white/5 pb-4 relative z-10">
-            <div className="w-10 h-10 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>
-            </div>
-            <div><h2 className="font-bold text-white text-sm">Paling Disiplin</h2><p className="text-[10px] text-gray-400 uppercase tracking-widest">Apresiasi</p></div>
-          </div>
-          <div className="space-y-3 relative z-10">
-            {isLoading ? (
-              <p className="text-xs text-gray-600">Memuat…</p>
-            ) : palingDisiplin.length === 0 ? (
-              <p className="text-xs text-gray-600">Belum ada data absensi di rentang ini.</p>
-            ) : palingDisiplin.map((emp: any, idx: number) => (
-              <div key={idx} className="flex justify-between items-center bg-kartu-hover p-3 rounded-xl border border-white/10 gap-2">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <AvatarKaryawan id={emp.id} nama={emp.nama} className={KELAS_AVATAR} />
-                  <span className="text-sm font-semibold text-gray-200 truncate">{emp.nama}</span>
-                </div>
-                <span className="bg-green-500/20 text-green-400 text-xs font-bold px-2 py-1 rounded border border-green-500/20 shrink-0">{emp.hadir} hari tepat waktu</span>
+                {aktif && (
+                  <div className="mt-2 ml-0 sm:ml-10 text-[11px] text-gray-400 mo-fade-up" data-panel-hari>
+                    <p><span className="text-gray-300 font-semibold">{labelTanggalPendek(String(row.tanggal))}</span> · Lokasi {row.lokasi || "-"} · Mode {row.mode_kerja || "Kantor"} · {terlambat(row, fleksibelIds(employees)) ? "Terlambat" : "Tepat waktu"}</p>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-        </div>
+            );
+          })}
+        </KartuLipat>
+
+        <KartuLipat id="disiplin" judul="Paling Disiplin" sub="Apresiasi" nada="hijau"
+          ringkas={isLoading ? "…" : palingDisiplin.length === 0 ? "Belum ada" : `${palingDisiplin.length} orang`}
+          ikon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" /></svg>}>
+          {isLoading ? (
+            <p className="text-xs text-gray-600">Memuat…</p>
+          ) : palingDisiplin.length === 0 ? (
+            <p className="text-xs text-gray-600">Belum ada data absensi di rentang ini.</p>
+          ) : palingDisiplin.map((emp: any, idx: number) => {
+            const aktif = bukaBaris.disiplin === String(emp.id);
+            return (
+              <div key={String(emp.id) || `idx-${idx}`} className="bg-kartu-hover p-3 rounded-xl border border-white/10">
+                <div className="flex justify-between items-center gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <AvatarKaryawan id={emp.id} nama={emp.nama} className={KELAS_AVATAR} />
+                    <span className="text-sm font-semibold text-gray-200 truncate">{emp.nama}</span>
+                  </div>
+                  <button type="button" aria-expanded={aktif} onClick={() => toggleBaris("disiplin", String(emp.id))} title="Lihat tanggal tepat waktu" className={kelasChip(aktif, "hijau")}>
+                    {emp.hadir} hari tepat waktu
+                  </button>
+                </div>
+                {aktif && panelHari(hariUntukKartu(petaAbsen.get(String(emp.id)) || [], "disiplin"))}
+              </div>
+            );
+          })}
+        </KartuLipat>
 
       </div>
 

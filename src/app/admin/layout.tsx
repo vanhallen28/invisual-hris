@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import PelacakOnline from "@/components/PelacakOnline";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -44,6 +45,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-[#000000] text-gray-200 flex flex-col md:flex-row font-sans">
+      {/* Mendaftar ke presence "hadir-online" (monitoring online); tanpa UI */}
+      <PelacakOnline />
 
       {/* HEADER MOBILE (admin) — logo + subtitle, seragam dengan portal karyawan */}
       <header className={`${isChatPage ? "hidden" : ""} md:hidden w-full bg-latar/95 backdrop-blur-xl border-b border-white/5 px-5 py-4 sticky top-0 z-[99] flex items-center justify-between shadow-sm`}>

@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Avatar from "@/components/Avatar";
+import PelacakOnline from "@/components/PelacakOnline";
 
 
 
@@ -114,6 +115,8 @@ const navItems = [
 
 return (
   <div className="min-h-screen bg-[#000000] text-gray-200 flex flex-col md:flex-row font-sans selection:bg-primer selection:text-white">
+    {/* Mendaftar ke presence "hadir-online" (monitoring online di dasbor HR/manager); tanpa UI, tak pernah mengganggu halaman */}
+    <PelacakOnline />
   
     {/* 📱 HEADER MOBILE (MINIMALIST) */}
     <header className={`${isChatPage ? "hidden" : ""} md:hidden w-full bg-latar/95 backdrop-blur-xl border-b border-white/5 px-5 py-4 sticky top-0 z-[99] flex items-center justify-between shadow-sm`}>

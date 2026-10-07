@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { excludeOwners } from "@/lib/owners";
 import LoadingLogo from "@/components/LoadingLogo";
+import KartuOnline from "@/components/admin/KartuOnline";
 
 function coversToday(tanggalStr: string, todayISO: string) {
   if (!tanggalStr) return false;
@@ -161,6 +162,11 @@ export default function DashboardTimPage() {
             <Kartu label="Terlambat" nilai={late.length} warna="text-yellow-400" />
             <Kartu label="WFH / WFC" nilai={remoteToday.length} warna="text-tint-redup" />
             <Kartu label="Sakit / cuti" nilai={approvedLeaves.length} warna="text-red-400" />
+          </div>
+
+          {/* Sedang Online — siapa yang sedang membuka HRIS (presence; manager boleh membaca) */}
+          <div className="mb-6 rounded-xl border border-white/10 bg-white/[0.03] p-5">
+            <KartuOnline employees={employees} />
           </div>
 
           {/* Daftar nama per kategori */}

@@ -16,6 +16,7 @@ import { ambilAturanJamKerja } from "@/lib/jamKerja";
 import { GaleriFotoAbsen } from "@/components/FotoAbsen";
 import { mintaBersihkanFotoLama } from "@/lib/fotoAbsen";
 import AvatarKaryawan from "@/components/AvatarKaryawan";
+import KartuOnline from "@/components/admin/KartuOnline";
 
 // Cek apakah HARI INI termasuk dalam periode izin/cuti.
 // Kolom `tanggal` berupa string: "2025-07-16", "2025-07-16 s/d 2025-07-20",
@@ -806,6 +807,11 @@ export default function AdminDashboardPage() {
                   <p className="text-xs text-gray-500 pl-6 italic">{saringLog === "pulang" ? "Belum ada yang clock-out hari ini." : "Belum ada yang clock-in hari ini."}</p>
                 ) : null}
               </div>
+            </BentoCell>
+
+            {/* Sedang Online — siapa yang sedang membuka HRIS (presence kanal privat; hanya HR/manager yang bisa membaca) */}
+            <BentoCell className="col-span-2 lg:col-span-4">
+              <KartuOnline employees={employees} />
             </BentoCell>
           </div>
         </div>
