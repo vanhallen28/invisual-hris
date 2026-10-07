@@ -10,6 +10,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { supabase } from "@/lib/supabase";
 import AvatarKaryawan from "@/components/AvatarKaryawan";
+import { namaPanggilan } from "@/lib/nama";
 import { daftarOnline, labelSejak } from "@/lib/online";
 import { pakaiKanal, berlangganan, potret, type PotretKanal } from "@/lib/onlineKanal";
 
@@ -68,7 +69,7 @@ export default function KartuOnline({ employees, kelas = "" }: { employees: any[
           {daftar.map((b) => (
             <div key={b.idKaryawan} className="flex items-center gap-2 bg-kartu-hover border border-white/10 rounded-full pl-1 pr-3 py-1" title={`${b.nama} — ${labelSejak(b.sejak)}`}>
               <AvatarKaryawan id={b.idKaryawan} nama={b.nama} className={KELAS_AVATAR} />
-              <span className="text-sm font-semibold text-gray-200">{b.nama}</span>
+              <span className="text-sm font-semibold text-gray-200">{namaPanggilan(b.idKaryawan, employees, b.nama)}</span>
               <span className="text-[11px] text-gray-400">{labelSejak(b.sejak)}{b.perangkat > 1 ? ` · ${b.perangkat} perangkat` : ""}</span>
             </div>
           ))}

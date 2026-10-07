@@ -12,6 +12,7 @@ import { CorporateSummaryCard } from "@/components/admin/CorporateSummaryCard";
 import { ResetAbsensiCard } from "@/components/admin/ResetAbsensiCard";
 import { ChatNotifCard } from "@/components/admin/ChatNotifCard";
 import { excludeOwners } from "@/lib/owners";
+import { namaPanggilan } from "@/lib/nama";
 import { ambilAturanJamKerja } from "@/lib/jamKerja";
 import { GaleriFotoAbsen } from "@/components/FotoAbsen";
 import { mintaBersihkanFotoLama } from "@/lib/fotoAbsen";
@@ -559,7 +560,7 @@ export default function AdminDashboardPage() {
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <AvatarKaryawan id={req.idKaryawan} nama={req.nama} className="w-9 h-9 shrink-0 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-300 font-bold border border-amber-500/30" />
                       <div className="min-w-0">
-                        <h4 className="font-bold text-white text-sm truncate">{req.nama}</h4>
+                        <h4 className="font-bold text-white text-sm truncate" title={req.nama}>{namaPanggilan(req.idKaryawan, employees, req.nama)}</h4>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           {req.tanggal && <span className="text-[10px] text-gray-400 font-mono">{req.tanggal}</span>}
                           {jamMasukPetaHariIni[req.idKaryawan] && <span className="text-[10px] text-amber-300 font-mono">Clock-in {jamMasukPetaHariIni[req.idKaryawan]}</span>}
@@ -694,7 +695,7 @@ export default function AdminDashboardPage() {
                       <div className="flex items-center gap-3 min-w-0">
                         <AvatarKaryawan id={req.idKaryawan} nama={req.nama} className="w-9 h-9 shrink-0 rounded-full bg-primer-terang/20 flex items-center justify-center text-tint font-bold border border-primer-terang/30" />
                         <div className="min-w-0">
-                          <h4 className="font-bold text-white text-sm truncate">{req.nama}</h4>
+                          <h4 className="font-bold text-white text-sm truncate" title={req.nama}>{namaPanggilan(req.idKaryawan, employees, req.nama)}</h4>
                           <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded font-bold uppercase mt-1 inline-block">{req.jenis}</span>
                         </div>
                       </div>
@@ -765,7 +766,7 @@ export default function AdminDashboardPage() {
                         <AvatarKaryawan id={absen.idKaryawan} nama={absen.nama} className="w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-xs" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <p className="text-sm font-bold text-white truncate">{absen.nama}</p>
+                            <p className="text-sm font-bold text-white truncate" title={absen.nama}>{namaPanggilan(absen.idKaryawan, employees, absen.nama)}</p>
                             {absen.mode_kerja && absen.mode_kerja !== "Kantor" && (
                               <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-primer/15 text-tint-redup px-1.5 py-0.5 rounded border border-primer/30">{absen.mode_kerja}</span>
                             )}

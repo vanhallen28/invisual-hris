@@ -41,6 +41,49 @@ export function rapikanNama(nama?: string | null): string {
 }
 
 /**
+ * Nama panggilan untuk daftar ringkas (Log absensi live, Butuh persetujuan,
+ * Sedang Online di Dasbor) supaya nama panjang tidak terpotong.
+ *
+ * Urutan: kolom `employees.panggilan` bila diisi HR → kalau kosong, kata
+ * pertama nama resmi → bila kata pertama itu kembar dengan karyawan aktif lain
+ * (dua "Ahmad"), dipakai dua kata pertama agar tetap bisa dibedakan.
+ * Hanya tampilan; data tidak diubah. Karyawan yang tidak ada di `employees`
+ * memakai `cadangan` (nama dari baris attendance/approvals) dengan aturan sama.
+ */
+export function petaPanggilan(employees: any[] | undefined): Map<string, string> {
+  const daftar = (Array.isArray(employees) ? employees : []).map((e) => ({
+    id: String(e?.idKaryawan ?? "").trim(),
+    panggilan: String(e?.panggilan ?? "").trim(),
+    kata: rapikanNama(e?.nama).split(/\s+/).filter(Boolean),
+  })).filter((e) => e.id);
+  const hitungDepan = new Map<string, number>();
+  daftar.forEach((e) => {
+    if (e.panggilan || !e.kata[0]) return;
+    const k = e.kata[0].toLowerCase();
+    hitungDepan.set(k, (hitungDepan.get(k) || 0) + 1);
+  });
+  const peta = new Map<string, string>();
+  daftar.forEach((e) => {
+    if (e.panggilan) { peta.set(e.id, e.panggilan); return; }
+    if (!e.kata[0]) return;
+    const kembar = (hitungDepan.get(e.kata[0].toLowerCase()) || 0) > 1;
+    peta.set(e.id, kembar ? e.kata.slice(0, 2).join(" ") : e.kata[0]);
+  });
+  return peta;
+}
+
+export function namaPanggilan(
+  idKaryawan: string | number | null | undefined,
+  employees: any[] | undefined,
+  cadangan?: string | null,
+): string {
+  const id = String(idKaryawan ?? "").trim();
+  const dariPeta = id ? petaPanggilan(employees).get(id) : undefined;
+  if (dariPeta) return dariPeta;
+  return rapikanNama(cadangan).split(/\s+/).filter(Boolean)[0] || "";
+}
+
+/**
  * Mengambil nama resmi dari daftar employees (sumber kebenaran) berdasarkan
  * idKaryawan. Nama di tabel attendance/approvals bisa beda tulisan, jadi
  * selalu utamakan nama dari employees bila ada.
