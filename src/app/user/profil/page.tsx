@@ -3,22 +3,33 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { generatePayslip } from "@/utils/generatePayslip"; 
-import PayslipDocument from "@/components/PayslipDocument";
 import LoadingLogo from "@/components/LoadingLogo"; // 🔥 INI KUNCI UNTUK MEMANGGIL KOMPONEN ANDA
 import PerformancePanel from "@/components/PerformancePanel";
 import Avatar from "@/components/Avatar";
+import SlipModal from "@/components/payroll/SlipModal";
+import { keSlipTampil } from "@/lib/payroll/hitung";
+import { muatRiwayatSlipSaya, type RiwayatSlip } from "@/lib/payroll/klien";
+
+// Slip gaji di Profil = slip RESMI yang diterbitkan HR per periode (tabel
+// payroll_slip, hanya periode FINAL yang lolos RLS) — bukan hitungan sendiri
+// dari gaji pokok + absensi bulan kalender seperti dulu, supaya angkanya
+// selalu sama dengan yang dikirim HR ke email.
+const jamPendek = (iso?: string | null) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+};
 
 export default function UserProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false); // State Loading PDF
   const [userEmail, setUserEmail] = useState<string>("");
   const [showGaji, setShowGaji] = useState(false);
-  const [showSlip, setShowSlip] = useState(false);
-  const [attendances, setAttendances] = useState<any[]>([]);
-  const currentMonthName = new Date().toLocaleDateString("id-ID", { month: 'long', year: 'numeric' });
-  const currentMonthPrefix = new Date().toISOString().slice(0, 7);
+  const [riwayat, setRiwayat] = useState<RiwayatSlip[]>([]);
+  const [riwayatPesan, setRiwayatPesan] = useState("");
+  const [bukaRiwayat, setBukaRiwayat] = useState(false);
+  const [slipDibuka, setSlipDibuka] = useState<RiwayatSlip | null>(null);
 
   useEffect(() => {
     const initializeProfile = async () => {
@@ -54,8 +65,11 @@ export default function UserProfilePage() {
       if (data) {
         setProfile(data);
         localStorage.setItem("invisualUserSession", JSON.stringify(data));
-        const { data: att } = await supabase.from("attendance").select("*").eq("idKaryawan", data.idKaryawan).like("tanggal", `${currentMonthPrefix}%`);
-        setAttendances(att || []);
+        // Riwayat slip gaji resmi (periode final saja — disaring RLS).
+        const r = await muatRiwayatSlipSaya(supabase, String(data.idKaryawan || ""));
+        // RLS sudah menyaring untuk karyawan; saringan ini menjaga akun HR (yang melihat draf) tetap hanya melihat slip final di Profil.
+        if (r.ok) { setRiwayat(r.riwayat.filter((x) => x.periode?.status === "final")); setRiwayatPesan(""); }
+        else { setRiwayat([]); setRiwayatPesan(r.tabelBelumAda ? "" : r.pesan); }
       }
     } catch (error) {
       console.error("Gagal menarik data database:", error);
@@ -76,40 +90,9 @@ export default function UserProfilePage() {
     return () => { supabase.removeChannel(channel); };
   }, [userEmail]);
 
-  // 🔥 FUNGSI PEMICU UNDUH PDF
-  const handleDownloadSlip = () => {
-    if (!profile) return;
-    setIsGenerating(true);
-    
-    // Memberikan jeda animasi sedikit agar terasa prosesnya
-    setTimeout(() => {
-      generatePayslip(profile);
-      setIsGenerating(false);
-    }, 1500);
-  };
-
   const formatRupiah = (angka: number) => {
     if (!angka) return "Rp 0";
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(angka);
-  };
-
-  const buildSlip = () => {
-    const hariHadir = attendances.filter((a) => a.status === "Tepat Waktu").length;
-    const hariTerlambat = attendances.filter((a) => a.status === "Terlambat").length;
-    const totalHadir = hariHadir + hariTerlambat;
-    const gajiPokokRaw = profile.gajipokok !== undefined ? profile.gajipokok : (profile.gajipoko !== undefined ? profile.gajipoko : profile.gajiPokok);
-    const gajiPokok = gajiPokokRaw ? Number(gajiPokokRaw) : 0;
-    const bonusManual = profile.bonus ? Number(profile.bonus) : 0;
-    const potonganManual = profile.potongan ? Number(profile.potongan) : 0;
-    // Tunjangan kehadiran DIHAPUS — disamakan dengan admin/payroll. Kalau
-    // hanya payroll yang diubah, angka di profil karyawan akan LEBIH BESAR
-    // daripada slip yang dikeluarkan admin. Nilainya tetap dikembalikan (0)
-    // supaya bentuk objek slip tidak berubah.
-    const tunjanganKehadiran = 0;
-    const totalPendapatan = gajiPokok + tunjanganKehadiran + bonusManual;
-    const totalPotongan = potonganManual;
-    const gajiBersih = totalPendapatan - totalPotongan;
-    return { ...profile, totalHadir, gajiPokok, bonusManual, potonganManual, tunjanganKehadiran, totalPendapatan, totalPotongan, gajiBersih };
   };
 
   const calculateMasaKerja = (joinDateString: string) => {
@@ -274,22 +257,47 @@ export default function UserProfilePage() {
                 </div>
               </div>
 
-              {/* 🔥 TOMBOL GENERATE PDF SLIP GAJI */}
+              {/* SLIP GAJI RESMI PER PERIODE (diterbitkan HR) */}
               <div className="pt-5 mt-5 border-t border-white/5">
-                <button 
-                  onClick={() => setShowSlip(true)} 
-                  disabled={isGenerating}
-                  className="w-full bg-primer hover:bg-blue-600 px-4 py-3 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                <button
+                  type="button"
+                  onClick={() => setBukaRiwayat((v) => !v)}
+                  aria-expanded={bukaRiwayat}
+                  className="w-full bg-primer hover:bg-blue-600 px-4 py-3 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  data-aksi="lihat-slip"
                 >
-                  {isGenerating ? (
-                    <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin"></div>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-                  )}
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
                   <span className="text-xs md:text-sm font-bold text-white uppercase tracking-widest">
-                    {isGenerating ? "Mencetak Dokumen..." : "Unduh Slip Gaji (PDF)"}
+                    Lihat Slip Gaji{riwayat.length ? ` (${riwayat.length})` : ""}
                   </span>
                 </button>
+
+                {bukaRiwayat && (
+                  <div className="mt-3 rounded-xl border border-white/10 bg-latar divide-y divide-white/5 overflow-hidden" data-riwayat-slip>
+                    {riwayat.length === 0 ? (
+                      <p className="px-4 py-3 text-xs text-gray-500">{riwayatPesan || "Belum ada slip gaji yang diterbitkan."}</p>
+                    ) : riwayat.map((r) => {
+                      const t = keSlipTampil(r);
+                      return (
+                        <button
+                          key={r.id}
+                          type="button"
+                          onClick={() => setSlipDibuka(r)}
+                          className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/[0.04] transition-colors"
+                          data-slip-periode={r.periode.label}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-white truncate">{r.periode.label}</p>
+                            <p className="text-[10px] text-gray-500 mt-0.5 truncate">
+                              {r.email_status === "terkirim" && r.email_dikirim_pada ? `Dikirim ke email ${jamPendek(r.email_dikirim_pada)}` : "Belum dikirim ke email"}
+                            </p>
+                          </div>
+                          <span className="text-sm font-black text-green-400 shrink-0">{showGaji ? formatRupiah(t.gajiBersih) : "Rp ••••••"}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* 🔐 GANTI PASSWORD */}
                 <a
@@ -308,35 +316,10 @@ export default function UserProfilePage() {
         </div>
       </div>
 
-      {/* SLIP GAJI — template sama dengan Payroll */}
-      {showSlip && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 print:bg-white print:p-0">
-          <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden print:max-w-full print:rounded-none print:max-h-full print:overflow-visible relative print:shadow-none">
-            <PayslipDocument slip={buildSlip()} monthName={currentMonthName} />
-            <div className="p-4 bg-gray-50 flex justify-end gap-3 print:hidden border-t border-gray-200 bg-gray-100 shrink-0">
-              <button onClick={() => setShowSlip(false)} className="px-5 py-2 text-sm font-bold text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">Tutup</button>
-              <button onClick={() => window.print()} className="px-5 py-2 text-sm font-bold text-white bg-primer-terang hover:bg-blue-600 rounded-lg flex items-center gap-2 shadow-md transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.724.092m6.524-4.659A15.455 15.455 0 0112.532 2.25H8.25m4.282 7.02v.002m0 0H21m-2.81 8.51c-.145.52-.36 1.018-.632 1.487M12 21.75c-2.676 0-5.216-.584-7.499-1.632M15.75 21.75c2.676 0 5.216-.584 7.499-1.632M4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75z" /></svg>
-                Print / Simpan PDF
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* SLIP GAJI — template & tombol (Tutup / Unduh PDF / Print) sama dengan Payroll */}
+      {slipDibuka && (
+        <SlipModal slip={keSlipTampil(slipDibuka)} label={slipDibuka.periode.label} onTutup={() => setSlipDibuka(null)} />
       )}
-      <style dangerouslySetInnerHTML={{__html: `
-        @media print {
-          body * { visibility: hidden !important; }
-          #printable-slip, #printable-slip * { visibility: visible !important; }
-          #printable-slip { 
-            position: absolute !important; 
-            left: 0 !important; 
-            top: 0 !important; 
-            width: 100% !important; 
-            margin: 0 !important;
-            padding: 20px !important;
-          }
-        }
-      `}} />
     </div>
   );
 }

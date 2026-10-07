@@ -1,22 +1,29 @@
 // src/components/PayslipDocument.tsx
-// Template slip gaji bersama — SALINAN PERSIS markup slip di halaman Payroll,
-// agar slip di Profil identik dengan slip Payroll. `slip` berisi field terhitung
-// (gajiPokok, totalHadir, tunjanganKehadiran, bonusManual, potonganManual,
-// totalPendapatan, totalPotongan, gajiBersih) + data karyawan (nama, idKaryawan,
-// jabatan, namaBank, noRekening). `monthName` = nama periode.
+// Template slip gaji bersama (HTML) — dipakai halaman Payroll, Profil karyawan,
+// dan detail karyawan lewat SlipModal. Angka diambil dari `SlipTampil`
+// (lib/payroll/hitung.ts) sehingga slip di semua halaman identik, dan versi PDF
+// (lib/payroll/slipPdf.ts) mengikuti susunan yang sama.
+//   slip      : hasil keSlipTampil(barisSlip)
+//   monthName : label periode, mis. "Oktober 2026"
+//   draf      : true → pita "DRAF — belum final" (periode belum difinalkan)
+import { PERUSAHAAN } from "@/lib/payroll/perusahaan";
+import { formatRupiah, type SlipTampil } from "@/lib/payroll/hitung";
 
-const formatRupiah = (angka: number) =>
-  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(angka || 0);
-
-export default function PayslipDocument({ slip, monthName }: { slip: any; monthName: string }) {
+export default function PayslipDocument({ slip, monthName, draf = false }: { slip: SlipTampil; monthName: string; draf?: boolean }) {
   return (
-    <div className="p-6 overflow-y-auto custom-scrollbar flex-1 text-black print:overflow-visible print:p-8" id="printable-slip">
+    <div className="p-6 overflow-y-auto custom-scrollbar flex-1 text-black print:overflow-visible print:p-8" id="printable-slip" data-slip={slip.idKaryawan}>
+
+      {draf && (
+        <div className="mb-3 rounded-lg bg-amber-100 text-amber-800 text-[11px] font-bold px-3 py-1.5 text-center tracking-wider" data-slip-draf>
+          DRAF — belum final
+        </div>
+      )}
 
       {/* KOP SURAT */}
       <div className="flex justify-between items-center border-b-2 border-black/10 pb-4 mb-4">
         <div>
-          <img src="/invisual-light.svg" alt="Invisual Studio" className="h-7 object-contain mb-1 brightness-0" />
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">HR & Payroll Department</p>
+          <img src="/invisual-light.svg" alt={PERUSAHAAN.nama} className="h-7 object-contain mb-1 brightness-0" />
+          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{PERUSAHAAN.departemen}</p>
           <p className="text-[10px] text-gray-400 font-medium">Periode: {monthName}</p>
         </div>
         <div className="text-right">
@@ -26,7 +33,7 @@ export default function PayslipDocument({ slip, monthName }: { slip: any; monthN
       </div>
 
       {/* Info Karyawan */}
-      <div className="grid grid-cols-2 gap-4 mb-5 bg-gray-50 p-3 rounded-xl border border-gray-100">
+      <div className="grid grid-cols-2 gap-4 mb-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
         <div>
           <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Informasi Karyawan</p>
           <p className="text-sm font-bold text-gray-800 mt-0.5">{slip.nama}</p>
@@ -34,12 +41,15 @@ export default function PayslipDocument({ slip, monthName }: { slip: any; monthN
         </div>
         <div className="text-right">
           <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Transfer Tujuan</p>
-          <p className="text-sm font-bold text-gray-800 mt-0.5">{slip.namaBank || "CASH"}</p>
-          <p className="text-xs text-gray-600 font-mono">{slip.noRekening || "-"}</p>
+          <p className="text-sm font-bold text-gray-800 mt-0.5">{slip.namaBank}</p>
+          <p className="text-xs text-gray-600 font-mono">{slip.noRekening}</p>
         </div>
       </div>
+      <p className="text-[10px] text-gray-500 mb-5 px-1" data-slip-kehadiran>
+        Kehadiran periode ini: <span className="font-bold text-gray-700">Hadir {slip.hadir} hari</span> · <span className={`font-bold ${slip.telat > 0 ? "text-amber-600" : "text-gray-700"}`}>Telat {slip.telat} hari</span>
+      </p>
 
-      {/* Rincian Finansial Dinamis */}
+      {/* Rincian Finansial */}
       <div className="grid grid-cols-2 gap-6 mb-5">
         <div>
           <h3 className="text-xs font-bold text-green-600 uppercase tracking-widest border-b border-gray-200 pb-1.5 mb-2">Pendapatan (Earnings)</h3>
@@ -48,8 +58,6 @@ export default function PayslipDocument({ slip, monthName }: { slip: any; monthN
               <span className="text-gray-600">Gaji Pokok</span>
               <span className="font-bold text-gray-800">{formatRupiah(slip.gajiPokok)}</span>
             </div>
-            {/* Baris "Tunj. Hadir" DIHAPUS — tunjangan kehadiran otomatis
-                sudah ditiadakan di calculatePayroll (payroll/page.tsx). */}
             {slip.bonusManual > 0 && (
               <div className="flex justify-between text-green-600 font-semibold">
                 <span>Bonus Tambahan</span>
@@ -91,8 +99,14 @@ export default function PayslipDocument({ slip, monthName }: { slip: any; monthN
           <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest">Take Home Pay</p>
           <p className="text-[9px] text-blue-300 mt-0.5">Total bersih ditransfer ke rekening di atas.</p>
         </div>
-        <p className="text-xl font-black">{formatRupiah(slip.gajiBersih)}</p>
+        <p className="text-xl font-black" data-slip-thp>{formatRupiah(slip.gajiBersih)}</p>
       </div>
+
+      {slip.catatan && (
+        <div className="mb-5 text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2" data-slip-catatan>
+          <span className="font-bold text-gray-700">Catatan: </span>{slip.catatan}
+        </div>
+      )}
 
       {/* AREA FOOTER (TANDA TANGAN & ALAMAT) */}
       <div>
@@ -108,9 +122,9 @@ export default function PayslipDocument({ slip, monthName }: { slip: any; monthN
         </div>
 
         <div className="pt-4 border-t border-gray-200 text-left">
-          <p className="text-[10px] font-black text-gray-700 tracking-widest uppercase">Invisual Studio</p>
-          <p className="text-[9px] text-gray-500 mt-1 font-medium leading-relaxed">Jl. Golf Bar. XVII No.8, Sukamiskin, Kec. Arcamanik, Kota Bandung, Jawa Barat 40293</p>
-          <p className="text-[9px] text-gray-400 mt-0.5 font-mono">📞 0822-9555-5314</p>
+          <p className="text-[10px] font-black text-gray-700 tracking-widest uppercase">{PERUSAHAAN.nama}</p>
+          <p className="text-[9px] text-gray-500 mt-1 font-medium leading-relaxed">{PERUSAHAAN.alamat}</p>
+          <p className="text-[9px] text-gray-400 mt-0.5 font-mono">📞 {PERUSAHAAN.telepon}</p>
         </div>
       </div>
 

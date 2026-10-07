@@ -6,8 +6,18 @@ import LoadingLogo from "@/components/LoadingLogo";
 import { useParams, useRouter } from "next/navigation";
 import { Employee } from "@/lib/types";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase"; 
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
+import SlipModal from "@/components/payroll/SlipModal";
+import { formatRupiah, gajiPokokMaster, keSlipTampil, namaBerkasSlip } from "@/lib/payroll/hitung";
+import { unduhSlipPdf } from "@/lib/payroll/slipPdf";
+import { muatRiwayatSlipSaya, type RiwayatSlip } from "@/lib/payroll/klien";
+
+const jamPendekSlip = (iso?: string | null) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+};
 
 export default function DetailKaryawanPage() {
   const toast = useToast();
@@ -26,6 +36,25 @@ export default function DetailKaryawanPage() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [docTitle, setDocTitle] = useState("Scan KTP Asli");
   const [docFileName, setDocFileName] = useState("");
+
+  // Tab Payroll: riwayat slip resmi (payroll_slip) — dimuat saat tab dibuka pertama kali.
+  // null = belum dimuat. HR melihat draf & final (draf diberi lencana).
+  // Diikat ke idKaryawan agar riwayat karyawan sebelumnya tidak tampil saat berpindah ke karyawan lain.
+  const [riwayatMuat, setRiwayatMuat] = useState<{ id: string; daftar: RiwayatSlip[]; pesan: string } | null>(null);
+  const [slipDibuka, setSlipDibuka] = useState<RiwayatSlip | null>(null);
+  const riwayatSlip = riwayatMuat && riwayatMuat.id === idKaryawan ? riwayatMuat.daftar : null;
+  const riwayatPesan = riwayatMuat && riwayatMuat.id === idKaryawan ? riwayatMuat.pesan : "";
+
+  const muatRiwayatSlip = async () => {
+    const id = idKaryawan;
+    const r = await muatRiwayatSlipSaya(supabase, id);
+    setRiwayatMuat(r.ok ? { id, daftar: r.riwayat, pesan: "" } : { id, daftar: [], pesan: r.pesan });
+  };
+
+  const bukaSidebar = (menu: string) => {
+    setActiveSidebar(menu);
+    if (menu === "Payroll" && riwayatSlip === null) muatRiwayatSlip();
+  };
 
   const fetchEmployeeDetail = async () => {
     try {
@@ -175,7 +204,7 @@ export default function DetailKaryawanPage() {
             {["Personal", "Kehadiran", "Keuangan", "Karir", "Payroll", "Dokumen"].map((menu) => (
               <button 
                 key={menu} 
-                onClick={() => setActiveSidebar(menu)}
+                onClick={() => bukaSidebar(menu)}
                 className={`w-full text-left px-4 py-3 rounded-xl text-sm font-semibold transition-colors flex items-center gap-3 ${activeSidebar === menu ? "bg-primer-terang/10 text-primer-terang border border-primer-terang/20" : "text-gray-400 hover:bg-white/5 hover:text-white border border-transparent"}`}
               >
                 {menu === "Personal" && <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>}
@@ -344,39 +373,62 @@ export default function DetailKaryawanPage() {
           )}
 
           {activeSidebar === "Payroll" && (
-            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-right-4 duration-300" data-tab-payroll>
               <div className="border border-primer-terang/20 p-6 md:p-8 shadow-[0_10px_30px_rgba(43,92,213,0.05)] relative overflow-hidden rounded-xl border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primer-terang/5 rounded-full blur-3xl"></div>
-                <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4 relative z-10">Detail Kompensasi Aktif</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 relative z-10">
-                  <InfoRow label="Gaji Pokok" value={`Rp ${employee.gajiPokok?.toLocaleString('id-ID')}`} isMono />
-                  <InfoRow label="Insentif / Tunjangan" value={`Rp ${employee.insentif?.toLocaleString('id-ID')}`} isMono />
-                  <InfoRow label="Tipe Pencairan" value={employee.slipGaji || "Gaji Bulanan"} />
-                  <InfoRow label="Status Pajak (PTKP)" value={employee.statusPajak || "TK0"} />
-                  <InfoRow label="Nomor NPWP" value={employee.npwp} isMono />
-                  <InfoRow label="BPJS Ketenagakerjaan" value={employee.bpjsKetenagakerjaan} isMono />
+                <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4 relative z-10">
+                  <h3 className="text-lg font-bold text-white">Kompensasi</h3>
+                  <Link href="/admin/payroll" className="text-xs bg-primer-terang hover:bg-blue-600 px-4 py-2 rounded-lg text-white font-bold transition-colors">Buka Payroll</Link>
                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 relative z-10">
+                  <InfoRow label="Gaji Pokok (tetap)" value={formatRupiah(gajiPokokMaster(employee))} isMono />
+                  <InfoRow label="Bank" value={employee.namaBank || "-"} />
+                  <InfoRow label="No. Rekening" value={employee.noRekening || "-"} isMono />
+                </div>
+                <p className="text-[11px] text-gray-500 mt-4 relative z-10">Bonus, potongan, dan catatan diisi per periode di halaman Payroll (Input Gaji). Gaji pokok tetap diperbarui dari sana dengan centang &quot;simpan sebagai gaji pokok tetap&quot;.</p>
               </div>
-              
+
               <div className="p-6 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
-                <h3 className="text-sm font-bold text-white mb-4">Riwayat Slip Gaji Terbaru</h3>
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between p-4 border border-white/10 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                <h3 className="text-sm font-bold text-white mb-4">Riwayat Slip Gaji</h3>
+                <div className="flex flex-col gap-3" data-riwayat-slip>
+                  {riwayatSlip === null ? (
+                    <p className="text-xs text-gray-500 animate-pulse">Memuat riwayat slip…</p>
+                  ) : riwayatSlip.length === 0 ? (
+                    <p className="text-xs text-gray-500">{riwayatPesan || "Belum ada slip gaji untuk karyawan ini."}</p>
+                  ) : riwayatSlip.map((r) => {
+                    const t = keSlipTampil(r);
+                    const draf = r.periode.status !== "final";
+                    return (
+                      <div key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border border-white/10 rounded-xl hover:bg-white/5 transition-colors" data-slip-periode={r.periode.label}>
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className={`w-10 h-10 shrink-0 rounded-lg flex items-center justify-center ${draf ? "bg-amber-500/10 text-amber-300" : "bg-green-500/10 text-green-400"}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-white text-sm flex items-center gap-2">
+                              Slip Gaji — {r.periode.label}
+                              {draf && <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">Draf</span>}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              THP <span className="text-green-400 font-bold">{formatRupiah(t.gajiBersih)}</span>
+                              {" · "}
+                              {r.email_status === "terkirim" ? `dikirim ${jamPendekSlip(r.email_dikirim_pada)}` : r.email_status === "gagal" ? <span className="text-red-400" title={r.email_galat || ""}>email gagal</span> : r.email_status === "simulasi" ? "email (simulasi)" : "belum dikirim ke email"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button type="button" onClick={() => setSlipDibuka(r)} className="bg-primer-terang hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors" data-aksi="lihat">Lihat</button>
+                          <button type="button" onClick={() => unduhSlipPdf(t, r.periode.label, namaBerkasSlip(r.periode.label, t.nama), { draf })} className="bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-lg border border-white/10 text-xs font-bold transition-colors" data-aksi="unduh">Unduh PDF</button>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-white text-sm">Slip Gaji - Mei 2026</p>
-                        <p className="text-xs text-gray-500">Diterbitkan pada 28 Mei 2026</p>
-                      </div>
-                    </div>
-                    <button className="text-primer-terang group-hover:text-blue-400 font-bold text-xs transition-colors flex items-center gap-1">
-                      Unduh PDF
-                    </button>
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
+
+              {slipDibuka && (
+                <SlipModal slip={keSlipTampil(slipDibuka)} label={slipDibuka.periode.label} draf={slipDibuka.periode.status !== "final"} onTutup={() => setSlipDibuka(null)} />
+              )}
             </div>
           )}
 

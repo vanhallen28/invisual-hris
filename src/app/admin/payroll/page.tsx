@@ -1,290 +1,537 @@
 // src/app/admin/payroll/page.tsx
+// Payroll per PERIODE GAJI (21 → 20) dengan alur Draf → Final → Kirim.
+//
+//   • Periode & slip tersimpan di tabel payroll_periode / payroll_slip (payroll.sql).
+//   • Draf  : HR mengisi gaji pokok / bonus / potongan / catatan per slip (Input Gaji).
+//             Kehadiran dihitung langsung dari attendance rentang periode (potretKehadiran).
+//   • Final : angka terkunci (trigger DB), potret kehadiran disimpan ke slip,
+//             karyawan dapat melihat slipnya di Profil; push "Slip gaji terbit".
+//   • Kirim : slip PDF dikirim ke email karyawan lewat /api/payroll/kirim
+//             (≤ 5 per panggilan, berulang sampai selesai; status per slip).
+//
+// Aksi yang mengubah status (buat/sinkron/finalkan/buka/kirim) lewat rute API
+// (HR + service role); pembacaan & Input Gaji lewat RLS sesi HR (lib/payroll/klien.ts).
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { excludeOwners } from "@/lib/owners";
 import { useToast } from "@/components/Toast";
+import { pushNotify } from "@/lib/push";
+import AvatarKaryawan from "@/components/AvatarKaryawan";
+import SlipModal from "@/components/payroll/SlipModal";
+import { isoDari, labelRentang, labelTanggal } from "@/lib/rentangTanggal";
+import { fleksibelIds } from "@/lib/keterlambatan";
+import {
+  formatRupiah, keSlipTampil, labelPeriode, periodeBerjalan, pilihanPeriodeBaru, potretKehadiran,
+  ringkasanPeriode, peringatanFinal, ringkasanEmail, namaBerkasSlip, angkaAman,
+  type PeriodeBaris, type SlipBaris, type SlipTampil,
+} from "@/lib/payroll/hitung";
+import { unduhSlipPdf } from "@/lib/payroll/slipPdf";
+import {
+  muatPeriode, muatSlip, simpanSlip, buatPeriode, sinkronPeriode, finalkanPeriode, bukaKunciPeriode, kirimSlip, kirimSemua,
+  type ProgresKirim,
+} from "@/lib/payroll/klien";
+
+type Keadaan = "memuat" | "siap" | "tabelBelumAda" | "galat";
+type FormEdit = { gajiPokok: string; bonus: string; potongan: string; catatan: string };
+
+// Ambil SEMUA baris dengan paginasi ber-ORDER (hindari batas 1000 baris Supabase) — sama dengan Kehadiran.
+async function ambilSemuaBaris(bangun: () => any): Promise<any[]> {
+  const semua: any[] = [];
+  const uk = 1000;
+  for (let dari = 0, put = 0; put < 100; put++, dari += uk) {
+    const { data, error } = await bangun().order("id", { ascending: true }).range(dari, dari + uk - 1);
+    if (error) throw error;
+    const b = data || [];
+    semua.push(...b);
+    if (b.length < uk) break;
+  }
+  return semua;
+}
+
+const jamPendek = (iso?: string | null) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${labelTanggal(isoDari(d), false)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+const KELAS_AVATAR = "w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-[10px]";
+const KELAS_INPUT = "w-full bg-input border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none placeholder-gray-600";
+const KELAS_TOMBOL_ABU = "bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-lg border border-white/10 text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+const KELAS_TOMBOL_BIRU = "bg-primer-terang hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-md disabled:opacity-40 disabled:cursor-not-allowed";
 
 export default function AdminPayrollPage() {
   const toast = useToast();
+  const todayISO = isoDari(new Date());
+
+  const [keadaan, setKeadaan] = useState<Keadaan>("memuat");
+  const [pesanGalat, setPesanGalat] = useState("");
+  const [hrEmail, setHrEmail] = useState("");
+  const [periode, setPeriode] = useState<PeriodeBaris[]>([]);
+  const [aktifId, setAktifId] = useState("");
+  const [slips, setSlips] = useState<SlipBaris[]>([]);
+  const [memuatSlip, setMemuatSlip] = useState(false);
+  const [attendance, setAttendance] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
-  const [attendances, setAttendances] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // State untuk Slip & Modal Edit
-  const [selectedSlip, setSelectedSlip] = useState<any | null>(null);
-  const [editingEmp, setEditingEmp] = useState<any | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [sibuk, setSibuk] = useState<string | null>(null);
+  const [progres, setProgres] = useState<(ProgresKirim & { total: number }) | null>(null);
+  const [pilihBaru, setPilihBaru] = useState(false);
 
-  // State Form Edit Finansial
-  const [financeForm, setFinanceForm] = useState({
-    gajiPokok: "",
-    bonus: "",
-    potongan: ""
-  });
+  // Nomor urut pemuatan: respons periode lama yang datang belakangan tidak boleh menimpa periode yang sedang dipilih.
+  const urutMuat = useRef(0);
+  const [edit, setEdit] = useState<{ slip: SlipBaris; form: FormEdit; simpanMaster: boolean } | null>(null);
+  const [lihat, setLihat] = useState<{ slip: SlipTampil; draf: boolean } | null>(null);
+  const [dialogFinal, setDialogFinal] = useState(false);
 
-  const currentMonthName = new Date().toLocaleDateString("id-ID", { month: 'long', year: 'numeric' });
-  const currentMonthPrefix = new Date().toISOString().slice(0, 7);
+  const aktif = useMemo(() => periode.find((p) => p.id === aktifId) || null, [periode, aktifId]);
+  const draf = aktif?.status === "draf";
+  const fleks = useMemo(() => fleksibelIds(employees), [employees]);
+  const ringkas = useMemo(() => ringkasanPeriode(slips), [slips]);
+  const email = useMemo(() => ringkasanEmail(slips), [slips]);
+  const peringatan = useMemo(() => peringatanFinal(slips), [slips]);
+  const berjalan = useMemo(() => periodeBerjalan(todayISO), [todayISO]);
+  const berjalanAda = periode.some((p) => p.dari === berjalan.dari && p.sampai === berjalan.sampai);
+  const pilihanBaru = useMemo(() => pilihanPeriodeBaru(todayISO, 12).filter((r) => !periode.some((p) => p.dari === r.dari && p.sampai === r.sampai)), [todayISO, periode]);
+
+  /** Kehadiran per baris: draf → dihitung dari attendance; final → potret tersimpan di slip. */
+  const kehadiran = (s: SlipBaris) => {
+    if (!aktif || !draf) return { hadir: Number(s.hadir || 0), telat: Number(s.telat || 0) };
+    return potretKehadiran(attendance, s.idKaryawan, fleks, { dari: aktif.dari, sampai: aktif.sampai });
+  };
+
+  // ── Pemuatan ──────────────────────────────────────────────────────────
+  const muatDaftarPeriode = async (pilih?: string) => {
+    const r = await muatPeriode(supabase);
+    if (!r.ok) {
+      setPesanGalat(r.pesan);
+      setKeadaan(r.tabelBelumAda ? "tabelBelumAda" : "galat");
+      return null;
+    }
+    setPeriode(r.periode);
+    const id = pilih && r.periode.some((p) => p.id === pilih) ? pilih : (r.periode[0]?.id || "");
+    setAktifId(id);
+    setKeadaan("siap");
+    return r.periode.find((p) => p.id === id) || null;
+  };
+
+  const muatIsiPeriode = async (p: PeriodeBaris | null) => {
+    const urut = ++urutMuat.current;
+    const masihAktif = () => urut === urutMuat.current;
+    if (!p) { setSlips([]); setAttendance([]); return; }
+    setMemuatSlip(true);
+    try {
+      const r = await muatSlip(supabase, p.id);
+      if (!masihAktif()) return;
+      if (!r.ok) { toast.gagal(r.pesan); setSlips([]); return; }
+      setSlips(r.slips);
+      if (p.status === "draf") {
+        const att = await ambilSemuaBaris(() => supabase.from("attendance").select("*").gte("tanggal", p.dari).lte("tanggal", p.sampai));
+        if (!masihAktif()) return;
+        setAttendance(att);
+      } else {
+        setAttendance([]);
+      }
+    } catch (e: any) {
+      if (masihAktif()) toast.gagal(e?.message || "Gagal memuat data periode.");
+    } finally {
+      if (masihAktif()) setMemuatSlip(false);
+    }
+  };
 
   useEffect(() => {
-    fetchPayrollData();
+    let batal = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (batal) return;
+      setHrEmail(String(data?.session?.user?.email || ""));
+      const { data: emp } = await supabase.from("employees").select("*");
+      if (batal) return;
+      setEmployees(emp || []);
+      const p = await muatDaftarPeriode();
+      if (batal) return;
+      await muatIsiPeriode(p);
+    })();
+    return () => { batal = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchPayrollData = async () => {
-    setIsLoading(true);
+  const pilihPeriode = async (id: string) => {
+    setAktifId(id);
+    setPilihBaru(false);
+    await muatIsiPeriode(periode.find((p) => p.id === id) || null);
+  };
+
+  const muatUlang = async (id = aktifId) => {
+    const p = await muatDaftarPeriode(id);
+    await muatIsiPeriode(p);
+  };
+
+  // ── Aksi periode ─────────────────────────────────────────────────────
+  const aksiBuatPeriode = async (r: { dari: string; sampai: string }) => {
+    setSibuk("buat");
     try {
-      const { data: empData } = await supabase
-        .from("employees")
-        .select("*")
-        .eq("isAktif", true)
-        .order("nama", { ascending: true });
-      
-      const { data: attData } = await supabase
-        .from("attendance")
-        .select("*")
-        .like("tanggal", `${currentMonthPrefix}%`);
-
-      setEmployees(excludeOwners(empData)); // Owner tidak ikut payroll
-      setAttendances(attData || []);
-    } catch (error) {
-      console.error("Gagal menarik data payroll:", error);
-    } finally {
-      setIsLoading(false);
-    }
+      const h = await buatPeriode(supabase, r);
+      if (!h.ok) { toast.gagal(h.pesan); return; }
+      toast.sukses(h.sudahAda ? `Periode ${labelPeriode(r)} sudah ada.` : `Periode ${labelPeriode(r)} dibuat — ${h.jumlah} slip karyawan.`);
+      setPilihBaru(false);
+      await muatUlang(h.id);
+    } finally { setSibuk(null); }
   };
 
-  const calculatePayroll = (emp: any) => {
-    const empAbsen = attendances.filter(a => a.idKaryawan === emp.idKaryawan);
-    
-    const hariHadir = empAbsen.filter(a => a.status === "Tepat Waktu").length;
-    const hariTerlambat = empAbsen.filter(a => a.status === "Terlambat").length;
-    
-    const totalHadir = hariHadir + hariTerlambat;
-
-    const gajiPokokRaw = emp.gajipokok !== undefined ? emp.gajipokok : (emp.gajipoko !== undefined ? emp.gajipoko : emp.gajiPokok);
-    
-    const gajiPokok = gajiPokokRaw ? Number(gajiPokokRaw) : 0;
-    const bonusManual = emp.bonus ? Number(emp.bonus) : 0;
-    const potonganManual = emp.potongan ? Number(emp.potongan) : 0;
-
-    // Tunjangan kehadiran DIHAPUS atas permintaan. Dulu `totalHadir * 50000`
-    // — otomatis menambah gaji setiap hari masuk. Sekarang gaji ditentukan
-    // sepenuhnya lewat isian manual: Gaji Pokok + Bonus − Potongan.
-    // Nilainya tetap dikembalikan (0) supaya slip lama tidak pecah.
-    const tunjanganKehadiran = 0;
-    const dendaTerlambat = 0; 
-    
-    const totalPendapatan = gajiPokok + tunjanganKehadiran + bonusManual;
-    const totalPotongan = dendaTerlambat + potonganManual; 
-    const gajiBersih = totalPendapatan - totalPotongan;
-
-    return {
-      ...emp,
-      hariHadir,
-      hariTerlambat,
-      totalHadir,
-      gajiPokok,
-      bonusManual,
-      potonganManual,
-      tunjanganKehadiran,
-      dendaTerlambat,
-      totalPendapatan,
-      totalPotongan,
-      gajiBersih
-    };
+  const aksiSinkron = async () => {
+    if (!aktif) return;
+    setSibuk("sinkron");
+    try {
+      const h = await sinkronPeriode(supabase, aktif.id);
+      if (!h.ok) { toast.gagal(h.pesan); return; }
+      const bagian = [h.ditambahkan ? `${h.ditambahkan} karyawan ditambahkan` : "", h.diperbarui ? `${h.diperbarui} data karyawan (email/rekening) disegarkan` : ""].filter(Boolean);
+      toast.sukses(bagian.length ? `${bagian.join(", ")}.` : "Semua karyawan aktif sudah ada dan datanya mutakhir.");
+      if (h.ditambahkan || h.diperbarui) await muatIsiPeriode(aktif);
+    } finally { setSibuk(null); }
   };
 
-  const payrollData = employees.map(calculatePayroll);
-
-  const handleOpenEdit = (emp: any) => {
-    setEditingEmp(emp);
-    setFinanceForm({
-      gajiPokok: emp.gajiPokok > 0 ? emp.gajiPokok.toString() : "",
-      bonus: emp.bonusManual > 0 ? emp.bonusManual.toString() : "",
-      potongan: emp.potonganManual > 0 ? emp.potonganManual.toString() : ""
-    });
+  const aksiFinalkan = async () => {
+    if (!aktif) return;
+    setSibuk("final");
+    try {
+      const h = await finalkanPeriode(supabase, aktif.id);
+      if (!h.ok) { toast.gagal(h.pesan); return; }
+      setDialogFinal(false);
+      toast.sukses(`Periode ${h.label} difinalkan (${h.jumlah} slip). Karyawan kini bisa melihat slipnya di Profil.`);
+      if (h.userIds?.length) {
+        await pushNotify(supabase, { memberIds: h.userIds, title: `Slip gaji ${h.label} terbit`, body: "Buka Profil untuk melihat slip Anda.", url: "/user/profil", tag: "payroll" });
+      }
+      await muatUlang(aktif.id);
+    } finally { setSibuk(null); }
   };
 
-  const handleSaveFinance = async (e: React.FormEvent) => {
+  const aksiBukaKunci = async () => {
+    if (!aktif) return;
+    const peringatanKirim = email.terkirim > 0 ? ` ${email.terkirim} slip sudah dikirim ke email — bila angkanya diubah, slip yang sudah diterima karyawan akan berbeda dari yang di HRIS.` : "";
+    const ya = await toast.konfirmasi(`Buka kunci periode ${aktif.label}? Slip akan kembali ke Draf dan disembunyikan dari karyawan sampai difinalkan lagi.${peringatanKirim}`, { labelYa: "Buka kunci", labelTidak: "Batal" });
+    if (!ya) return;
+    setSibuk("buka");
+    try {
+      const h = await bukaKunciPeriode(supabase, aktif.id);
+      if (!h.ok) { toast.gagal(h.pesan); return; }
+      toast.info(`Periode ${aktif.label} kembali ke Draf.`);
+      await muatUlang(aktif.id);
+    } finally { setSibuk(null); }
+  };
+
+  const ringkasHasilKirim = (s: ProgresKirim) =>
+    [s.terkirim ? `${s.terkirim} terkirim` : "", s.gagal ? `${s.gagal} gagal` : "", s.simulasi ? `${s.simulasi} simulasi (RESEND_API_KEY belum diset)` : ""].filter(Boolean).join(" · ") || "tidak ada slip yang diproses";
+
+  const aksiKirim = async (target: "belum" | string[]) => {
+    if (!aktif) return;
+    const total = target === "belum" ? email.belum : target.length;
+    if (!total) { toast.info("Tidak ada slip yang perlu dikirim."); return; }
+    setSibuk("kirim");
+    setProgres({ terkirim: 0, gagal: 0, simulasi: 0, diproses: 0, sisa: total, total });
+    try {
+      const h = await kirimSemua(supabase, aktif.id, target, (s) => setProgres({ ...s, total }));
+      if (!h.ok) toast.gagal(`${h.pesan} (${ringkasHasilKirim(h as unknown as ProgresKirim)})`);
+      else if (h.gagal) toast.info(`Selesai: ${ringkasHasilKirim(h)}.`);
+      else toast.sukses(`Selesai: ${ringkasHasilKirim(h)}.`);
+      await muatUlang(aktif.id);
+    } finally { setSibuk(null); setProgres(null); }
+  };
+
+  const aksiKirimSatu = async (s: SlipBaris) => {
+    if (!aktif) return;
+    setSibuk(`kirim:${s.idKaryawan}`);
+    try {
+      const h = await kirimSlip(supabase, aktif.id, [s.idKaryawan]);
+      if (!h.ok) { toast.gagal(h.pesan); return; }
+      if (h.terkirim) toast.sukses(`Slip ${s.nama} terkirim ke ${s.email}.`);
+      else if (h.simulasi) toast.info(`Slip ${s.nama} — mode simulasi (RESEND_API_KEY belum diset).`);
+      else toast.gagal(`Slip ${s.nama} gagal dikirim.`);
+      await muatIsiPeriode(aktif);
+    } finally { setSibuk(null); }
+  };
+
+  // ── Input Gaji ───────────────────────────────────────────────────────
+  const bukaEdit = (s: SlipBaris) => setEdit({
+    slip: s,
+    form: { gajiPokok: String(s.gaji_pokok ?? ""), bonus: String(s.bonus ?? ""), potongan: String(s.potongan ?? ""), catatan: String(s.catatan || "") },
+    simpanMaster: false,
+  });
+
+  const simpanEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
-    
+    if (!edit) return;
+    const emp = employees.find((x) => String(x.idKaryawan) === String(edit.slip.idKaryawan));
+    const kolomMaster = emp && "gajipokok" in emp ? "gajipokok" : emp && "gajipoko" in emp ? "gajipoko" : emp && "gajiPokok" in emp ? "gajiPokok" : "gajipokok";
+    setSibuk("simpan");
     try {
-      const payload: any = {
-        bonus: financeForm.bonus === "" ? 0 : Number(financeForm.bonus),
-        potongan: financeForm.potongan === "" ? 0 : Number(financeForm.potongan)
-      };
-
-      const finalGajiPokok = financeForm.gajiPokok === "" ? 0 : Number(financeForm.gajiPokok);
-
-      if ("gajipokok" in editingEmp) payload.gajipokok = finalGajiPokok;
-      else if ("gajipoko" in editingEmp) payload.gajipoko = finalGajiPokok;
-      else payload.gajiPokok = finalGajiPokok;
-
-      const { error } = await supabase
-        .from("employees")
-        .update(payload)
-        .eq("idKaryawan", editingEmp.idKaryawan)
-        .select();
-
-      if (error) throw error;
-      
-      toast.sukses(`Komponen gaji ${editingEmp.nama} diperbarui`);
-      setEditingEmp(null);
-      fetchPayrollData(); 
-    } catch (err: any) {
-      const detailErr = err.message || JSON.stringify(err);
-      toast.gagal("Gagal menyimpan ke database: " + detailErr);
-    } finally {
-      setIsSaving(false);
-    }
+      const h = await simpanSlip(supabase, edit.slip.id, {
+        gajiPokok: angkaAman(edit.form.gajiPokok), bonus: angkaAman(edit.form.bonus), potongan: angkaAman(edit.form.potongan), catatan: edit.form.catatan,
+      }, { simpanMaster: edit.simpanMaster, kolomMaster, idKaryawan: edit.slip.idKaryawan, oleh: hrEmail });
+      if (!h.ok) { toast.gagal(h.pesan); return; }
+      setSlips((prev) => prev.map((s) => s.id === edit.slip.id ? { ...s, gaji_pokok: h.gajiPokok, bonus: h.bonus, potongan: h.potongan, catatan: h.catatan } : s));
+      if (edit.simpanMaster) setEmployees((prev) => prev.map((x) => String(x.idKaryawan) === String(edit.slip.idKaryawan) ? { ...x, [kolomMaster]: h.gajiPokok } : x));
+      toast.sukses(`Komponen gaji ${edit.slip.nama} tersimpan${edit.simpanMaster ? " (gaji pokok tetap ikut diperbarui)" : ""}.`);
+      setEdit(null);
+    } finally { setSibuk(null); }
   };
 
-  const formatRupiah = (angka: number) => {
-    return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(angka);
+  const thpPratinjau = edit ? angkaAman(edit.form.gajiPokok) + angkaAman(edit.form.bonus) - angkaAman(edit.form.potongan) : 0;
+
+  const tampil = (s: SlipBaris): SlipTampil => {
+    const k = kehadiran(s);
+    return { ...keSlipTampil(s), hadir: k.hadir, telat: k.telat };
   };
 
-  // =========================================================================
-  // EFEK TRANSISI HALAMAN MENGGUNAKAN LOGO BERPUTAR LENGKAP (Layar Penuh)
-  // =========================================================================
-  if (isLoading) {
+  // ── Tampilan ─────────────────────────────────────────────────────────
+  if (keadaan === "memuat") {
     return (
       <div className="w-full flex flex-col items-center justify-center min-h-[75vh] animate-in fade-in zoom-in-95 duration-500">
         <div className="relative flex items-center justify-center">
           <div className="absolute inset-0 bg-primer-terang/20 rounded-full blur-2xl animate-pulse"></div>
-          <img 
-            src="/logo.png" 
-            alt="Mengkalkulasi Payroll..." 
-            className="relative w-16 h-16 animate-spin object-contain" 
-            style={{ animationDuration: "3s" }} 
-          />
+          <img src="/logo.png" alt="Memuat Payroll..." className="relative w-16 h-16 animate-spin object-contain" style={{ animationDuration: "3s" }} />
         </div>
-        <p className="text-gray-500 text-[10px] md:text-xs font-mono tracking-[0.25em] uppercase mt-8 animate-pulse">
-          Mengkalkulasi Data Keuangan...
-        </p>
+        <p className="text-gray-500 text-[10px] md:text-xs font-mono tracking-[0.25em] uppercase mt-8 animate-pulse">Memuat Data Payroll...</p>
+      </div>
+    );
+  }
+
+  if (keadaan === "tabelBelumAda" || keadaan === "galat") {
+    return (
+      <div className="w-full flex flex-col gap-6 pb-10 font-sans text-gray-300 animate-in fade-in duration-500">
+        <div className="p-6 rounded-xl border border-amber-500/30 bg-amber-500/5" data-payroll-petunjuk>
+          <h1 className="text-xl font-bold text-white">Payroll belum siap</h1>
+          {keadaan === "tabelBelumAda" ? (
+            <>
+              <p className="text-sm text-gray-300 mt-2">Tabel <code className="font-mono text-amber-300">payroll_periode</code> dan <code className="font-mono text-amber-300">payroll_slip</code> belum ada di database.</p>
+              <ol className="text-sm text-gray-400 mt-3 list-decimal list-inside space-y-1">
+                <li>Buka Supabase › <b>SQL Editor</b>.</li>
+                <li>Jalankan berkas <code className="font-mono text-amber-300">payroll.sql</code> (sekali; aman diulang).</li>
+                <li>Muat ulang halaman ini.</li>
+              </ol>
+            </>
+          ) : (
+            <p className="text-sm text-red-300 mt-2">{pesanGalat}</p>
+          )}
+          <button type="button" onClick={() => { setKeadaan("memuat"); muatUlang(); }} className={`${KELAS_TOMBOL_BIRU} mt-4`}>Muat ulang</button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="w-full flex flex-col gap-6 pb-10 font-sans text-gray-300 animate-in fade-in duration-500">
-      
-      {/* HEADER PAYROLL */}
-      <div className="p-6 shadow-lg flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 relative overflow-hidden print:hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
-        <div className="absolute -right-10 -top-10 w-40 h-40 bg-green-500/10 rounded-full blur-3xl"></div>
-        <div className="relative z-10">
-          <h1 className="text-2xl font-bold text-white tracking-tight">Kalkulator Payroll Interaktif</h1>
-          <p className="text-sm text-gray-400 mt-1">Sesuaikan Gaji Pokok, input Tunjangan Bonus, Kasbon, dan cetak slip secara dinamis.</p>
-        </div>
-        <div className="relative z-10 bg-kartu-hover border border-white/10 px-5 py-2.5 rounded-xl text-sm font-bold text-tint">
-          Periode: {currentMonthName}
-        </div>
-      </div>
 
-      {/* TABEL REKAP PAYROLL */}
-      <div className="p-6 overflow-hidden print:hidden relative rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
-        {payrollData.length === 0 ? (
-          <div className="text-center py-20 text-gray-500">Belum ada data karyawan aktif.</div>
-        ) : (
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left text-sm text-gray-300 min-w-[1100px] tabel-baris-rapi">
-              <thead className="bg-kartu-hover text-gray-400 text-xs uppercase tracking-wider">
-                <tr>
-                  <th className="px-4 py-4 rounded-tl-xl font-semibold">Karyawan</th>
-                  <th className="px-4 py-4 font-semibold text-center">Kehadiran</th>
-                  <th className="px-4 py-4 font-semibold text-right">Gaji Pokok</th>
-                  <th className="px-4 py-4 font-semibold text-right text-green-400">Bonus Variabel</th>
-                  <th className="px-4 py-4 font-semibold text-right text-red-400">Total Potongan</th>
-                  <th className="px-4 py-4 font-semibold text-right text-green-400">Take Home Pay</th>
-                  <th className="px-4 py-4 rounded-tr-xl font-semibold text-center">Aksi Manajemen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payrollData.map((emp, index) => (
-                  <tr key={emp.idKaryawan || `emp-${index}`} className="">
-                    <td className="px-4 py-4">
-                      <p className="font-bold text-white">{emp.nama}</p>
-                      <p className="text-[10px] text-gray-500 font-mono mt-0.5">{emp.idKaryawan} • {emp.jabatan}</p>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <span className="bg-green-500/10 text-green-400 text-[10px] font-bold px-2 py-0.5 rounded" title="Total Hari Masuk">{emp.totalHadir} Masuk</span>
-                        {emp.hariTerlambat > 0 && (
-                          <span className="bg-yellow-500/10 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded">({emp.hariTerlambat} Telat)</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-right font-medium">{formatRupiah(emp.gajiPokok)}</td>
-                    <td className="px-4 py-4 text-right font-medium text-green-400">
-                      {emp.bonusManual > 0 ? formatRupiah(emp.bonusManual) : "-"}
-                    </td>
-                    <td className="px-4 py-4 text-right font-medium text-red-400">
-                      {emp.totalPotongan > 0 ? `-${formatRupiah(emp.totalPotongan)}` : "-"}
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <span className="bg-green-500/10 text-green-400 font-black px-2.5 py-1.5 rounded-lg border border-green-500/20">
-                        {formatRupiah(emp.gajiBersih)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <div className="flex gap-2 justify-center">
-                        <button 
-                          onClick={() => handleOpenEdit(emp)}
-                          className="bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-lg border border-white/10 text-xs font-bold transition-colors"
-                        >
-                          ⚙️ Input Gaji
-                        </button>
-                        <button 
-                          onClick={() => setSelectedSlip(emp)}
-                          className="bg-primer-terang hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-md"
-                        >
-                          Lihat Slip
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* KEPALA: periode, status, ringkasan */}
+      <div className="p-6 shadow-lg flex flex-col gap-5 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
+        <div className="absolute -right-10 -top-10 w-40 h-40 bg-green-500/10 rounded-full blur-3xl"></div>
+        <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Payroll</h1>
+            <p className="text-sm text-gray-400 mt-1">Periode gaji tanggal 21 – 20. Isi komponen gaji saat <b>Draf</b>, <b>Finalkan</b> agar karyawan bisa melihat slip, lalu <b>Kirim</b> ke email.</p>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {periode.length > 0 && (
+              <select value={aktifId} onChange={(e) => pilihPeriode(e.target.value)} disabled={!!sibuk || memuatSlip} className="max-w-full bg-kartu-hover border border-white/10 px-4 py-2.5 rounded-xl text-sm font-bold text-tint outline-none" data-periode>
+                {periode.map((p) => <option key={p.id} value={p.id}>{p.label} ({labelRentang({ dari: p.dari, sampai: p.sampai })}) — {p.status === "final" ? "Final" : "Draf"}</option>)}
+              </select>
+            )}
+            {!berjalanAda && (
+              <button type="button" onClick={() => aksiBuatPeriode(berjalan)} disabled={!!sibuk} className={KELAS_TOMBOL_BIRU} data-aksi="mulai">
+                {sibuk === "buat" ? "Membuat…" : `＋ Mulai periode ${labelPeriode(berjalan)}`}
+              </button>
+            )}
+            <button type="button" onClick={() => setPilihBaru((v) => !v)} disabled={!!sibuk} className={KELAS_TOMBOL_ABU} data-aksi="periode-lain">Buat periode lain…</button>
+          </div>
+        </div>
+
+        {pilihBaru && (
+          <div className="relative z-10 flex flex-wrap gap-2 p-3 rounded-xl border border-white/10 bg-black/20" data-pilihan-periode>
+            {pilihanBaru.length === 0 && <span className="text-xs text-gray-500">Semua periode 12 bulan terakhir sudah dibuat.</span>}
+            {pilihanBaru.map((r) => (
+              <button key={r.dari} type="button" onClick={() => aksiBuatPeriode(r)} disabled={!!sibuk} className={KELAS_TOMBOL_ABU}>
+                {labelPeriode(r)} <span className="text-gray-500 font-normal">({labelRentang(r)})</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {aktif && (
+          <div className="relative z-10 flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-lg font-black text-white">{aktif.label}</span>
+              <span className="text-xs text-gray-500 font-mono">{labelRentang({ dari: aktif.dari, sampai: aktif.sampai })}</span>
+              <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${draf ? "bg-amber-500/10 text-amber-300 border-amber-500/30" : "bg-green-500/10 text-green-300 border-green-500/30"}`} data-status={aktif.status}>
+                {draf ? "Draf" : "Final"}
+              </span>
+              {!draf && aktif.difinalkan_pada && <span className="text-[11px] text-gray-500">difinalkan {jamPendek(aktif.difinalkan_pada)}{aktif.difinalkan_oleh ? ` oleh ${aktif.difinalkan_oleh}` : ""}</span>}
+              {!draf && (
+                <span className="text-[11px] text-gray-400" data-ringkas-email>
+                  Email: <b className="text-green-300">{email.terkirim}</b> dari {slips.length} terkirim
+                  {email.gagal > 0 && <> · <b className="text-red-300">{email.gagal} gagal</b></>}
+                  {email.simulasi > 0 && <> · <b className="text-blue-300">{email.simulasi} simulasi</b></>}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs" data-ringkasan>
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 uppercase tracking-wider text-[9px] font-bold">Karyawan</p><p className="text-white font-bold text-sm mt-0.5">{ringkas.orang}</p></div>
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 uppercase tracking-wider text-[9px] font-bold">Gaji Pokok</p><p className="text-white font-bold text-sm mt-0.5">{formatRupiah(ringkas.gajiPokok)}</p></div>
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 uppercase tracking-wider text-[9px] font-bold">Bonus</p><p className="text-green-300 font-bold text-sm mt-0.5">{formatRupiah(ringkas.bonus)}</p></div>
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 uppercase tracking-wider text-[9px] font-bold">Potongan</p><p className="text-red-300 font-bold text-sm mt-0.5">{formatRupiah(ringkas.potongan)}</p></div>
+              <div className="rounded-xl border border-green-500/20 bg-green-500/10 px-3 py-2"><p className="text-green-400/70 uppercase tracking-wider text-[9px] font-bold">Total Take Home Pay</p><p className="text-green-300 font-black text-sm mt-0.5" data-total-thp>{formatRupiah(ringkas.thp)}</p></div>
+            </div>
+            <div className="flex flex-wrap gap-2" data-aksi-periode>
+              {draf ? (
+                <>
+                  <button type="button" onClick={aksiSinkron} disabled={!!sibuk} className={KELAS_TOMBOL_ABU} data-aksi="sinkron" title="Tambah karyawan aktif yang belum punya slip & segarkan email/rekening dari data karyawan">{sibuk === "sinkron" ? "Memeriksa…" : "⟳ Sinkronkan karyawan"}</button>
+                  <button type="button" onClick={() => setDialogFinal(true)} disabled={!!sibuk || slips.length === 0} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-md disabled:opacity-40 disabled:cursor-not-allowed" data-aksi="final">✓ Finalkan periode</button>
+                </>
+              ) : (
+                <>
+                  <button type="button" onClick={() => aksiKirim("belum")} disabled={!!sibuk || email.belum === 0} className="bg-primer-terang hover:bg-blue-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-md disabled:opacity-40 disabled:cursor-not-allowed" data-aksi="kirim">
+                    {sibuk === "kirim" ? "Mengirim…" : `✉ Kirim slip ke email (${email.belum} belum)`}
+                  </button>
+                  {email.gagal > 0 && (
+                    <button type="button" onClick={() => aksiKirim(slips.filter((s) => s.email_status === "gagal").map((s) => s.idKaryawan))} disabled={!!sibuk} className="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 px-4 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-40" data-aksi="kirim-gagal">
+                      ↻ Kirim ulang yang gagal ({email.gagal})
+                    </button>
+                  )}
+                  <button type="button" onClick={aksiBukaKunci} disabled={!!sibuk} className={KELAS_TOMBOL_ABU} data-aksi="buka">{sibuk === "buka" ? "Membuka…" : "🔓 Buka kunci (kembali ke Draf)"}</button>
+                </>
+              )}
+            </div>
+            {progres && (
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3" data-progres={`${progres.diproses}/${progres.total}`}>
+                <div className="flex justify-between text-xs text-gray-300 mb-1.5">
+                  <span>Mengirim slip… <b className="text-white">{progres.diproses} dari {progres.total}</b></span>
+                  <span className="text-gray-500">{progres.terkirim} terkirim · {progres.gagal} gagal{progres.simulasi ? ` · ${progres.simulasi} simulasi` : ""}</span>
+                </div>
+                <div className="h-2 rounded-full bg-white/5 overflow-hidden"><div className="h-full bg-primer-terang transition-all duration-300" style={{ width: `${progres.total ? Math.min(100, Math.round((progres.diproses / progres.total) * 100)) : 0}%` }} /></div>
+              </div>
+            )}
+          </div>
+        )}
+        {!aktif && (
+          <p className="relative z-10 text-sm text-gray-500" data-kosong>Belum ada periode gaji. Klik <b>Mulai periode {labelPeriode(berjalan)}</b> untuk membuat slip semua karyawan aktif.</p>
         )}
       </div>
 
-      {/* MODAL 1: EDIT INPUT KOMPONEN GAJI */}
-      {editingEmp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 print:hidden">
+      {/* TABEL SLIP */}
+      {aktif && (
+        <div className="p-6 overflow-hidden relative rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
+          {memuatSlip ? (
+            <div className="text-center py-16 text-gray-500 text-sm animate-pulse">Memuat slip…</div>
+          ) : slips.length === 0 ? (
+            <div className="text-center py-16 text-gray-500">Belum ada slip di periode ini. {draf && <>Klik <b>Tambah karyawan yang belum ada</b>.</>}</div>
+          ) : (
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left text-sm text-gray-300 min-w-[1040px] tabel-baris-rapi" data-tabel-slip>
+                <thead className="bg-kartu-hover text-gray-400 text-xs uppercase tracking-wider">
+                  <tr>
+                    <th className="px-4 py-4 rounded-tl-xl font-semibold">Karyawan</th>
+                    <th className="px-4 py-4 font-semibold text-center">Kehadiran</th>
+                    <th className="px-4 py-4 font-semibold text-right">Gaji Pokok</th>
+                    <th className="px-4 py-4 font-semibold text-right text-green-400">Bonus</th>
+                    <th className="px-4 py-4 font-semibold text-right text-red-400">Potongan</th>
+                    <th className="px-4 py-4 font-semibold text-right text-green-400">Take Home Pay</th>
+                    <th className="px-4 py-4 font-semibold text-center">Email</th>
+                    <th className="px-4 py-4 rounded-tr-xl font-semibold text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {slips.map((s, i) => {
+                    const k = kehadiran(s);
+                    const thp = keSlipTampil(s).gajiBersih;
+                    const sibukBaris = sibuk === `kirim:${s.idKaryawan}`;
+                    return (
+                      <tr key={s.id || `${s.idKaryawan}-${i}`} data-baris={s.idKaryawan}>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <AvatarKaryawan id={s.idKaryawan} nama={s.nama} className={KELAS_AVATAR} />
+                            <div>
+                              <p className="font-bold text-white">{s.nama}</p>
+                              <p className="text-[10px] text-gray-500 font-mono mt-0.5">{s.idKaryawan} • {s.jabatan || "-"}{s.catatan ? <span className="ml-1 text-amber-300/80" title={s.catatan}>📝</span> : null}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5" data-kehadiran={`${k.hadir}/${k.telat}`}>
+                            <span className="bg-green-500/10 text-green-400 text-[10px] font-bold px-2 py-0.5 rounded" title="Hari hadir tepat waktu">{k.hadir} Hadir</span>
+                            {k.telat > 0 && <span className="bg-yellow-500/10 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded" title="Hari terlambat">{k.telat} Telat</span>}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-right font-medium" data-gaji>{formatRupiah(Number(s.gaji_pokok))}</td>
+                        <td className="px-4 py-4 text-right font-medium text-green-400">{Number(s.bonus) > 0 ? formatRupiah(Number(s.bonus)) : "-"}</td>
+                        <td className="px-4 py-4 text-right font-medium text-red-400">{Number(s.potongan) > 0 ? `-${formatRupiah(Number(s.potongan))}` : "-"}</td>
+                        <td className="px-4 py-4 text-right">
+                          <span className="bg-green-500/10 text-green-400 font-black px-2.5 py-1.5 rounded-lg border border-green-500/20" data-thp>{formatRupiah(thp)}</span>
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          {s.email_status === "terkirim" && <span className="bg-green-500/10 text-green-300 text-[10px] font-bold px-2 py-0.5 rounded" title={s.email || ""} data-email="terkirim">Terkirim {jamPendek(s.email_dikirim_pada)}</span>}
+                          {s.email_status === "gagal" && <span className="bg-red-500/10 text-red-300 text-[10px] font-bold px-2 py-0.5 rounded cursor-help" title={s.email_galat || "Gagal"} data-email="gagal">Gagal ⓘ</span>}
+                          {s.email_status === "simulasi" && <span className="bg-blue-500/10 text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded" title="RESEND_API_KEY belum diset — email tidak benar-benar terkirim" data-email="simulasi">Simulasi</span>}
+                          {(!s.email_status || s.email_status === "belum") && <span className="text-[10px] text-gray-500" title={s.email || "tanpa email"} data-email="belum">{s.email ? "Belum" : "Tanpa email"}</span>}
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <div className="flex gap-2 justify-center">
+                            {draf && <button type="button" onClick={() => bukaEdit(s)} disabled={!!sibuk} className={KELAS_TOMBOL_ABU} data-aksi="input">⚙️ Input Gaji</button>}
+                            <button type="button" onClick={() => setLihat({ slip: tampil(s), draf })} className={KELAS_TOMBOL_BIRU} data-aksi="lihat">Lihat Slip</button>
+                            {!draf && <button type="button" onClick={() => unduhSlipPdf(tampil(s), aktif.label, namaBerkasSlip(aktif.label, s.nama))} className={KELAS_TOMBOL_ABU} data-aksi="unduh" title="Unduh PDF">⬇ PDF</button>}
+                            {!draf && <button type="button" onClick={() => aksiKirimSatu(s)} disabled={!!sibuk || !s.email} className={KELAS_TOMBOL_ABU} data-aksi="kirim-ulang" title={s.email ? `Kirim (ulang) ke ${s.email}` : "Karyawan tidak punya email"}>{sibukBaris ? "…" : s.email_status === "terkirim" ? "↻ Kirim ulang" : "✉ Kirim"}</button>}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL: INPUT GAJI (hanya draf) */}
+      {edit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" data-modal-edit>
           <div className="bg-kartu border border-white/10 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-5 border-b border-white/5 bg-kartu-hover flex justify-between items-center">
               <div>
-                <h2 className="text-lg font-bold text-white">Sesuaikan Gaji Staf</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Mengubah data finansial untuk <span className="text-tint font-bold">{editingEmp.nama}</span></p>
+                <h2 className="text-lg font-bold text-white">Input Gaji</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{aktif?.label} · <span className="text-tint font-bold">{edit.slip.nama}</span></p>
               </div>
-              <button onClick={() => setEditingEmp(null)} className="text-gray-500 hover:text-white p-1">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
+              <button type="button" onClick={() => setEdit(null)} className="text-gray-500 hover:text-white text-xl leading-none px-2" aria-label="Tutup">×</button>
             </div>
-            
-            <form onSubmit={handleSaveFinance} className="p-6 space-y-4">
+            <form onSubmit={simpanEdit} className="p-6 space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-gray-400 mb-1 uppercase tracking-wider">Gaji Pokok Utama (Rp)</label>
-                <input type="number" placeholder="0" value={financeForm.gajiPokok} onChange={(e) => setFinanceForm({...financeForm, gajiPokok: e.target.value})} className="w-full bg-input border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-primer-terang outline-none placeholder-gray-600" />
+                <label className="block text-[11px] font-bold text-gray-400 mb-1 uppercase tracking-wider">Gaji Pokok (Rp)</label>
+                <input type="number" min={0} step="any" placeholder="0" value={edit.form.gajiPokok} onChange={(e) => setEdit({ ...edit, form: { ...edit.form, gajiPokok: e.target.value } })} className={`${KELAS_INPUT} focus:border-primer-terang`} name="gajiPokok" />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-green-400 mb-1 uppercase tracking-wider">Bonus / Insentif Tambahan (Rp)</label>
-                <input type="number" placeholder="0" value={financeForm.bonus} onChange={(e) => setFinanceForm({...financeForm, bonus: e.target.value})} className="w-full bg-input border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-green-500 outline-none placeholder-gray-600" />
+                <label className="block text-[11px] font-bold text-green-400 mb-1 uppercase tracking-wider">Bonus / Insentif (Rp)</label>
+                <input type="number" min={0} step="any" placeholder="0" value={edit.form.bonus} onChange={(e) => setEdit({ ...edit, form: { ...edit.form, bonus: e.target.value } })} className={`${KELAS_INPUT} focus:border-green-500`} name="bonus" />
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-red-400 mb-1 uppercase tracking-wider">Potongan Manual / Kasbon (Rp)</label>
-                <input type="number" placeholder="0" value={financeForm.potongan} onChange={(e) => setFinanceForm({...financeForm, potongan: e.target.value})} className="w-full bg-input border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-red-500 outline-none placeholder-gray-600" />
+                <label className="block text-[11px] font-bold text-red-400 mb-1 uppercase tracking-wider">Potongan / Kasbon (Rp)</label>
+                <input type="number" min={0} step="any" placeholder="0" value={edit.form.potongan} onChange={(e) => setEdit({ ...edit, form: { ...edit.form, potongan: e.target.value } })} className={`${KELAS_INPUT} focus:border-red-500`} name="potongan" />
               </div>
-
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 mb-1 uppercase tracking-wider">Catatan (tampil di slip, opsional)</label>
+                <input type="text" maxLength={200} placeholder="mis. Kasbon 1×, lembur proyek X" value={edit.form.catatan} onChange={(e) => setEdit({ ...edit, form: { ...edit.form, catatan: e.target.value } })} className={`${KELAS_INPUT} focus:border-primer-terang`} name="catatan" />
+              </div>
+              <label className="flex items-start gap-2 text-xs text-gray-400 cursor-pointer select-none">
+                <input type="checkbox" checked={edit.simpanMaster} onChange={(e) => setEdit({ ...edit, simpanMaster: e.target.checked })} className="mt-0.5 accent-blue-500" name="simpanMaster" />
+                <span>Simpan juga sebagai <b className="text-gray-200">gaji pokok tetap</b> karyawan (dipakai periode berikutnya)</span>
+              </label>
+              <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-2.5 text-xs flex justify-between">
+                <span className="text-gray-400">Take Home Pay</span>
+                <span className={`font-black ${thpPratinjau < 0 ? "text-red-300" : "text-green-300"}`} data-thp-pratinjau>{formatRupiah(thpPratinjau)}</span>
+              </div>
+              {thpPratinjau < 0 && <p className="text-[11px] text-red-300" data-peringatan="thp-negatif">Potongan melebihi pendapatan — Take Home Pay negatif. Periksa kembali angkanya.</p>}
               <div className="pt-4 flex gap-3 border-t border-white/5 mt-2">
-                <button type="button" onClick={() => setEditingEmp(null)} className="w-1/3 py-2.5 text-xs font-bold text-gray-400 border border-white/10 rounded-xl hover:bg-white/5 transition-colors">Batal</button>
-                <button type="submit" disabled={isSaving} className="w-2/3 flex justify-center items-center gap-2 py-2.5 text-xs font-bold text-white bg-green-600 hover:bg-green-500 rounded-xl shadow-lg transition-colors">
-                  {/* Animasi logo dipelankan 3s pada tombol simpan (jika sedang saving) */}
-                  {isSaving && <img src="/logo.png" className="w-4 h-4 animate-spin object-contain" style={{ animationDuration: "3s" }} alt="Loading..." />}
-                  {isSaving ? "Menyimpan..." : "💾 Simpan ke Database"}
+                <button type="button" onClick={() => setEdit(null)} className="w-1/3 py-2.5 text-xs font-bold text-gray-400 border border-white/10 rounded-xl hover:bg-white/5 transition-colors">Batal</button>
+                <button type="submit" disabled={sibuk === "simpan"} className="w-2/3 flex justify-center items-center gap-2 py-2.5 text-xs font-bold text-white bg-green-600 hover:bg-green-500 rounded-xl shadow-lg transition-colors disabled:opacity-60">
+                  {sibuk === "simpan" && <img src="/logo.png" className="w-4 h-4 animate-spin object-contain" style={{ animationDuration: "3s" }} alt="" />}
+                  {sibuk === "simpan" ? "Menyimpan..." : "💾 Simpan"}
                 </button>
               </div>
             </form>
@@ -292,147 +539,42 @@ export default function AdminPayrollPage() {
         </div>
       )}
 
-      {/* MODAL 2: SLIP GAJI DIGITAL (PERBAIKAN TINGGI & FOOTER RATA KIRI) */}
-      {selectedSlip && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 print:bg-white print:p-0">
-          {/* max-h-[90vh] dan overflow-y-auto memastikan konten tidak menutupi tombol eksekusi di bawah */}
-          <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden print:max-w-full print:rounded-none print:max-h-full print:overflow-visible relative print:shadow-none">
-            
-            {/* AREA SCROLL SLIP GAJI */}
-            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 text-black print:overflow-visible print:p-8" id="printable-slip">
-              
-              {/* KOP SURAT */}
-              <div className="flex justify-between items-center border-b-2 border-black/10 pb-4 mb-4">
-                <div>
-                  <img src="/invisual-light.svg" alt="Invisual Studio" className="h-7 object-contain mb-1 brightness-0" />
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">HR & Payroll Department</p>
-                  <p className="text-[10px] text-gray-400 font-medium">Periode: {currentMonthName}</p>
-                </div>
-                <div className="text-right">
-                  <h1 className="text-xl font-black text-primer-terang uppercase tracking-widest">Payslip</h1>
-                  <p className="text-xs text-gray-500 font-mono mt-0.5">DOC-{selectedSlip.idKaryawan}</p>
-                </div>
-              </div>
-
-              {/* Info Karyawan */}
-              <div className="grid grid-cols-2 gap-4 mb-5 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                <div>
-                  <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Informasi Karyawan</p>
-                  <p className="text-sm font-bold text-gray-800 mt-0.5">{selectedSlip.nama}</p>
-                  <p className="text-xs text-gray-600 font-mono">{selectedSlip.idKaryawan} • {selectedSlip.jabatan}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Transfer Tujuan</p>
-                  <p className="text-sm font-bold text-gray-800 mt-0.5">{selectedSlip.namaBank || "CASH"}</p>
-                  <p className="text-xs text-gray-600 font-mono">{selectedSlip.noRekening || "-"}</p>
-                </div>
-              </div>
-
-              {/* Rincian Finansial Dinamis */}
-              <div className="grid grid-cols-2 gap-6 mb-5">
-                <div>
-                  <h3 className="text-xs font-bold text-green-600 uppercase tracking-widest border-b border-gray-200 pb-1.5 mb-2">Pendapatan (Earnings)</h3>
-                  <div className="space-y-2 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Gaji Pokok</span>
-                      <span className="font-bold text-gray-800">{formatRupiah(selectedSlip.gajiPokok)}</span>
-                    </div>
-                    {/* Baris "Tunj. Hadir" DIHAPUS — tunjangan kehadiran
-                        otomatis sudah ditiadakan (lihat calculatePayroll). */}
-                    {selectedSlip.bonusManual > 0 && (
-                      <div className="flex justify-between text-green-600 font-semibold">
-                        <span>Bonus Tambahan</span>
-                        <span>{formatRupiah(selectedSlip.bonusManual)}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex justify-between text-xs font-bold mt-3 pt-2 border-t border-gray-200">
-                    <span className="text-gray-800">Total Pendapatan</span>
-                    <span className="text-green-600">{formatRupiah(selectedSlip.totalPendapatan)}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-xs font-bold text-red-600 uppercase tracking-widest border-b border-gray-200 pb-1.5 mb-2">Potongan (Deductions)</h3>
-                  <div className="space-y-2 text-xs">
-                    {selectedSlip.potonganManual > 0 ? (
-                      <div className="flex justify-between text-red-600 font-semibold">
-                        <span>Kasbon / Potongan Ekstra</span>
-                        <span>-{formatRupiah(selectedSlip.potonganManual)}</span>
-                      </div>
-                    ) : (
-                      <div className="flex justify-between text-gray-500 italic text-[11px]">
-                        <span>Tidak ada potongan</span>
-                        <span>Rp 0</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex justify-between text-xs font-bold mt-3 pt-2 border-t border-gray-200">
-                    <span className="text-gray-800">Total Potongan</span>
-                    <span className="text-red-600">-{formatRupiah(selectedSlip.totalPotongan)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* THP */}
-              <div className="bg-primer-terang text-white p-4 rounded-xl flex justify-between items-center shadow-md mb-5">
-                <div>
-                  <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest">Take Home Pay</p>
-                  <p className="text-[9px] text-blue-300 mt-0.5">Total bersih ditransfer ke rekening di atas.</p>
-                </div>
-                <p className="text-xl font-black">{formatRupiah(selectedSlip.gajiBersih)}</p>
-              </div>
-
-              {/* AREA FOOTER (TANDA TANGAN & ALAMAT RATA KIRI) */}
-              <div>
-                <div className="pt-2 flex justify-between text-center text-xs mb-6">
-                  <div>
-                    <p className="text-gray-500 mb-6">Diterima Oleh,</p>
-                    <p className="font-bold text-gray-800 underline underline-offset-4">{selectedSlip.nama}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 mb-6">Disetujui Oleh,</p>
-                    <p className="font-bold text-gray-800 underline underline-offset-4">HR Manager</p>
-                  </div>
-                </div>
-                
-                {/* UPDATE: INFO PERUSAHAAN DIUBAH MENJADI RATA KIRI MURNI (text-left) */}
-                <div className="pt-4 border-t border-gray-200 text-left">
-                  <p className="text-[10px] font-black text-gray-700 tracking-widest uppercase">Invisual Studio</p>
-                  <p className="text-[9px] text-gray-500 mt-1 font-medium leading-relaxed">Jl. Golf Bar. XVII No.8, Sukamiskin, Kec. Arcamanik, Kota Bandung, Jawa Barat 40293</p>
-                  <p className="text-[9px] text-gray-400 mt-0.5 font-mono">📞 0822-9555-5314</p>
-                </div>
-              </div>
-              
+      {/* DIALOG: FINALKAN */}
+      {dialogFinal && aktif && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" data-dialog-final>
+          <div className="bg-kartu border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-white/5 bg-kartu-hover">
+              <h2 className="text-lg font-bold text-white">Finalkan periode {aktif.label}?</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Setelah final, angka slip terkunci dan karyawan bisa melihat slipnya di Profil. Anda masih bisa membuka kunci bila perlu.</p>
             </div>
-
-            {/* AREA STICKY TOMBOL AKSI (Aman, paten & tidak akan tertutup lagi) */}
-            <div className="p-4 bg-gray-50 flex justify-end gap-3 print:hidden border-t border-gray-200 bg-gray-100 shrink-0">
-              <button onClick={() => setSelectedSlip(null)} className="px-5 py-2 text-sm font-bold text-gray-600 hover:bg-gray-200 rounded-lg transition-colors">Tutup</button>
-              <button onClick={() => window.print()} className="px-5 py-2 text-sm font-bold text-white bg-primer-terang hover:bg-blue-600 rounded-lg flex items-center gap-2 shadow-md transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.724.092m6.524-4.659A15.455 15.455 0 0112.532 2.25H8.25m4.282 7.02v.002m0 0H21m-2.81 8.51c-.145.52-.36 1.018-.632 1.487M12 21.75c-2.676 0-5.216-.584-7.499-1.632M15.75 21.75c2.676 0 5.216-.584 7.499-1.632M4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75z" /></svg>
-                Print / Simpan PDF
-              </button>
+            <div className="p-6 space-y-4 text-sm">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 text-[9px] font-bold uppercase tracking-wider">Slip</p><p className="text-white font-bold">{ringkas.orang} karyawan</p></div>
+                <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 text-[9px] font-bold uppercase tracking-wider">Total THP</p><p className="text-green-300 font-black">{formatRupiah(ringkas.thp)}</p></div>
+              </div>
+              {peringatan.tanpaEmail.length > 0 && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200" data-peringatan="email">
+                  <b>Tanpa email ({peringatan.tanpaEmail.length}):</b> {peringatan.tanpaEmail.join(", ")} — slip tidak bisa dikirim ke email, tetapi tetap tampil di Profil.
+                </div>
+              )}
+              {peringatan.tanpaRekening.length > 0 && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200" data-peringatan="rekening">
+                  <b>Tanpa nomor rekening ({peringatan.tanpaRekening.length}):</b> {peringatan.tanpaRekening.join(", ")}.
+                </div>
+              )}
+              <div className="pt-4 flex gap-3 border-t border-white/5">
+                <button type="button" onClick={() => setDialogFinal(false)} disabled={sibuk === "final"} className="w-1/3 py-2.5 text-xs font-bold text-gray-400 border border-white/10 rounded-xl hover:bg-white/5 transition-colors">Batal</button>
+                <button type="button" onClick={aksiFinalkan} disabled={sibuk === "final"} className="w-2/3 py-2.5 text-xs font-bold text-white bg-green-600 hover:bg-green-500 rounded-xl shadow-lg transition-colors disabled:opacity-60" data-aksi="final-ya">
+                  {sibuk === "final" ? "Memfinalkan…" : "✓ Ya, finalkan"}
+                </button>
+              </div>
             </div>
-
           </div>
         </div>
       )}
 
-      <style dangerouslySetInnerHTML={{__html: `
-        @media print {
-          body * { visibility: hidden !important; }
-          #printable-slip, #printable-slip * { visibility: visible !important; }
-          #printable-slip { 
-            position: absolute !important; 
-            left: 0 !important; 
-            top: 0 !important; 
-            width: 100% !important; 
-            margin: 0 !important;
-            padding: 20px !important;
-          }
-        }
-      `}} />
+      {/* MODAL: SLIP */}
+      {lihat && aktif && <SlipModal slip={lihat.slip} label={aktif.label} draf={lihat.draf} onTutup={() => setLihat(null)} />}
     </div>
   );
 }

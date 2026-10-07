@@ -105,11 +105,6 @@ export default function AdminDashboardPage() {
   const [isSendingWA, setIsSendingWA] = useState(false);
   const [waStatus, setWaStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const [payslipState, setPayslipState] = useState<{ isOpen: boolean; status: 'idle' | 'sending' | 'success' }>({
-    isOpen: false,
-    status: 'idle'
-  });
-
   const [showAnomalyPopup, setShowAnomalyPopup] = useState(false);
   const [hasShownAnomaly, setHasShownAnomaly] = useState(false);
   const [anomalyList, setAnomalyList] = useState<any[]>([]);
@@ -423,13 +418,6 @@ export default function AdminDashboardPage() {
       setIsSendingWA(false);
       setTimeout(() => setWaStatus(null), 8000);
     }
-  };
-
-  const executeSendPayslips = () => {
-    setPayslipState(prev => ({ ...prev, status: 'sending' }));
-    setTimeout(() => {
-      setPayslipState(prev => ({ ...prev, status: 'success' }));
-    }, 3500);
   };
 
   const handleFixAnomaly = (idKaryawan: string) => {
@@ -827,7 +815,7 @@ export default function AdminDashboardPage() {
           <button onClick={handleExportCSV} className="bg-kartu border border-white/10 p-4 rounded-xl text-center hover:bg-white/10 transition-all text-xs font-bold text-gray-300 shadow-xl cursor-pointer pointer-events-auto">Export CSV</button>
           <button onClick={() => setShowBroadcastModal(true)} className="bg-kartu border border-white/10 p-4 rounded-xl text-center hover:bg-white/10 transition-all text-xs font-bold text-gray-300 shadow-xl cursor-pointer pointer-events-auto">Email Blast</button>
           <button onClick={() => setShowWABroadcastModal(true)} className="bg-kartu border border-green-500/30 p-4 rounded-xl text-center hover:bg-green-500/20 transition-all text-xs font-bold text-green-400 shadow-xl cursor-pointer pointer-events-auto">WhatsApp Blast</button>
-          <button onClick={() => setPayslipState({ isOpen: true, status: 'idle' })} className="bg-kartu border border-purple-500/30 p-4 rounded-xl text-center hover:bg-purple-500/20 transition-all text-xs font-bold text-purple-400 shadow-xl cursor-pointer pointer-events-auto">Kirim Slip Gaji</button>
+          <button onClick={() => router.push("/admin/payroll")} title="Buka Payroll (finalkan periode lalu kirim slip ke email)" className="bg-kartu border border-purple-500/30 p-4 rounded-xl text-center hover:bg-purple-500/20 transition-all text-xs font-bold text-purple-400 shadow-xl cursor-pointer pointer-events-auto">Kirim Slip Gaji</button>
           <button onClick={handleBackupDatabase} className="bg-kartu border border-white/10 p-4 rounded-xl text-center hover:bg-white/10 transition-all text-xs font-bold text-gray-300 shadow-xl cursor-pointer pointer-events-auto">Backup DB</button>
         </div>
       </div>
@@ -913,36 +901,6 @@ export default function AdminDashboardPage() {
               <button onClick={() => setShowAnomalyPopup(false)} className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-xs text-gray-300 font-bold rounded-lg border border-white/10">Abaikan</button>
               <button onClick={() => { setShowAnomalyPopup(false); setActiveModal("anomali"); }} className="flex-1 py-2.5 bg-red-600 hover:bg-red-500 text-xs font-bold text-white rounded-lg shadow-lg shadow-red-600/30">Bedah Masalah</button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {payslipState.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-          <div className={`${'bg-kartu rounded-xl shadow-[0_0_40px_rgba(168,85,247,0.15)]'} border border-white/10 w-full max-w-sm p-8 relative flex flex-col items-center text-center animate-in zoom-in-95`}>
-            {payslipState.status === 'idle' && (
-              <>
-                <button onClick={() => setPayslipState({ isOpen: false, status: 'idle' })} className="absolute top-4 right-4 text-gray-500 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
-                <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 mb-4 border border-purple-500/20"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg></div>
-                <h2 className="text-xl font-bold text-white tracking-tight">Kirim Slip Gaji Massal</h2>
-                <p className="text-sm text-gray-400 mt-2 mb-6">Kirimkan berkas PDF gaji bulan ini secara otomatis ke email <span className="text-white font-bold">{employees.length} staf aktif</span>.</p>
-                <div className="flex w-full gap-3"><button onClick={() => setPayslipState({ isOpen: false, status: 'idle' })} className="flex-1 py-2.5 bg-white/5 text-xs text-gray-300 font-bold rounded-lg border border-white/10">Batal</button><button onClick={executeSendPayslips} className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white rounded-lg shadow-lg">Kirim Sekarang</button></div>
-              </>
-            )}
-            {payslipState.status === 'sending' && (
-              <div className="py-6">
-                <div className="w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-4"></div>
-                <h2 className="text-base font-bold text-white">Memproses Antrean Server...</h2>
-              </div>
-            )}
-            {payslipState.status === 'success' && (
-              <div className="py-2">
-                <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center text-green-400 mx-auto mb-4 border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.2)]"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg></div>
-                <h2 className="text-xl font-bold text-white">Slip Gaji Terkirim!</h2>
-                <p className="text-sm text-gray-400 mt-2 mb-6">Seluruh dokumen PDF berhasil terdistribusi secara privat ke email masing-masing pegawai.</p>
-                <button onClick={() => setPayslipState({ isOpen: false, status: 'idle' })} className="w-full py-2.5 bg-white/5 text-xs font-bold text-white border border-white/10 rounded-lg">Selesai</button>
-              </div>
-            )}
           </div>
         </div>
       )}
