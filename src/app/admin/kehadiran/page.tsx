@@ -15,6 +15,9 @@ import { FotoAbsenPasangan } from "@/components/FotoAbsen";
 import AvatarKaryawan from "@/components/AvatarKaryawan";
 import KartuLipat from "@/components/kehadiran/KartuLipat";
 import { hariUntukKartu, labelTanggalPendek, type Sel, type StatusKehadiran, type IdKartu } from "@/lib/kehadiranKartu";
+import TandaiLembur from "@/components/admin/TandaiLembur";
+import { akhirPekan, formatDurasi, MENIT_LEMBUR_MIN, tandaAktif, type TandaLembur } from "@/lib/lembur";
+import { muatTandaLembur } from "@/lib/lemburData";
 
 // Tipe Sel & StatusKehadiran kini bersama di lib/kehadiranKartu (bentuknya sama persis).
 type Kategori = "hadir" | "telat" | "izin" | "alpa";
@@ -87,6 +90,8 @@ export default function AdminKehadiranPage() {
   const [rincian, setRincian] = useState<Kategori | null>(null);
   const [bukaOrang, setBukaOrang] = useState<string | null>(null);
   const [detailSel, setDetailSel] = useState<{ baris: any; sel: Sel } | null>(null);
+  // Tanda lembur dalam rentang (kunci `${idKaryawan}|${tanggal}`, termasuk yang dibatalkan) — untuk jendela detail sel.
+  const [lemburPeta, setLemburPeta] = useState<Record<string, TandaLembur>>({});
   const [cariNama, setCariNama] = useState("");
   // Baris yang sedang melebar di tiga kartu anomali (satu per kartu). Nilai = idKaryawan,
   // atau kunci baris absensi untuk Lupa Clock-Out.
@@ -101,13 +106,16 @@ export default function AdminKehadiranPage() {
     try {
       const periodeStartISO = rentang.dari;
       const periodeEndISO = rentang.sampai;
-      const [empRes, absensiSemua, izinSemua] = await Promise.all([
+      const [empRes, absensiSemua, izinSemua, tandaLembur] = await Promise.all([
         supabase.from("employees").select("*").order("nama", { ascending: true }),
         ambilSemuaBaris(() => supabase.from("attendance").select("*").gte("tanggal", periodeStartISO).lte("tanggal", periodeEndISO)),
         // Izin Terlambat bukan ketidakhadiran → tak perlu dimuat di sini.
         ambilSemuaBaris(() => supabase.from("approvals").select("*").eq("status", "Disetujui").neq("jenis", "Izin Terlambat")),
+        // Tanda lembur (tabel `lembur`; kosong bila lembur.sql belum dijalankan — tidak pernah melempar).
+        muatTandaLembur(supabase, { dari: periodeStartISO, sampai: periodeEndISO, termasukBatal: true }),
       ]);
       if (nomor !== nomorMuat.current) return; // sudah ada permintaan yang lebih baru
+      setLemburPeta(Object.fromEntries(tandaLembur.map((t) => [`${t.idKaryawan}|${t.tanggal}`, t])));
       // Owner dikecualikan dari statistik operasional
       setEmployees(excludeOwners((empRes.data || []).filter((e: any) => e.isAktif !== false)));
       setAttendance(absensiSemua);
@@ -677,10 +685,19 @@ export default function AdminKehadiranPage() {
                     {att.mode_kerja && baris1("Mode kerja", att.mode_kerja)}
                     {att.lokasi && baris1("Lokasi", att.lokasi)}
                     {att.anomali_disetujui === true && baris1("Keterlambatan", "Sudah disetujui admin", "text-green-400")}
+                    {att.lembur_menit != null && att.waktuKeluar && baris1("Lembur", `${formatDurasi(Number(att.lembur_menit))}${Number(att.lembur_menit) >= MENIT_LEMBUR_MIN ? " · sah" : ""}`, Number(att.lembur_menit) >= MENIT_LEMBUR_MIN ? "text-amber-300" : undefined)}
+                    {att.kompensasi_lembur && baris1("Kompensasi lembur", `${att.kompensasi_lembur === "pulang_cepat" ? "Pulang cepat" : "Masuk siang"} (dari lembur ${att.kompensasi_dari || "-"})`, "text-green-400")}
+                    {(() => { const t = lemburPeta[`${baris.id}|${x.iso}`]; return t ? baris1("Tanda lembur", tandaAktif(t) ? `${t.kompensasi === "pulang_cepat" ? "Pulang cepat" : "Masuk siang"} · oleh ${t.ditandai_oleh || "-"}` : "Dibatalkan", tandaAktif(t) ? "text-amber-300" : "text-gray-500") : null; })()}
                     <div className="mt-3 pt-3 border-t border-white/5">
                       <p className="text-[11px] text-gray-500 mb-2">Foto absen</p>
                       <FotoAbsenPasangan att={att} hariIni={todayISO} />
                     </div>
+                    {x.iso <= todayISO && !akhirPekan(x.iso) && (
+                      <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between gap-3">
+                        <p className="text-[11px] text-gray-500">Kompensasi lembur untuk hari kerja berikutnya</p>
+                        <TandaiLembur idKaryawan={String(baris.id)} nama={baris.nama} tanggal={x.iso} tandaAda={lemburPeta[`${baris.id}|${x.iso}`] || null} onSelesai={() => { setDetailSel(null); fetchData(); }} />
+                      </div>
+                    )}
                   </div>
                 ) : lv ? (
                   <div>

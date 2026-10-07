@@ -3,7 +3,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { TOLERANSI_TELAT_MENIT, JAM_KERJA_JAM, jamPulangDariClockIn } from "@/lib/keterlambatan";
+import { TOLERANSI_TELAT_MENIT, JAM_KERJA_JAM } from "@/lib/keterlambatan";
+import { nilaiMasuk, jamPulangHariIni, labelKompensasi, formatDurasi, MENIT_LEMBUR_MIN, type KompensasiAktif, type TandaLembur } from "@/lib/lembur";
+import { muatKompensasiHariIni, muatTandaHari, catatClockOut } from "@/lib/lemburData";
 import { ambilAturanJamKerja, teksDurasi } from "@/lib/jamKerja";
 import { jarakMeter, ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
 import { pushNotify } from "@/lib/push";
@@ -41,6 +43,9 @@ export default function UserKehadiranPage() {
   const [kantorLng, setKantorLng] = useState(KANTOR_DEFAULT.lng);
   const [kantorRadius, setKantorRadius] = useState(KANTOR_DEFAULT.radius);
   const [isFleksibel, setIsFleksibel] = useState(false);
+  // Kompensasi lembur (lib/lembur.ts): tanda lembur HARI INI & kompensasi yang berlaku hari ini dari lembur sebelumnya.
+  const [kompensasiHariIni, setKompensasiHariIni] = useState<KompensasiAktif | null>(null);
+  const [tandaHariIni, setTandaHariIni] = useState<TandaLembur | null>(null);
   const [jamKeluar, setJamKeluar] = useState("17:00");
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [pengajuanList, setPengajuanList] = useState<any[]>([]);
@@ -130,6 +135,9 @@ export default function UserKehadiranPage() {
     try {
       const { data: todayData } = await supabase.from("attendance").select("*").eq("idKaryawan", safeId).eq("tanggal", todayISO).maybeSingle();
       if (todayData) setTodayAttendance(todayData);
+      // Lembur: kompensasi dari hari kerja sebelumnya (bila sah & belum dipakai) + tanda lembur hari ini.
+      setKompensasiHariIni(await muatKompensasiHariIni(supabase, safeId, todayISO, todayData || null));
+      setTandaHariIni(await muatTandaHari(supabase, safeId, todayISO));
 
       const { data: absData } = await supabase.from("attendance").select("*").eq("idKaryawan", safeId).order("tanggal", { ascending: false }).limit(5);
       if (absData) setRecentAttendances(absData);
@@ -324,15 +332,18 @@ export default function UserKehadiranPage() {
     }
     // Cek terlambat SEBELUM selfie. Terlambat & belum ada izin telat hari ini → WAJIB isi alasan (modal, tak bisa dilewati).
     const nowCek = new Date();
-    const [sHc, sMc] = String(jamMasuk || "09:00").split(":").map(Number);
-    const telatCek = (nowCek.getHours() * 60 + nowCek.getMinutes()) > ((sHc || 9) * 60 + (sMc || 0) + toleransiTelat);
-    const statusCek = (!isFleksibel && modeKerja === "Kantor" && telatCek) ? "Terlambat" : "Tepat Waktu";
+    const jamCek = `${String(nowCek.getHours()).padStart(2, "0")}:${String(nowCek.getMinutes()).padStart(2, "0")}`;
     const safeIdCek = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
-    if (statusCek === "Terlambat") {
+    // Segarkan kompensasi lembur tepat sebelum dinilai: HR bisa saja menandai/membatalkan tanda setelah halaman dibuka.
+    const kompSegar = await muatKompensasiHariIni(supabase, safeIdCek, todayISO, todayAttendance || null);
+    setKompensasiHariIni(kompSegar);
+    // Aturan lama (jam masuk + toleransi; hanya mode Kantor & non-fleksibel) + pergeseran batas bila ada kompensasi lembur "masuk siang".
+    const nilaiCek = nilaiMasuk({ waktuMasuk: jamCek, jamMasuk, toleransi: toleransiTelat, fleksibel: isFleksibel, modeKerja, kompensasi: kompSegar && !kompSegar.terpakai ? kompSegar.tanda.kompensasi : null });
+    if (nilaiCek.telat) {
       const sudahIzin = await cekSudahAdaIzinTelat(safeIdCek);
       if (!sudahIzin) { setWajibTelat(true); return; } // tahan clock-in; buka modal wajib alasan
     }
-    await lakukanClockIn(""); // tepat waktu / sudah ada izin → langsung
+    await lakukanClockIn("", kompSegar); // tepat waktu / sudah ada izin → langsung
   };
 
   const cekSudahAdaIzinTelat = async (safeId: string) => {
@@ -342,18 +353,20 @@ export default function UserKehadiranPage() {
     } catch { return false; }
   };
 
-  const lakukanClockIn = async (alasanTelatWajib: string) => {
+  const lakukanClockIn = async (alasanTelatWajib: string, kompSegar?: KompensasiAktif | null) => {
     if (!currentUser) return;
     setIsActionLoading(true);
     const fotoMasuk = takePhoto(); // ambil foto lalu kamera otomatis mati
 
     const now = new Date();
     const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const [schedH, schedM] = String(jamMasuk || "09:00").split(":").map(Number);
-    const isLate = (now.getHours() * 60 + now.getMinutes()) > ((schedH || 9) * 60 + (schedM || 0) + toleransiTelat);
-    // WFH/WFC tidak dihitung terlambat (hanya mode Kantor); jam fleksibel juga tidak.
-    const statusKehadiran = (!isFleksibel && modeKerja === "Kantor" && isLate) ? "Terlambat" : "Tepat Waktu";
-    const jamPulang = isFleksibel ? null : jamPulangDariClockIn(timeString, jamMasuk, jamKeluar, toleransiTelat, durasiKerja);
+    // Kompensasi lembur dari hari kerja sebelumnya (sah & belum dipakai) — menggeser batas telat (masuk_siang)
+    // atau jam wajib pulang (pulang_cepat). Aturan lama tetap: WFH/WFC & jam fleksibel tidak dihitung terlambat.
+    const kompAktif = kompSegar !== undefined ? kompSegar : kompensasiHariIni;   // nilai segar dari handleClockIn bila ada
+    const kompensasi = kompAktif && !kompAktif.terpakai ? kompAktif.tanda.kompensasi : null;
+    const nilai = nilaiMasuk({ waktuMasuk: timeString, jamMasuk, toleransi: toleransiTelat, fleksibel: isFleksibel, modeKerja, kompensasi });
+    const statusKehadiran = nilai.status;
+    const jamPulang = jamPulangHariIni({ waktuMasuk: timeString, jamMasuk, jamKeluar, toleransi: toleransiTelat, durasiJam: durasiKerja, fleksibel: isFleksibel, telat: nilai.telat, kompensasi });
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
 
     try {
@@ -362,7 +375,8 @@ export default function UserKehadiranPage() {
         waktuMasuk: timeString, waktuKeluar: null,
         lokasi: modeKerja === "Kantor" ? "Kantor Invisual (Selfie)" : `${modeKerja} (Selfie)`,
         mode_kerja: modeKerja, status: statusKehadiran,
-        jamPulangSeharusnya: jamPulang
+        jamPulangSeharusnya: jamPulang,
+        ...(kompensasi && kompAktif ? { kompensasi_lembur: kompensasi, kompensasi_dari: kompAktif.dari } : {})
       }]);
       if (error) throw error;
       // Simpan selfie (latar belakang; gagal pun absen tetap tercatat)
@@ -411,10 +425,15 @@ export default function UserKehadiranPage() {
     const safeId = currentUser.idKaryawan || currentUser.id_karyawan || currentUser.id || "INV-UNKNOWN";
     
     try {
-      const { error } = await supabase.from("attendance").update({ waktuKeluar: timeString }).eq("id", todayAttendance.id);
-      if (error) throw error;
+      // Simpan jam pulang + menit lembur (dihitung dari jam wajib pulang) sekaligus.
+      const menitLemburHariIni = await catatClockOut(supabase, todayAttendance, timeString, jamKeluar);
       const fotoTersimpan = simpanFotoAbsen(supabase, { dataUrl: fotoKeluar, jenis: "keluar", tanggal: todayAttendance.tanggal || todayISO, idKaryawan: safeId, idAbsen: todayAttendance.id });
       showToast("success", `Clock-Out berhasil: ${timeString} WIB. Hati-hati di jalan!`);
+      if (tandaHariIni && menitLemburHariIni != null) {   // null = kolom lembur belum ada (lembur.sql belum dijalankan)
+        const sah = menitLemburHariIni >= MENIT_LEMBUR_MIN;
+        if (sah) toast.sukses(`Lembur ${formatDurasi(menitLemburHariIni)} tercatat — hari kerja berikutnya ${labelKompensasi(tandaHariIni.kompensasi, jamMasuk, jamKeluar)}.`);
+        else toast.info(`Lembur ${formatDurasi(menitLemburHariIni)} — kurang dari 1 jam, kompensasi tidak berlaku.`);
+      }
       pushNotify(supabase, { toAdmins: true, title: "Absen Pulang", body: `${currentUser?.nama || "Karyawan"} clock-out ${timeString}`, url: "/admin/kehadiran", tag: "absen" });
       await Promise.all([fetchDashboardData(safeId), tungguMaksimal(fotoTersimpan, 8000)]);
     } catch (err: any) {
@@ -492,6 +511,12 @@ export default function UserKehadiranPage() {
             )}
           </h3>
           
+          {tandaHariIni && (
+            <div data-chip-lembur className="mb-3 text-[10px] md:text-xs bg-amber-500/10 border border-amber-500/20 text-amber-200 rounded-lg px-3 py-2">🌙 Ditandai lembur hari ini — hari kerja berikutnya {labelKompensasi(tandaHariIni.kompensasi, jamMasuk, jamKeluar)} (berlaku bila clock-out ≥ 1 jam setelah jam pulang).</div>
+          )}
+          {kompensasiHariIni && (
+            <div data-chip-kompensasi className="mb-3 text-[10px] md:text-xs bg-green-500/10 border border-green-500/20 text-green-200 rounded-lg px-3 py-2">✅ Kompensasi lembur {kompensasiHariIni.dari}: {labelKompensasi(kompensasiHariIni.tanda.kompensasi, jamMasuk, jamKeluar)}{kompensasiHariIni.terpakai ? " · terpakai" : ""}.</div>
+          )}
           {todayAttendance?.waktuMasuk && !isAttendanceComplete && todayAttendance?.jamPulangSeharusnya && (
             <div className="mb-4 md:mb-5 -mt-1 flex items-center gap-2 text-[10px] md:text-xs bg-primer/10 border border-primer/20 rounded-lg px-3 py-2">
               <span className="text-gray-400">Jam wajib pulang:</span>

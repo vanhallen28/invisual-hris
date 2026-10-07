@@ -18,6 +18,10 @@ import { GaleriFotoAbsen } from "@/components/FotoAbsen";
 import { mintaBersihkanFotoLama } from "@/lib/fotoAbsen";
 import AvatarKaryawan from "@/components/AvatarKaryawan";
 import KartuOnline from "@/components/admin/KartuOnline";
+import TandaiLembur from "@/components/admin/TandaiLembur";
+import KartuLembur from "@/components/admin/KartuLembur";
+import { MENIT_LEMBUR_MIN, type TandaLembur } from "@/lib/lembur";
+import { muatTandaLembur } from "@/lib/lemburData";
 
 // Cek apakah HARI INI termasuk dalam periode izin/cuti.
 // Kolom `tanggal` berupa string: "2025-07-16", "2025-07-16 s/d 2025-07-20",
@@ -113,6 +117,10 @@ export default function AdminDashboardPage() {
   const [galeriFoto, setGaleriFoto] = useState<{ fokusId: string | null } | null>(null);
   // Saringan "Log absensi live": semua kejadian / hanya clock-in / hanya clock-out
   const [saringLog, setSaringLog] = useState<"semua" | "masuk" | "pulang">("semua");
+  // Kompensasi lembur: naikkan versi agar KartuLembur memuat ulang setelah menandai/membatalkan.
+  const [versiLembur, setVersiLembur] = useState(0);
+  // Tanda lembur HARI INI per idKaryawan — agar tombol "Lembur" di Log absensi live tahu sudah ditandai atau belum.
+  const [tandaLemburHariIni, setTandaLemburHariIni] = useState<Record<string, TandaLembur>>({});
 
   const todayDate = new Date().toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const todayISO = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(); // tanggal LOKAL (WIB), bukan UTC
@@ -209,6 +217,9 @@ export default function AdminDashboardPage() {
       setRemoteToday(menutupiHariIni.filter((a: any) => isRemote(a.jenis)));
       setTodayAttendances(uniqueAttendances);
       setAbsenLog(uniqueAttendances);
+      // Tanda lembur hari ini (tabel `lembur`; kosong bila lembur.sql belum dijalankan).
+      const tandaHariIni = await muatTandaLembur(supabase, { dari: todayISO, sampai: todayISO });
+      setTandaLemburHariIni(Object.fromEntries(tandaHariIni.map((t) => [String(t.idKaryawan), t])));
 
       const detectedAnomalies: any[] = [];
       
@@ -770,6 +781,12 @@ export default function AdminDashboardPage() {
                             {absen.mode_kerja && absen.mode_kerja !== "Kantor" && (
                               <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-primer/15 text-tint-redup px-1.5 py-0.5 rounded border border-primer/30">{absen.mode_kerja}</span>
                             )}
+                            {!pulang && absen.kompensasi_lembur && (
+                              <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-green-500/10 text-green-300 px-1.5 py-0.5 rounded border border-green-500/30" title={`Kompensasi lembur ${absen.kompensasi_dari || ""}`} data-lencana="kompensasi">kompensasi</span>
+                            )}
+                            {pulang && Number(absen.lembur_menit) >= MENIT_LEMBUR_MIN && tandaLemburHariIni[String(absen.idKaryawan ?? "")] && (
+                              <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-amber-500/10 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30" title="Ditandai lembur & clock-out ≥ 1 jam setelah jam wajib pulang" data-lencana="lembur">lembur</span>
+                            )}
                             <button
                               type="button"
                               onClick={() => setGaleriFoto({ fokusId: String(absen.idKaryawan ?? "") })}
@@ -779,6 +796,9 @@ export default function AdminDashboardPage() {
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
                             </button>
+                            {!pulang && (
+                              <TandaiLembur kecil idKaryawan={String(absen.idKaryawan ?? "")} nama={absen.nama} tanggal={todayISO} tandaAda={tandaLemburHariIni[String(absen.idKaryawan ?? "")] || null} onSelesai={() => { setVersiLembur((v) => v + 1); fetchDashboardData(); }} />
+                            )}
                           </div>
                           {pulang ? (
                             <span className="text-[10px] bg-primer/10 text-tint-redup px-2 py-0.5 rounded font-mono border border-primer/25 mt-1 inline-block">Pulang {absen.waktuKeluar}</span>
@@ -797,6 +817,9 @@ export default function AdminDashboardPage() {
                 ) : null}
               </div>
             </BentoCell>
+
+            {/* Lembur — tanda lembur hari ini & yang kompensasinya berlaku hari ini (hanya tampil bila ada) */}
+            <KartuLembur versi={versiLembur} hariIni={todayISO} employees={employees} onUbah={() => { setVersiLembur((v) => v + 1); fetchDashboardData(); }} bungkus={(isi) => <BentoCell className="col-span-2 lg:col-span-4">{isi}</BentoCell>} />
 
             {/* Sedang Online — siapa yang sedang membuka HRIS (presence kanal privat; hanya HR/manager yang bisa membaca) */}
             <BentoCell className="col-span-2 lg:col-span-4">
