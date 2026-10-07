@@ -73,7 +73,7 @@ export default function AuditLogPage() {
                   {l.detail && <p className="text-[11px] text-gray-500 mt-0.5 truncate">{l.detail}</p>}
                   <p className="text-[11px] text-gray-600 mt-1 font-mono truncate">{l.actor}</p>
                 </div>
-                <span className="text-[10px] text-gray-600 whitespace-nowrap shrink-0 mt-0.5">{fmt(l.created_at)}</span>
+                <span className="text-[11px] text-gray-600 whitespace-nowrap shrink-0 mt-0.5">{fmt(l.created_at)}</span>
               </div>
             );
           })}

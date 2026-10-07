@@ -126,25 +126,25 @@ export default function PerformancePanel({ idKaryawan, editable = false }: any) 
         <div className="space-y-5">
           {/* PERFORMA 30 HARI */}
           <div>
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Performa 30 Hari Terakhir</p>
+            <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider mb-3">Performa 30 Hari Terakhir</p>
             <div className="grid grid-cols-3 gap-2.5 mb-3">
               <div className="bg-kartu rounded-xl p-3 text-center">
                 <p className="text-xl font-bold text-white">{perf?.hadir ?? 0}</p>
-                <p className="text-[9px] text-gray-500 mt-0.5 uppercase">Hadir</p>
+                <p className="text-[10px] text-gray-500 mt-0.5 uppercase">Hadir</p>
               </div>
               <div className="bg-kartu rounded-xl p-3 text-center">
                 <p className="text-xl font-bold text-green-400">{perf?.tepat ?? 0}</p>
-                <p className="text-[9px] text-gray-500 mt-0.5 uppercase">Tepat Waktu</p>
+                <p className="text-[10px] text-gray-500 mt-0.5 uppercase">Tepat Waktu</p>
               </div>
               <div className="bg-kartu rounded-xl p-3 text-center">
                 <p className="text-xl font-bold text-magenta">{perf?.terlambat ?? 0}</p>
-                <p className="text-[9px] text-gray-500 mt-0.5 uppercase">Terlambat</p>
+                <p className="text-[10px] text-gray-500 mt-0.5 uppercase">Terlambat</p>
               </div>
             </div>
             <div className={`${g?.bg} rounded-xl p-4 border border-white/5`}>
               <div className="flex items-end justify-between mb-2">
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Tingkat Ketepatan</p>
+                  <p className="text-[11px] text-gray-400 uppercase tracking-wider">Tingkat Ketepatan</p>
                   <p className="text-3xl font-black" style={{ color: g?.color }}>{perf?.rate ?? 0}%</p>
                 </div>
                 <span className="text-xs font-bold px-2.5 py-1 rounded-lg" style={{ color: g?.color, backgroundColor: (g?.color || "#fff") + "22" }}>{g?.label}</span>
@@ -152,14 +152,14 @@ export default function PerformancePanel({ idKaryawan, editable = false }: any) 
               <div className="h-2 bg-black/30 rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-500" style={{ width: `${perf?.rate ?? 0}%`, backgroundColor: g?.color }} />
               </div>
-              {perf?.hadir === 0 && <p className="text-[10px] text-gray-600 mt-2">Belum ada data absensi dalam 30 hari terakhir.</p>}
+              {perf?.hadir === 0 && <p className="text-[11px] text-gray-600 mt-2">Belum ada data absensi dalam 30 hari terakhir.</p>}
             </div>
           </div>
 
           {/* PENILAIAN TERAKHIR */}
           <div className="border-t border-white/5 pt-5">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Penilaian Kualitatif</p>
+              <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider">Penilaian Kualitatif</p>
               {avg !== null && <span className="text-xs font-bold text-tint-redup">Rata-rata {avg.toFixed(1)}/5</span>}
             </div>
             {review ? (
@@ -172,11 +172,11 @@ export default function PerformancePanel({ idKaryawan, editable = false }: any) 
                 ))}
                 {review.catatan && (
                   <div className="bg-kartu rounded-xl p-3 mt-3">
-                    <p className="text-[10px] text-gray-500 uppercase mb-1">Catatan</p>
+                    <p className="text-[11px] text-gray-500 uppercase mb-1">Catatan</p>
                     <p className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap">{review.catatan}</p>
                   </div>
                 )}
-                <p className="text-[10px] text-gray-600 mt-2">Periode {review.periode || "—"}{review.reviewer ? ` • oleh ${review.reviewer}` : ""}</p>
+                <p className="text-[11px] text-gray-600 mt-2">Periode {review.periode || "—"}{review.reviewer ? ` • oleh ${review.reviewer}` : ""}</p>
               </div>
             ) : (
               <p className="text-xs text-gray-600 py-2">Belum ada penilaian kualitatif.</p>
@@ -186,7 +186,7 @@ export default function PerformancePanel({ idKaryawan, editable = false }: any) 
           {/* FORM PENILAIAN (admin) */}
           {editable && (
             <div className="border-t border-white/5 pt-5">
-              <p className="text-[10px] font-black text-tint-redup uppercase tracking-widest mb-3">Beri / Perbarui Penilaian</p>
+              <p className="text-[11px] font-black text-tint-redup uppercase tracking-wider mb-3">Beri / Perbarui Penilaian</p>
               <div className="space-y-3">
                 {ASPEK.map((a) => (
                   <div key={a.key} className="flex items-center justify-between">

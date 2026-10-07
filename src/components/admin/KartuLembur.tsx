@@ -6,6 +6,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { Moon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
 import AvatarKaryawan from "@/components/AvatarKaryawan";
@@ -15,7 +16,7 @@ import { hariLemburUntuk, labelKompensasi, statusTanda, tandaAktif, type AbsenRi
 import { batalkanLembur, muatTandaLembur, tandaiLembur } from "@/lib/lemburData";
 
 type Baris = { tanda: TandaLembur; att: AbsenRingkas | null; jamMasuk: string; jamKeluar: string };
-const KELAS_AVATAR = "w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-[10px]";
+const KELAS_AVATAR = "w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-[11px]";
 const WARNA: Record<string, string> = { sah: "text-green-300", belum: "text-tint", kurang: "text-amber-300", lupa: "text-amber-300", batal: "text-gray-500" };
 
 export default function KartuLembur({ versi, hariIni, employees, onUbah, bungkus }: { versi: number; hariIni: string; employees: any[]; onUbah?: () => void; bungkus?: (isi: ReactNode) => ReactNode }) {
@@ -76,7 +77,7 @@ export default function KartuLembur({ versi, hariIni, employees, onUbah, bungkus
   const isi = (
     <div data-kartu-lembur>
       <div className="flex justify-between items-center gap-3 mb-4 border-b border-white/5 pb-4">
-        <h3 className="text-base font-bold text-white">🌙 Lembur</h3>
+        <h3 className="text-base font-bold text-white flex items-center gap-2"><Moon className="w-4 h-4 text-amber-300" aria-hidden />Lembur</h3>
         <span className="text-[11px] text-gray-500">{baris.length} tanda · hari ini & hari kerja sebelumnya</span>
       </div>
       <div className="space-y-2">
@@ -88,7 +89,7 @@ export default function KartuLembur({ versi, hariIni, employees, onUbah, bungkus
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <AvatarKaryawan id={b.tanda.idKaryawan} nama={b.tanda.nama} className={KELAS_AVATAR} />
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-white truncate" title={b.tanda.nama || ""}>{namaPanggilan(b.tanda.idKaryawan, employees, b.tanda.nama)} <span className="text-[10px] text-gray-500 font-normal">· {b.tanda.tanggal === hariIni ? "hari ini" : labelTanggal(b.tanda.tanggal, false)} · {labelKompensasi(b.tanda.kompensasi, b.jamMasuk, b.jamKeluar)}</span></p>
+                  <p className="text-sm font-bold text-white truncate" title={b.tanda.nama || ""}>{namaPanggilan(b.tanda.idKaryawan, employees, b.tanda.nama)} <span className="text-[11px] text-gray-500 font-normal">· {b.tanda.tanggal === hariIni ? "hari ini" : labelTanggal(b.tanda.tanggal, false)} · {labelKompensasi(b.tanda.kompensasi, b.jamMasuk, b.jamKeluar)}</span></p>
                   <p className={`text-[11px] ${WARNA[st.kode] || "text-gray-400"}`}>{st.teks}{b.tanda.catatan ? <span className="text-gray-500"> · {b.tanda.catatan}</span> : null}</p>
                 </div>
               </div>

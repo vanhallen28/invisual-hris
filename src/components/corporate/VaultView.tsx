@@ -371,7 +371,7 @@ function FileGlyph({ kind, large }: { kind: ReturnType<typeof fileKind>; large?:
     <span
       className={cn(
         "grid shrink-0 place-items-center rounded-lg font-mono font-semibold",
-        large ? "h-12 w-12 text-xs" : "h-9 w-9 text-[10px]",
+        large ? "h-12 w-12 text-xs" : "h-9 w-9 text-[11px]",
         g.className,
       )}
     >
@@ -414,7 +414,7 @@ function FileCard({
       <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
         {uploaderName ? (
           <div className="flex items-center gap-1.5 text-xs text-gray-400">
-            <span className="grid h-5 w-5 place-items-center rounded-full bg-white/5 font-mono text-[9px] font-semibold">
+            <span className="grid h-5 w-5 place-items-center rounded-full bg-white/5 font-mono text-[10px] font-semibold">
               {initialsOf(uploaderName)}
             </span>
             <span className="max-w-[8rem] truncate">{uploaderName}</span>

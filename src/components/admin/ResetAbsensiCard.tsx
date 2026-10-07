@@ -120,7 +120,7 @@ export function ResetAbsensiCard() {
                 <div className={`text-sm font-semibold ${on ? "text-white" : "text-gray-200"}`}>
                   {r.label}
                 </div>
-                <div className="mt-0.5 text-[10px] text-gray-500">{r.desc}</div>
+                <div className="mt-0.5 text-[11px] text-gray-500">{r.desc}</div>
               </button>
             );
           })}
@@ -198,7 +198,7 @@ export function ResetAbsensiCard() {
                 />
                 <span className="text-[11px] text-gray-400">
                   Hapus juga <span className="font-semibold text-gray-300">Izin &amp; Cuti</span> pada rentang yang sama.
-                  <span className="mt-0.5 block text-[10px] text-gray-500">Sisa cuti karyawan tidak diubah.</span>
+                  <span className="mt-0.5 block text-[11px] text-gray-500">Sisa cuti karyawan tidak diubah.</span>
                 </span>
               </label>
 

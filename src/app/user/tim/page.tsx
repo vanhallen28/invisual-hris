@@ -144,7 +144,7 @@ export default function DashboardTimPage() {
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl md:text-2xl font-bold text-white">Dashboard Tim</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-white">Tim Saya</h1>
         <p className="text-xs md:text-sm text-gray-500 mt-1">
           Kehadiran karyawan hari ini ·{" "}
           {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
@@ -217,9 +217,9 @@ export default function DashboardTimPage() {
 function Kartu({ label, nilai, warna, sub }: { label: string; nilai: number; warna: string; sub?: string }) {
   return (
     <div className="bg-latar border border-white/10 rounded-xl p-4">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</p>
+      <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{label}</p>
       <p className={`font-display mt-2 text-3xl font-black ${warna}`}>{nilai}</p>
-      {sub && <p className="text-[10px] text-gray-500 mt-1">{sub}</p>}
+      {sub && <p className="text-[11px] text-gray-500 mt-1">{sub}</p>}
     </div>
   );
 }

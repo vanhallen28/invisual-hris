@@ -18,6 +18,7 @@ import { hariUntukKartu, labelTanggalPendek, type Sel, type StatusKehadiran, typ
 import TandaiLembur from "@/components/admin/TandaiLembur";
 import { akhirPekan, formatDurasi, MENIT_LEMBUR_MIN, tandaAktif, type TandaLembur } from "@/lib/lembur";
 import { muatTandaLembur } from "@/lib/lemburData";
+import { teksTanggal } from "@/lib/tanggalTampil";
 
 // Tipe Sel & StatusKehadiran kini bersama di lib/kehadiranKartu (bentuknya sama persis).
 type Kategori = "hadir" | "telat" | "izin" | "alpa";
@@ -66,9 +67,9 @@ async function ambilSemuaBaris(bangun: () => any): Promise<any[]> {
 
 const KATEGORI: Record<Kategori, { judul: string; warna: string; bar: string; satuan: string; kosong: string }> = {
   hadir: { judul: "Hadir Tepat Waktu", warna: "text-green-400", bar: "bg-green-500", satuan: "hari tepat waktu", kosong: "Belum ada kehadiran tepat waktu di rentang ini." },
-  telat: { judul: "Terlambat", warna: "text-yellow-400", bar: "bg-yellow-500", satuan: "hari telat", kosong: "Tidak ada keterlambatan di rentang ini. 🎉" },
+  telat: { judul: "Terlambat", warna: "text-yellow-400", bar: "bg-yellow-500", satuan: "hari telat", kosong: "Tidak ada keterlambatan di rentang ini." },
   izin: { judul: "Izin / Cuti / WFH", warna: "text-purple-400", bar: "bg-purple-500", satuan: "hari izin", kosong: "Tidak ada izin/cuti/WFH di rentang ini." },
-  alpa: { judul: "Alpa", warna: "text-red-400", bar: "bg-red-500", satuan: "hari alpa", kosong: "Tidak ada alpa di rentang ini. 🎉" },
+  alpa: { judul: "Alpa", warna: "text-red-400", bar: "bg-red-500", satuan: "hari alpa", kosong: "Tidak ada alpa di rentang ini." },
 };
 const cocokKategori = (k: Kategori, st: StatusKehadiran) =>
   (k === "hadir" && st === "Hadir") || (k === "telat" && st === "Telat") || (k === "izin" && (st === "Cuti/Sakit" || st === "WFH")) || (k === "alpa" && st === "Alpa");
@@ -350,7 +351,7 @@ export default function AdminKehadiranPage() {
       {/* HEADER HALAMAN */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Manajemen Kehadiran</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Kehadiran</h1>
           <p className="text-gray-400 text-sm">Analitik kedisiplinan dari data absensi asli — {monthLabel} ({jumlahHari(rentang)} hari).</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -388,7 +389,7 @@ export default function AdminKehadiranPage() {
               className="group text-left p-5 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow cursor-pointer disabled:cursor-wait"
             >
               <div className={`absolute left-0 top-0 h-full w-1 ${meta.bar}`} />
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">{meta.judul}</p>
+              <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-1">{meta.judul}</p>
               <p className={`text-2xl font-black ${meta.warna}`}>{isLoading ? "–" : value}<span className="text-xs text-gray-600 font-bold ml-1">hari</span></p>
               <p className="text-[11px] text-gray-500 mt-1 truncate">{isLoading ? " " : ket}</p>
               <span className="mt-1 inline-block text-[11px] text-tint opacity-0 transition-opacity group-hover:opacity-100">Lihat rincian →</span>
@@ -406,7 +407,7 @@ export default function AdminKehadiranPage() {
           {isLoading ? (
             <p className="text-xs text-gray-600">Memuat…</p>
           ) : seringTelat.length === 0 ? (
-            <p className="text-xs text-gray-600">Tidak ada keterlambatan di rentang ini. 🎉</p>
+            <p className="text-xs text-gray-600">Tidak ada keterlambatan di rentang ini.</p>
           ) : seringTelat.map((emp: any, idx: number) => {
             const aktif = bukaBaris.telat === String(emp.id);
             return (
@@ -444,13 +445,13 @@ export default function AdminKehadiranPage() {
                     <AvatarKaryawan id={row.idKaryawan} nama={nama} className={KELAS_AVATAR} />
                     <div className="min-w-0">
                       <span className={`text-sm font-semibold block truncate ${aktif ? "text-white" : "text-gray-200"}`}>{nama}</span>
-                      <span className="text-[10px] text-gray-500">{row.tanggal} · Masuk {row.waktuMasuk || "-"}</span>
+                      <span className="text-[11px] text-gray-500" title={row.tanggal}>{teksTanggal(row.tanggal)} · Masuk {row.waktuMasuk || "-"}</span>
                     </div>
                   </button>
                   <button
                     onClick={() => closeSession(row)}
                     disabled={closingId === key}
-                    className="text-[10px] font-bold text-primer-terang hover:text-white bg-primer-terang/10 hover:bg-primer-terang px-3 py-1.5 rounded transition-colors shrink-0 disabled:opacity-40"
+                    className="text-[11px] font-bold text-tint hover:text-white bg-primer-terang/10 hover:bg-primer-terang px-3 py-1.5 rounded transition-colors shrink-0 disabled:opacity-40"
                   >
                     {closingId === key ? "…" : "Tutup Sesi"}
                   </button>
@@ -511,13 +512,13 @@ export default function AdminKehadiranPage() {
               className="bg-latar border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primer-terang sm:w-48"
             />
             <div className="flex flex-wrap gap-3 md:gap-4 bg-latar p-3 rounded-xl border border-white/10">
-              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-green-500"></div><span className="text-[10px] text-gray-400 font-bold uppercase">Hadir</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-yellow-500"></div><span className="text-[10px] text-gray-400 font-bold uppercase">Telat</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-blue-500"></div><span className="text-[10px] text-gray-400 font-bold uppercase">WFH/WFC</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-purple-500"></div><span className="text-[10px] text-gray-400 font-bold uppercase">Cuti/Sakit</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-500"></div><span className="text-[10px] text-gray-400 font-bold uppercase">Alpa</span></div>
-              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-white/5 border border-white/10"></div><span className="text-[10px] text-gray-400 font-bold uppercase">Libur</span></div>
-              <div className="flex items-center gap-1.5"><div className="relative w-3 h-3 rounded bg-green-500"><span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-white ring-1 ring-black/60"></span></div><span className="text-[10px] text-gray-400 font-bold uppercase">Lupa clock-out</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-green-500"></div><span className="text-[11px] text-gray-400 font-bold uppercase">Hadir</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-yellow-500"></div><span className="text-[11px] text-gray-400 font-bold uppercase">Telat</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-blue-500"></div><span className="text-[11px] text-gray-400 font-bold uppercase">WFH/WFC</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-purple-500"></div><span className="text-[11px] text-gray-400 font-bold uppercase">Cuti/Sakit</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-500"></div><span className="text-[11px] text-gray-400 font-bold uppercase">Alpa</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-white/5 border border-white/10"></div><span className="text-[11px] text-gray-400 font-bold uppercase">Libur</span></div>
+              <div className="flex items-center gap-1.5"><div className="relative w-3 h-3 rounded bg-green-500"><span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-white ring-1 ring-black/60"></span></div><span className="text-[11px] text-gray-400 font-bold uppercase">Lupa clock-out</span></div>
             </div>
           </div>
         </div>
@@ -526,15 +527,15 @@ export default function AdminKehadiranPage() {
           <table className="w-full text-left border-collapse min-w-[1000px]">
             <thead className="bg-latar border-b border-white/5">
               <tr>
-                <th className="px-6 py-3 font-semibold text-xs text-gray-400 uppercase tracking-widest sticky left-0 bg-latar z-20 shadow-[5px_0_10px_rgba(0,0,0,0.3)] w-64 border-r border-white/5">Karyawan</th>
+                <th className="px-6 py-3 font-semibold text-xs text-gray-400 uppercase tracking-wider sticky left-0 bg-latar z-20 shadow-[5px_0_10px_rgba(0,0,0,0.3)] w-64 border-r border-white/5">Karyawan</th>
                 {periodeHari.map((dt, i) => {
                   const iso = isoOf(dt);
                   const akhirPekan = dt.getDay() === 0 || dt.getDay() === 6;
                   const hariIni = iso === todayISO;
                   return (
                     <th key={i} title={tglPanjang(iso)} className={`px-1 py-2 font-semibold text-center border-l border-white/5 ${akhirPekan ? "bg-white/[0.02]" : ""} ${hariIni ? "bg-primer-terang/15" : ""}`}>
-                      <span className={`block text-[9px] ${akhirPekan ? "text-gray-600" : "text-gray-500"}`}>{HARI_HURUF[dt.getDay()]}</span>
-                      <span className={`block text-[10px] ${hariIni ? "text-tint font-black" : "text-gray-500"}`}>{dt.getDate()}</span>
+                      <span className={`block text-[10px] ${akhirPekan ? "text-gray-600" : "text-gray-500"}`}>{HARI_HURUF[dt.getDay()]}</span>
+                      <span className={`block text-[11px] ${hariIni ? "text-tint font-black" : "text-gray-500"}`}>{dt.getDate()}</span>
                     </th>
                   );
                 })}
@@ -556,8 +557,8 @@ export default function AdminKehadiranPage() {
                         <AvatarKaryawan id={emp.id} nama={emp.nama} className="hidden sm:flex w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/10 text-white items-center justify-center font-bold text-xs" />
                         <div className="min-w-0">
                           <p className="font-bold text-white text-sm truncate max-w-[200px]">{emp.nama}</p>
-                          <p className="text-[10px] text-gray-500 truncate max-w-[200px]">{emp.divisi}</p>
-                          <p className="text-[10px] font-bold mt-0.5 flex gap-2 whitespace-nowrap" title="Hadir · Telat · Izin/Cuti/WFH · Alpa">
+                          <p className="text-[11px] text-gray-500 truncate max-w-[200px]">{emp.divisi}</p>
+                          <p className="text-[11px] font-bold mt-0.5 flex gap-2 whitespace-nowrap" title="Hadir · Telat · Izin/Cuti/WFH · Alpa">
                             <span className="text-green-400">H {emp.hitung.hadir}</span>
                             <span className="text-yellow-400">T {emp.hitung.telat}</span>
                             <span className="text-purple-400">I {emp.hitung.izin}</span>
@@ -595,13 +596,13 @@ export default function AdminKehadiranPage() {
                 <h2 className={`font-bold text-sm uppercase tracking-wider ${KATEGORI[rincian].warna}`}>{KATEGORI[rincian].judul}</h2>
                 <p className="text-[11px] text-gray-500 mt-0.5">{monthLabel} · {dataRincian.orang.length} orang · {dataRincian.totalHari} hari</p>
               </div>
-              <button onClick={() => setRincian(null)} className="text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+              <button onClick={() => setRincian(null)} className="sentuh text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             <div className="p-4 overflow-y-auto custom-scrollbar flex-1">
               {rincian === "izin" && Object.keys(dataRincian.perJenis).length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {Object.entries(dataRincian.perJenis).sort((a, b) => b[1] - a[1]).map(([jenis, n]) => (
-                    <span key={jenis} className={`text-[10px] font-bold px-2 py-1 rounded border ${kindOf(jenis) === "WFH" ? "bg-blue-500/10 text-blue-300 border-blue-500/20" : "bg-purple-500/10 text-purple-300 border-purple-500/20"}`}>{jenis}: {n} hari</span>
+                    <span key={jenis} className={`text-[11px] font-bold px-2 py-1 rounded border ${kindOf(jenis) === "WFH" ? "bg-blue-500/10 text-blue-300 border-blue-500/20" : "bg-purple-500/10 text-purple-300 border-purple-500/20"}`}>{jenis}: {n} hari</span>
                   ))}
                 </div>
               )}
@@ -609,7 +610,7 @@ export default function AdminKehadiranPage() {
                 <p className="text-sm text-gray-500 text-center py-6">{KATEGORI[rincian].kosong}</p>
               ) : (
                 <div className="space-y-2">
-                  {dataRincian.orang.length > 0 && <p className="text-[10px] text-gray-500">Klik nama untuk melihat tanggalnya.</p>}
+                  {dataRincian.orang.length > 0 && <p className="text-[11px] text-gray-500">Klik nama untuk melihat tanggalnya.</p>}
                   {dataRincian.orang.map(({ row, hari }) => {
                     const buka = bukaOrang === row.id;
                     return (
@@ -619,7 +620,7 @@ export default function AdminKehadiranPage() {
                             <AvatarKaryawan id={row.id} nama={row.nama} className={KELAS_AVATAR} />
                             <div className="min-w-0">
                               <p className="font-bold text-sm text-white truncate">{row.nama}</p>
-                              <p className="text-[10px] text-gray-500 truncate">{row.divisi}</p>
+                              <p className="text-[11px] text-gray-500 truncate">{row.divisi}</p>
                             </div>
                           </div>
                           <span className={`text-xs font-bold shrink-0 ${KATEGORI[rincian].warna}`}>{hari.length} {KATEGORI[rincian].satuan} {buka ? "▴" : "▾"}</span>
@@ -668,7 +669,7 @@ export default function AdminKehadiranPage() {
                     <p className="text-[11px] text-gray-500">{tglPanjang(x.iso)}</p>
                   </div>
                 </div>
-                <button onClick={() => setDetailSel(null)} className="text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                <button onClick={() => setDetailSel(null)} className="sentuh text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
               </div>
               <div className="p-4 overflow-y-auto custom-scrollbar flex-1">
                 <div className="flex items-center gap-2 mb-3">

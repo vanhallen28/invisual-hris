@@ -2,6 +2,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Clock } from "lucide-react";
+import SakelarTema from "@/components/SakelarTema";
 import { supabase } from "@/lib/supabase";
 import LoadingLogo from "@/components/LoadingLogo"; // 🔥 INI KUNCI UNTUK MEMANGGIL KOMPONEN ANDA
 import PerformancePanel from "@/components/PerformancePanel";
@@ -126,12 +128,12 @@ export default function UserProfilePage() {
       {/* HEADER PROFIL */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-3 mb-2">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Detail Profil</h1>
-          <p className="text-sm text-gray-400 mt-1 flex items-center gap-2">Data sinkronisasi HR Invisual.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Profil</h1>
+          <p className="text-sm text-gray-400 mt-1 flex items-center gap-2">Data diri, masa kerja, dan slip gaji Anda.</p>
         </div>
         <div className="bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-full flex items-center gap-2">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-          <span className="text-[9px] md:text-[10px] text-green-400 font-bold uppercase tracking-widest">Live Sync Aktif</span>
+          <span className="text-[10px] md:text-[11px] text-green-400 font-bold uppercase tracking-wider">Live Sync Aktif</span>
         </div>
       </div>
 
@@ -144,7 +146,7 @@ export default function UserProfilePage() {
           </div>
           <div className="text-center md:text-left flex-1 mt-2">
             <h1 className="text-2xl md:text-3xl font-black text-white">{profile.nama}</h1>
-            <p className="text-tint font-bold text-xs md:text-sm tracking-widest uppercase mt-1 truncate">{profile.jabatan || profile.departemen || "Karyawan Invisual"}</p>
+            <p className="text-tint font-bold text-xs md:text-sm tracking-wider uppercase mt-1 truncate">{profile.jabatan || profile.departemen || "Karyawan Invisual"}</p>
             <div className="flex flex-wrap gap-2 justify-center md:justify-start mt-4">
               <span className="bg-white/5 border border-white/10 px-3 py-1 rounded-full text-xs text-gray-300 font-mono">ID: {profile.idKaryawan || "-"}</span>
               <span className={`px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider
@@ -175,19 +177,19 @@ export default function UserProfilePage() {
           </div>
           <div className="space-y-4">
             <div>
-              <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Email</p>
+              <p className="text-[10px] md:text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Email</p>
               <p className="text-sm text-gray-200 bg-latar border border-white/5 px-3 py-2.5 rounded-lg truncate">{profile.email || "-"}</p>
             </div>
             <div>
-              <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">No. WhatsApp</p>
+              <p className="text-[10px] md:text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">No. WhatsApp</p>
               <p className="text-sm text-gray-200 bg-latar border border-white/5 px-3 py-2.5 rounded-lg truncate">{profile.noPonsel || "-"}</p>
             </div>
             <div>
-              <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">NIK KTP</p>
+              <p className="text-[10px] md:text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">NIK KTP</p>
               <p className="text-sm text-gray-200 font-mono bg-latar border border-white/5 px-3 py-2.5 rounded-lg truncate">{profile.nikKtp || "-"}</p>
             </div>
             <div>
-              <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Domisili</p>
+              <p className="text-[10px] md:text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Domisili</p>
               <p className="text-xs md:text-sm text-gray-300 leading-relaxed bg-latar border border-white/5 px-3 py-2.5 rounded-lg break-words">{profile.alamatDomisili || "-"}</p>
             </div>
           </div>
@@ -204,12 +206,12 @@ export default function UserProfilePage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Mulai Gabung</p>
+                <p className="text-[10px] md:text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Mulai Gabung</p>
                 <p className="text-xs md:text-sm text-gray-200 truncate">{profile.tanggalBergabung || "-"}</p>
-                <p className="text-[9px] md:text-[10px] text-tint-redup font-bold mt-1 truncate">🕒 {calculateMasaKerja(profile.tanggalBergabung)}</p>
+                <p className="text-[10px] md:text-[11px] text-tint-redup font-bold mt-1 truncate flex items-center gap-1"><Clock className="w-3 h-3 shrink-0" aria-hidden />{calculateMasaKerja(profile.tanggalBergabung)}</p>
               </div>
               <div className="bg-primer/10 border border-primer/20 p-2.5 rounded-xl text-center">
-                <p className="text-[9px] md:text-[10px] font-bold text-tint uppercase tracking-wider mb-1 truncate">Sisa Cuti</p>
+                <p className="text-[10px] md:text-[11px] font-bold text-tint uppercase tracking-wider mb-1 truncate">Sisa Cuti</p>
                 <p className="text-xl md:text-2xl text-white font-black">{profile.sisaCuti !== undefined ? profile.sisaCuti : 12}</p>
               </div>
             </div>
@@ -227,7 +229,7 @@ export default function UserProfilePage() {
               {/* Info Gaji Pokok (Tutup/Buka) */}
               <div className="bg-green-500/5 border border-green-500/10 p-3 rounded-xl flex justify-between items-center transition-colors">
                 <div className="overflow-hidden pr-2">
-                  <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Gaji Pokok Utama</p>
+                  <p className="text-[10px] md:text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Gaji Pokok Utama</p>
                   <p className={`text-sm md:text-lg text-green-400 font-bold transition-all duration-300 truncate`}>
                     {showGaji ? formatRupiah(profile.gajipokok || profile.gajiPokok || 0) : "Rp ••••••••"}
                   </p>
@@ -246,12 +248,12 @@ export default function UserProfilePage() {
               </div>
 
               <div>
-                <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Informasi Rekening Transfer</p>
+                <p className="text-[10px] md:text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 truncate">Informasi Rekening Transfer</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="bg-white text-black font-black uppercase px-2 py-1 rounded text-[9px] md:text-[10px] shrink-0">
+                  <span className="bg-white text-black font-black uppercase px-2 py-1 rounded text-[10px] md:text-[11px] shrink-0">
                     {profile.namaBank || "BANK"}
                   </span>
-                  <span className="text-xs md:text-sm text-white font-mono tracking-widest truncate">
+                  <span className="text-xs md:text-sm text-white font-mono tracking-wider truncate">
                     {profile.noRekening || "—"}
                   </span>
                 </div>
@@ -267,7 +269,7 @@ export default function UserProfilePage() {
                   data-aksi="lihat-slip"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-white"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-                  <span className="text-xs md:text-sm font-bold text-white uppercase tracking-widest">
+                  <span className="text-xs md:text-sm font-bold text-white uppercase tracking-wider">
                     Lihat Slip Gaji{riwayat.length ? ` (${riwayat.length})` : ""}
                   </span>
                 </button>
@@ -288,7 +290,7 @@ export default function UserProfilePage() {
                         >
                           <div className="min-w-0">
                             <p className="text-sm font-bold text-white truncate">{r.periode.label}</p>
-                            <p className="text-[10px] text-gray-500 mt-0.5 truncate">
+                            <p className="text-[11px] text-gray-500 mt-0.5 truncate">
                               {r.email_status === "terkirim" && r.email_dikirim_pada ? `Dikirim ke email ${jamPendek(r.email_dikirim_pada)}` : "Belum dikirim ke email"}
                             </p>
                           </div>
@@ -305,7 +307,7 @@ export default function UserProfilePage() {
                   className="mt-3 w-full bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 px-4 py-3 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
-                  <span className="text-xs md:text-sm font-bold text-gray-300 uppercase tracking-widest">
+                  <span className="text-xs md:text-sm font-bold text-gray-300 uppercase tracking-wider">
                     Ganti Password
                   </span>
                 </a>
@@ -315,6 +317,9 @@ export default function UserProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Tema tampilan (gelap/terang) — tersimpan di perangkat */}
+      <SakelarTema />
 
       {/* SLIP GAJI — template & tombol (Tutup / Unduh PDF / Print) sama dengan Payroll */}
       {slipDibuka && (

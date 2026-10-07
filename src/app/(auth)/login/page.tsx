@@ -1,12 +1,15 @@
 // src/app/(auth)/login/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 // Akun Owner: setara admin (role tetap "admin" agar lolos penjaga dashboard),
 // TAPI tanpa akses Reset Absensi (kartu Reset disembunyikan lewat penanda isOwner).
 const OWNER_EMAILS = ["dea@invisual.studio", "riza@invisual.studio", "tryan@invisual.studio"];
+
+// Lama animasi logo (kanal warna menyatu) sebelum form dibuka otomatis.
+const JEDA_GERBANG_MS = 1600;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -14,10 +17,34 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Gerbang logo — menggantikan lampu gantung. Form muncul setelah logo diketuk.
+  // Gerbang logo — animasi identitas tetap tampil, tetapi form TIDAK lagi
+  // bergantung pada ketukan: terbuka otomatis setelah animasi selesai, atau
+  // segera saat pengguna menyentuh/menekan tombol apa pun. Pengguna yang
+  // meminimalkan animasi (prefers-reduced-motion) langsung melihat form.
   const [terbuka, setTerbuka] = useState(false);
+  const kolomEmail = useRef<HTMLInputElement>(null);
 
   const bukaGerbang = () => setTerbuka(true);
+
+  useEffect(() => {
+    const kurangiGerak = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const timer = window.setTimeout(() => setTerbuka(true), kurangiGerak ? 0 : JEDA_GERBANG_MS);
+    const segera = () => setTerbuka(true);
+    window.addEventListener("pointerdown", segera, { once: true });
+    window.addEventListener("keydown", segera, { once: true });
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("pointerdown", segera);
+      window.removeEventListener("keydown", segera);
+    };
+  }, []);
+
+  // Saat form muncul, fokus ke kolom email (setelah transisi masuk).
+  useEffect(() => {
+    if (!terbuka) return;
+    const t = window.setTimeout(() => kolomEmail.current?.focus({ preventScroll: true }), 350);
+    return () => window.clearTimeout(t);
+  }, [terbuka]);
 
   const handleManualLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +111,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={`min-h-screen relative overflow-hidden bg-latar text-gray-300 flex items-center justify-center px-6 py-10 ${terbuka ? "gerbang-terbuka" : ""}`}>
+    <div className={`tema-gelap-paksa min-h-screen relative overflow-hidden bg-latar text-gray-300 flex items-center justify-center px-6 py-10 ${terbuka ? "gerbang-terbuka" : ""}`}>
 
       {/* Halo biru merek — menyala terus, halaman tak pernah terlihat padam */}
       <div className="absolute w-[520px] h-[520px] rounded-full bg-primer-terang/[0.13] blur-[120px] halo-latar pointer-events-none" />
@@ -123,20 +150,21 @@ export default function LoginPage() {
         <form onSubmit={handleManualLogin} className="tumpuk-kolom">
 
           <div className="kolom-fx" style={{ ["--tunda" as any]: "0.06s" }}>
-            <label className="block text-[10px] font-black text-gray-500 mb-2 uppercase tracking-widest">Alamat Email</label>
+            <label className="block text-[11px] font-black text-gray-500 mb-2 uppercase tracking-wider">Alamat Email</label>
             <input
+              ref={kolomEmail}
               required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@domain.com"
-              className="w-full bg-transparent text-sm text-white outline-none placeholder-gray-700"
+              placeholder="name@domain.com" autoComplete="username"
+              className="w-full bg-transparent text-sm text-white outline-none placeholder-gray-600"
             />
           </div>
 
           <div className="kolom-fx" style={{ ["--tunda" as any]: "0.14s" }}>
-            <label className="block text-[10px] font-black text-gray-500 mb-2 uppercase tracking-widest">Password</label>
+            <label className="block text-[11px] font-black text-gray-500 mb-2 uppercase tracking-wider">Password</label>
             <input
               required type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-              placeholder="Kata sandi (ID Karyawan)..."
-              className="w-full bg-transparent text-sm text-white outline-none placeholder-gray-700"
+              placeholder="Kata sandi (ID Karyawan)..." autoComplete="current-password"
+              className="w-full bg-transparent text-sm text-white outline-none placeholder-gray-600"
             />
           </div>
 
@@ -155,7 +183,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-[10px] text-gray-700 mt-7 leading-relaxed">
+        <p className="text-center text-[11px] text-gray-500 mt-7 leading-relaxed">
           Lupa password? Hubungi tim HR untuk pengaturan ulang.
         </p>
       </div>
@@ -221,10 +249,10 @@ export default function LoginPage() {
         .logo-set { transition: transform .7s cubic-bezier(.16,1,.3,1); }
 
         .gerbang-petunjuk {
-          font-size: 9px; letter-spacing: .3em; text-transform: uppercase;
-          color: rgba(255,255,255,.34); animation: petunjukDenyut 2.6s ease-in-out infinite 1.4s both;
+          font-size: 12px; letter-spacing: .22em; text-transform: uppercase;
+          color: rgba(255,255,255,.72); animation: petunjukDenyut 2.6s ease-in-out infinite 1.4s both;
         }
-        @keyframes petunjukDenyut { 0%,100% { opacity:.3 } 50% { opacity:.9 } }
+        @keyframes petunjukDenyut { 0%,100% { opacity:.55 } 50% { opacity:1 } }
 
         .gerbang-terbuka .gerbang {
           transform: translateY(-180px) scale(.5);
@@ -257,6 +285,8 @@ export default function LoginPage() {
           border-color: rgba(255,255,255,.22); box-shadow: 0 0 26px rgba(43,92,213,.16);
         }
         .kolom-fx:focus-within label { color: var(--color-tint); }
+        /* Fokus keyboard sudah ditunjukkan oleh kartu (border + cahaya), cincin global di input tak perlu */
+        .kolom-fx input:focus-visible { outline: none; }
 
         .kolom-aksi {
           background: var(--color-primer); border-color: rgba(179,197,255,.25);

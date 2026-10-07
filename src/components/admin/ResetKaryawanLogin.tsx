@@ -96,7 +96,7 @@ export default function ResetKaryawanLogin() {
         <p className="text-xs text-gray-600 py-4">Memuat daftar karyawan…</p>
       ) : !selected ? (
         <div>
-          <label className="block text-[10px] font-black text-gray-500 mb-1.5 uppercase tracking-widest">Cari Karyawan</label>
+          <label className="block text-[11px] font-black text-gray-500 mb-1.5 uppercase tracking-wider">Cari Karyawan</label>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ketik nama, email, atau ID karyawan…" className={inputCls} />
           <div className="mt-2 flex flex-col gap-1">
             {filtered.map((e) => (
@@ -109,7 +109,7 @@ export default function ResetKaryawanLogin() {
                   <p className="text-sm text-white font-medium truncate">{e.nama}</p>
                   <p className="text-[11px] text-gray-500 truncate">{e.email || "— belum ada email —"}</p>
                 </div>
-                {!e.user_id && <span className="text-[8px] font-bold text-red-300 bg-red-500/15 px-1.5 py-0.5 rounded shrink-0">Tanpa Akun</span>}
+                {!e.user_id && <span className="text-[10px] font-bold text-red-300 bg-red-500/15 px-1.5 py-0.5 rounded shrink-0">Tanpa Akun</span>}
               </button>
             ))}
             {filtered.length === 0 && <p className="text-xs text-gray-600 py-3 text-center">Tak ada karyawan yang cocok.</p>}
@@ -137,18 +137,18 @@ export default function ResetKaryawanLogin() {
           )}
 
           <div>
-            <label className="block text-[10px] font-black text-gray-500 mb-1.5 uppercase tracking-widest">Nama Lengkap</label>
+            <label className="block text-[11px] font-black text-gray-500 mb-1.5 uppercase tracking-wider">Nama Lengkap</label>
             <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nama karyawan" className={inputCls} disabled={!selected.user_id} />
           </div>
 
           <div>
-            <label className="block text-[10px] font-black text-gray-500 mb-1.5 uppercase tracking-widest">Email Login</label>
+            <label className="block text-[11px] font-black text-gray-500 mb-1.5 uppercase tracking-wider">Email Login</label>
             <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="email@domain.com" className={inputCls} disabled={!selected.user_id} />
-            <p className="text-[10px] text-gray-600 mt-1">Kosongkan/biarkan sama jika hanya ingin reset password.</p>
+            <p className="text-[11px] text-gray-600 mt-1">Kosongkan/biarkan sama jika hanya ingin reset password.</p>
           </div>
 
           <div>
-            <label className="block text-[10px] font-black text-gray-500 mb-1.5 uppercase tracking-widest">Password Baru</label>
+            <label className="block text-[11px] font-black text-gray-500 mb-1.5 uppercase tracking-wider">Password Baru</label>
             <input type={showPass ? "text" : "password"} value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="Kosongkan jika tak diganti (min. 6 karakter)" className={inputCls} disabled={!selected.user_id} />
           </div>
 

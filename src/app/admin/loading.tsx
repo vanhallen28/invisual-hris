@@ -17,7 +17,7 @@ export default function AdminLoading() {
       </div>
       
       {/* TEKS LOADING */}
-      <p className="text-gray-500 text-[10px] md:text-xs font-mono tracking-[0.25em] uppercase mt-8 animate-pulse">
+      <p className="text-gray-500 text-[11px] md:text-xs font-mono tracking-[0.25em] uppercase mt-8 animate-pulse">
         Menyiapkan Ruang Kerja...
       </p>
     </div>

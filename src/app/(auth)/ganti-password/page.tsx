@@ -76,14 +76,14 @@ export default function GantiPasswordPage() {
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="tema-gelap-paksa min-h-screen bg-black flex items-center justify-center">
         <LoadingLogo size={64} withRing text="Memeriksa sesi" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-gray-200 flex items-center justify-center px-5 py-10 font-sans">
+    <div className="tema-gelap-paksa min-h-screen bg-black text-gray-200 flex items-center justify-center px-5 py-10 font-sans">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <img src="/invisual-light.svg" alt="Invisual" className="h-6 brightness-0 invert opacity-90 mb-2" style={{ width: "auto" }} />
@@ -159,7 +159,7 @@ export default function GantiPasswordPage() {
           </form>
         </div>
 
-        <p className="text-center text-[10px] text-gray-700 mt-6">
+        <p className="text-center text-[11px] text-gray-700 mt-6">
           Password disimpan terenkripsi. Tim HR tidak dapat melihatnya.
         </p>
       </div>

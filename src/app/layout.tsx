@@ -50,8 +50,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={`${archaManic.variable} ${pasteur.variable}`}>
+    <html lang="id" className={`${archaManic.variable} ${pasteur.variable}`} suppressHydrationWarning>
       <body className={`${inter.className} bg-latar text-white antialiased`} suppressHydrationWarning>
+        {/* Tema tersimpan (lib/tema.ts) diterapkan SEBELUM konten dirender agar tidak berkedip. Skrip ini sengaja sependek mungkin. */}
+        <script dangerouslySetInnerHTML={{ __html: 'try{if(localStorage.getItem("invisual_tema")==="terang")document.documentElement.setAttribute("data-tema","terang")}catch(e){}' }} />
         <PwaSetup />
         <PwaSplash />
         <GlowLayer />

@@ -45,7 +45,7 @@ export default function SlipModal({ slip, label, draf = false, onTutup }: { slip
       aria-label={`Slip gaji ${slip.nama} — ${label}`}
       data-slip-modal
     >
-      <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden print:max-w-full print:rounded-none print:max-h-full print:overflow-visible relative print:shadow-none">
+      <div className="permukaan-terang bg-white w-full max-w-2xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col overflow-hidden print:max-w-full print:rounded-none print:max-h-full print:overflow-visible relative print:shadow-none">
         <PayslipDocument slip={slip} monthName={label} draf={draf} />
 
         <div className="p-4 flex flex-wrap justify-end gap-3 print:hidden border-t border-gray-200 bg-gray-100 shrink-0">

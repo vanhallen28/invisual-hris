@@ -111,7 +111,7 @@ CLOUDINARY_API_SECRET=...`}</pre>
             <span className="font-mono text-white bg-white/5 border border-white/10 rounded px-2 py-0.5">{status.cloudName}</span>
             <span className="text-gray-400 ml-2">Folder</span>
             <span className="font-mono text-white bg-white/5 border border-white/10 rounded px-2 py-0.5">{status.folder}</span>
-            {status.pemakaian?.paket && <span className="ml-auto text-[10px] font-bold uppercase tracking-wider text-tint-redup">Paket {status.pemakaian.paket}</span>}
+            {status.pemakaian?.paket && <span className="ml-auto text-[11px] font-bold uppercase tracking-wider text-tint-redup">Paket {status.pemakaian.paket}</span>}
           </div>
           {status.galat ? (
             <div className="text-xs text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
@@ -138,7 +138,7 @@ CLOUDINARY_API_SECRET=...`}</pre>
                   ["Jumlah aset", angka(status.pemakaian?.jumlahAset)],
                 ].map(([l, v]) => (
                   <div key={l} className="bg-white/[0.03] border border-white/10 rounded-lg px-3 py-2">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">{l}</p>
+                    <p className="text-[11px] text-gray-500 uppercase tracking-wider">{l}</p>
                     <p className="text-sm font-bold text-white mt-0.5">{v}</p>
                   </div>
                 ))}

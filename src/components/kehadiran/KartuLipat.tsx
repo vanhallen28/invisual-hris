@@ -59,7 +59,7 @@ export default function KartuLipat({ id, judul, sub, ikon, nada, ringkas, childr
         <div className={`w-10 h-10 rounded-full ${n.ikon} flex items-center justify-center shrink-0`}>{ikon}</div>
         <div className="min-w-0 flex-1">
           <h2 className="font-bold text-white text-sm">{judul}</h2>
-          <p className="text-[10px] text-gray-400 uppercase tracking-widest">{sub}</p>
+          <p className="text-[11px] text-gray-400 uppercase tracking-wider">{sub}</p>
         </div>
         {terlipat && <span className="text-xs text-gray-400 shrink-0">{ringkas}</span>}
         <button

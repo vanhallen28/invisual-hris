@@ -6,6 +6,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Moon, Check } from "lucide-react";
 import { createPortal } from "react-dom";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
@@ -93,13 +94,13 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
   };
 
   const tombolKelas = kecil
-    ? `shrink-0 inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${aktif ? "bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25" : "text-gray-500 border-white/10 hover:text-amber-300 hover:border-amber-500/40 hover:bg-amber-500/10"}`
+    ? `shrink-0 inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 min-h-[1.75rem] rounded-md border transition-colors ${aktif ? "bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25" : "text-gray-500 border-white/10 hover:text-amber-300 hover:border-amber-500/40 hover:bg-amber-500/10"}`
     : `inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors ${aktif ? "bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25" : "bg-white/5 text-gray-300 border-white/10 hover:bg-amber-500/10 hover:text-amber-300 hover:border-amber-500/40"}`;
 
   return (
     <>
       <button type="button" onClick={bukaJendela} className={tombolKelas} title={aktif ? `Ditandai lembur (${tandaAda?.kompensasi === "pulang_cepat" ? "pulang cepat" : "masuk siang"}) — klik untuk ubah/batalkan` : "Tandai lembur → hari kerja berikutnya boleh masuk siang / pulang cepat"} data-tandai-lembur={aktif ? "aktif" : "baru"}>
-        <span aria-hidden>🌙</span>{aktif ? "Lembur ✓" : "Lembur"}
+        <Moon className="w-3.5 h-3.5" aria-hidden />{aktif ? <>Lembur <Check className="w-3.5 h-3.5" aria-label="ditandai" /></> : "Lembur"}
       </button>
       {buka && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onMouseDown={(e) => { if (e.target === e.currentTarget && !sibuk) setBuka(false); }} role="dialog" aria-modal="true" data-jendela-lembur>
@@ -115,7 +116,7 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
               <div>
                 <label className="block text-[11px] font-bold text-gray-400 mb-1 uppercase tracking-wider">Tanggal lembur</label>
                 <input type="date" value={tgl} max={hariIni} min={tambahHari(hariIni, -HARI_MUNDUR_MAKS)} disabled={!!tanggal} onChange={(e) => setTgl(e.target.value)} className="w-full bg-input border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-amber-400 disabled:opacity-70" name="tanggal" />
-                <p className="text-[10px] text-gray-500 mt-1">Boleh tanggal lampau (maks {HARI_MUNDUR_MAKS} hari) — absen hari berikutnya yang terlanjur &quot;Terlambat&quot; akan dikoreksi otomatis.</p>
+                <p className="text-[11px] text-gray-500 mt-1">Boleh tanggal lampau (maks {HARI_MUNDUR_MAKS} hari) — absen hari berikutnya yang terlanjur &quot;Terlambat&quot; akan dikoreksi otomatis.</p>
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-wider">Kompensasi hari kerja berikutnya</label>

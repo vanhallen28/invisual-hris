@@ -121,7 +121,7 @@ export default function KelolaKategori({ kategori, bisaTulis, onBerubah }: Props
                 >
                   {k.name}
                   {k.is_system ? (
-                    <span className="text-[9px] uppercase tracking-wider text-gray-500">
+                    <span className="text-[10px] uppercase tracking-wider text-gray-500">
                       terkunci
                     </span>
                   ) : (

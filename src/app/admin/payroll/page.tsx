@@ -14,6 +14,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { NotebookPen } from "lucide-react";
+import { KerangkaTabel, KeadaanKosong } from "@/components/Kerangka";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
 import { pushNotify } from "@/lib/push";
@@ -56,10 +58,10 @@ const jamPendek = (iso?: string | null) => {
   return `${labelTanggal(isoDari(d), false)} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
-const KELAS_AVATAR = "w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-[10px]";
+const KELAS_AVATAR = "w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-[11px]";
 const KELAS_INPUT = "w-full bg-input border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none placeholder-gray-600";
-const KELAS_TOMBOL_ABU = "bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-lg border border-white/10 text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
-const KELAS_TOMBOL_BIRU = "bg-primer-terang hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-md disabled:opacity-40 disabled:cursor-not-allowed";
+const KELAS_TOMBOL_ABU = "bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-lg border border-white/10 text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap";
+const KELAS_TOMBOL_BIRU = "bg-primer-terang hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-md disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap";
 
 export default function AdminPayrollPage() {
   const toast = useToast();
@@ -291,7 +293,7 @@ export default function AdminPayrollPage() {
           <div className="absolute inset-0 bg-primer-terang/20 rounded-full blur-2xl animate-pulse"></div>
           <img src="/logo.png" alt="Memuat Payroll..." className="relative w-16 h-16 animate-spin object-contain" style={{ animationDuration: "3s" }} />
         </div>
-        <p className="text-gray-500 text-[10px] md:text-xs font-mono tracking-[0.25em] uppercase mt-8 animate-pulse">Memuat Data Payroll...</p>
+        <p className="text-gray-500 text-[11px] md:text-xs font-mono tracking-[0.25em] uppercase mt-8 animate-pulse">Memuat Data Payroll...</p>
       </div>
     );
   }
@@ -327,7 +329,7 @@ export default function AdminPayrollPage() {
         <div className="absolute -right-10 -top-10 w-40 h-40 bg-green-500/10 rounded-full blur-3xl"></div>
         <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Payroll</h1>
+            <h1 className="font-display text-2xl font-bold text-white tracking-tight">Payroll</h1>
             <p className="text-sm text-gray-400 mt-1">Periode gaji tanggal 21 – 20. Isi komponen gaji saat <b>Draf</b>, <b>Finalkan</b> agar karyawan bisa melihat slip, lalu <b>Kirim</b> ke email.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -338,7 +340,7 @@ export default function AdminPayrollPage() {
             )}
             {!berjalanAda && (
               <button type="button" onClick={() => aksiBuatPeriode(berjalan)} disabled={!!sibuk} className={KELAS_TOMBOL_BIRU} data-aksi="mulai">
-                {sibuk === "buat" ? "Membuat…" : `＋ Mulai periode ${labelPeriode(berjalan)}`}
+                {sibuk === "buat" ? "Membuat…" : `Mulai periode ${labelPeriode(berjalan)}`}
               </button>
             )}
             <button type="button" onClick={() => setPilihBaru((v) => !v)} disabled={!!sibuk} className={KELAS_TOMBOL_ABU} data-aksi="periode-lain">Buat periode lain…</button>
@@ -361,7 +363,7 @@ export default function AdminPayrollPage() {
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-lg font-black text-white">{aktif.label}</span>
               <span className="text-xs text-gray-500 font-mono">{labelRentang({ dari: aktif.dari, sampai: aktif.sampai })}</span>
-              <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${draf ? "bg-amber-500/10 text-amber-300 border-amber-500/30" : "bg-green-500/10 text-green-300 border-green-500/30"}`} data-status={aktif.status}>
+              <span className={`text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${draf ? "bg-amber-500/10 text-amber-300 border-amber-500/30" : "bg-green-500/10 text-green-300 border-green-500/30"}`} data-status={aktif.status}>
                 {draf ? "Draf" : "Final"}
               </span>
               {!draf && aktif.difinalkan_pada && <span className="text-[11px] text-gray-500">difinalkan {jamPendek(aktif.difinalkan_pada)}{aktif.difinalkan_oleh ? ` oleh ${aktif.difinalkan_oleh}` : ""}</span>}
@@ -374,29 +376,29 @@ export default function AdminPayrollPage() {
               )}
             </div>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs" data-ringkasan>
-              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 uppercase tracking-wider text-[9px] font-bold">Karyawan</p><p className="text-white font-bold text-sm mt-0.5">{ringkas.orang}</p></div>
-              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 uppercase tracking-wider text-[9px] font-bold">Gaji Pokok</p><p className="text-white font-bold text-sm mt-0.5">{formatRupiah(ringkas.gajiPokok)}</p></div>
-              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 uppercase tracking-wider text-[9px] font-bold">Bonus</p><p className="text-green-300 font-bold text-sm mt-0.5">{formatRupiah(ringkas.bonus)}</p></div>
-              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 uppercase tracking-wider text-[9px] font-bold">Potongan</p><p className="text-red-300 font-bold text-sm mt-0.5">{formatRupiah(ringkas.potongan)}</p></div>
-              <div className="rounded-xl border border-green-500/20 bg-green-500/10 px-3 py-2"><p className="text-green-400/70 uppercase tracking-wider text-[9px] font-bold">Total Take Home Pay</p><p className="text-green-300 font-black text-sm mt-0.5" data-total-thp>{formatRupiah(ringkas.thp)}</p></div>
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 uppercase tracking-wider text-[10px] font-bold">Karyawan</p><p className="text-white font-bold text-sm mt-0.5">{ringkas.orang}</p></div>
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 uppercase tracking-wider text-[10px] font-bold">Gaji Pokok</p><p className="text-white font-bold text-sm mt-0.5">{formatRupiah(ringkas.gajiPokok)}</p></div>
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 uppercase tracking-wider text-[10px] font-bold">Bonus</p><p className="text-green-300 font-bold text-sm mt-0.5">{formatRupiah(ringkas.bonus)}</p></div>
+              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 uppercase tracking-wider text-[10px] font-bold">Potongan</p><p className="text-red-300 font-bold text-sm mt-0.5">{formatRupiah(ringkas.potongan)}</p></div>
+              <div className="rounded-xl border border-green-500/20 bg-green-500/10 px-3 py-2"><p className="text-green-400/70 uppercase tracking-wider text-[10px] font-bold">Total Take Home Pay</p><p className="text-green-300 font-black text-sm mt-0.5" data-total-thp>{formatRupiah(ringkas.thp)}</p></div>
             </div>
             <div className="flex flex-wrap gap-2" data-aksi-periode>
               {draf ? (
                 <>
-                  <button type="button" onClick={aksiSinkron} disabled={!!sibuk} className={KELAS_TOMBOL_ABU} data-aksi="sinkron" title="Tambah karyawan aktif yang belum punya slip & segarkan email/rekening dari data karyawan">{sibuk === "sinkron" ? "Memeriksa…" : "⟳ Sinkronkan karyawan"}</button>
-                  <button type="button" onClick={() => setDialogFinal(true)} disabled={!!sibuk || slips.length === 0} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-md disabled:opacity-40 disabled:cursor-not-allowed" data-aksi="final">✓ Finalkan periode</button>
+                  <button type="button" onClick={aksiSinkron} disabled={!!sibuk} className={KELAS_TOMBOL_ABU} data-aksi="sinkron" title="Tambah karyawan aktif yang belum punya slip & segarkan email/rekening dari data karyawan">{sibuk === "sinkron" ? "Memeriksa…" : "Sinkronkan karyawan"}</button>
+                  <button type="button" onClick={() => setDialogFinal(true)} disabled={!!sibuk || slips.length === 0} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-md disabled:opacity-40 disabled:cursor-not-allowed" data-aksi="final">Finalkan periode</button>
                 </>
               ) : (
                 <>
                   <button type="button" onClick={() => aksiKirim("belum")} disabled={!!sibuk || email.belum === 0} className="bg-primer-terang hover:bg-blue-600 text-white px-4 py-1.5 rounded-lg text-xs font-bold transition-colors shadow-md disabled:opacity-40 disabled:cursor-not-allowed" data-aksi="kirim">
-                    {sibuk === "kirim" ? "Mengirim…" : `✉ Kirim slip ke email (${email.belum} belum)`}
+                    {sibuk === "kirim" ? "Mengirim…" : `Kirim slip ke email (${email.belum} belum)`}
                   </button>
                   {email.gagal > 0 && (
                     <button type="button" onClick={() => aksiKirim(slips.filter((s) => s.email_status === "gagal").map((s) => s.idKaryawan))} disabled={!!sibuk} className="bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 px-4 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-40" data-aksi="kirim-gagal">
-                      ↻ Kirim ulang yang gagal ({email.gagal})
+                      Kirim ulang yang gagal ({email.gagal})
                     </button>
                   )}
-                  <button type="button" onClick={aksiBukaKunci} disabled={!!sibuk} className={KELAS_TOMBOL_ABU} data-aksi="buka">{sibuk === "buka" ? "Membuka…" : "🔓 Buka kunci (kembali ke Draf)"}</button>
+                  <button type="button" onClick={aksiBukaKunci} disabled={!!sibuk} className={KELAS_TOMBOL_ABU} data-aksi="buka">{sibuk === "buka" ? "Membuka…" : "Buka kunci (kembali ke Draf)"}</button>
                 </>
               )}
             </div>
@@ -418,24 +420,28 @@ export default function AdminPayrollPage() {
 
       {/* TABEL SLIP */}
       {aktif && (
-        <div className="p-6 overflow-hidden relative rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
+        <div className="p-3 md:p-4 overflow-hidden relative rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
           {memuatSlip ? (
-            <div className="text-center py-16 text-gray-500 text-sm animate-pulse">Memuat slip…</div>
+            <KerangkaTabel baris={4} label="Memuat slip…" />
           ) : slips.length === 0 ? (
-            <div className="text-center py-16 text-gray-500">Belum ada slip di periode ini. {draf && <>Klik <b>Tambah karyawan yang belum ada</b>.</>}</div>
+            <KeadaanKosong
+              judul="Belum ada slip di periode ini"
+              keterangan={draf ? "Sinkronkan karyawan untuk membuat slip bagi semua karyawan aktif." : "Periode ini tidak memiliki slip."}
+              aksi={draf ? <button type="button" onClick={aksiSinkron} disabled={!!sibuk} className={KELAS_TOMBOL_BIRU}>Sinkronkan karyawan</button> : undefined}
+            />
           ) : (
             <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left text-sm text-gray-300 min-w-[1040px] tabel-baris-rapi" data-tabel-slip>
+              <table className="w-full text-left text-sm text-gray-300 min-w-[860px] tabel-baris-rapi" data-tabel-slip>
                 <thead className="bg-kartu-hover text-gray-400 text-xs uppercase tracking-wider">
                   <tr>
-                    <th className="px-4 py-4 rounded-tl-xl font-semibold">Karyawan</th>
-                    <th className="px-4 py-4 font-semibold text-center">Kehadiran</th>
-                    <th className="px-4 py-4 font-semibold text-right">Gaji Pokok</th>
-                    <th className="px-4 py-4 font-semibold text-right text-green-400">Bonus</th>
-                    <th className="px-4 py-4 font-semibold text-right text-red-400">Potongan</th>
-                    <th className="px-4 py-4 font-semibold text-right text-green-400">Take Home Pay</th>
-                    <th className="px-4 py-4 font-semibold text-center">Email</th>
-                    <th className="px-4 py-4 rounded-tr-xl font-semibold text-center">Aksi</th>
+                    <th className="px-2.5 py-3 rounded-tl-xl font-semibold">Karyawan</th>
+                    <th className="px-2.5 py-3 font-semibold text-center">Kehadiran</th>
+                    <th className="px-2.5 py-3 font-semibold text-right">Gaji Pokok</th>
+                    <th className="px-2.5 py-3 font-semibold text-right text-green-400">Bonus</th>
+                    <th className="px-2.5 py-3 font-semibold text-right text-red-400">Potongan</th>
+                    <th className="px-2.5 py-3 font-semibold text-right text-green-400" title="Take Home Pay = gaji pokok + bonus − potongan">THP</th>
+                    {!draf && <th className="px-2.5 py-3 font-semibold text-center">Email</th>}
+                    <th className="px-2.5 py-3 rounded-tr-xl font-semibold text-center">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -445,39 +451,39 @@ export default function AdminPayrollPage() {
                     const sibukBaris = sibuk === `kirim:${s.idKaryawan}`;
                     return (
                       <tr key={s.id || `${s.idKaryawan}-${i}`} data-baris={s.idKaryawan}>
-                        <td className="px-4 py-4">
+                        <td className="px-2.5 py-3">
                           <div className="flex items-center gap-3">
                             <AvatarKaryawan id={s.idKaryawan} nama={s.nama} className={KELAS_AVATAR} />
-                            <div>
-                              <p className="font-bold text-white">{s.nama}</p>
-                              <p className="text-[10px] text-gray-500 font-mono mt-0.5">{s.idKaryawan} • {s.jabatan || "-"}{s.catatan ? <span className="ml-1 text-amber-300/80" title={s.catatan}>📝</span> : null}</p>
+                            <div className="min-w-0">
+                              <p className="font-bold text-white whitespace-nowrap" title={s.nama}>{s.nama}</p>
+                              <p className="text-[11px] text-gray-500 font-mono mt-0.5 whitespace-nowrap">{s.idKaryawan} • {s.jabatan || "-"}{s.catatan ? <NotebookPen className="inline w-3 h-3 ml-1 text-amber-300/80 align-[-2px]" aria-label={`Catatan: ${s.catatan}`} /> : null}{draf && !s.email && <span className="ml-1 text-amber-300" title="Karyawan tidak punya email — slip tidak bisa dikirim. Lengkapi di data karyawan." data-email="belum">• Tanpa email</span>}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-center">
+                        <td className="px-2.5 py-3 text-center">
                           <div className="flex items-center justify-center gap-1.5" data-kehadiran={`${k.hadir}/${k.telat}`}>
-                            <span className="bg-green-500/10 text-green-400 text-[10px] font-bold px-2 py-0.5 rounded" title="Hari hadir tepat waktu">{k.hadir} Hadir</span>
-                            {k.telat > 0 && <span className="bg-yellow-500/10 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded" title="Hari terlambat">{k.telat} Telat</span>}
+                            <span className="bg-green-500/10 text-green-400 text-[11px] font-bold px-2 py-0.5 rounded whitespace-nowrap" title="Hari hadir tepat waktu">{k.hadir} Hadir</span>
+                            {k.telat > 0 && <span className="bg-yellow-500/10 text-yellow-400 text-[11px] font-bold px-2 py-0.5 rounded whitespace-nowrap" title="Hari terlambat">{k.telat} Telat</span>}
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-right font-medium" data-gaji>{formatRupiah(Number(s.gaji_pokok))}</td>
-                        <td className="px-4 py-4 text-right font-medium text-green-400">{Number(s.bonus) > 0 ? formatRupiah(Number(s.bonus)) : "-"}</td>
-                        <td className="px-4 py-4 text-right font-medium text-red-400">{Number(s.potongan) > 0 ? `-${formatRupiah(Number(s.potongan))}` : "-"}</td>
-                        <td className="px-4 py-4 text-right">
-                          <span className="bg-green-500/10 text-green-400 font-black px-2.5 py-1.5 rounded-lg border border-green-500/20" data-thp>{formatRupiah(thp)}</span>
+                        <td className="px-2.5 py-3 text-right font-medium tabular-nums whitespace-nowrap" data-gaji>{formatRupiah(Number(s.gaji_pokok))}</td>
+                        <td className="px-2.5 py-3 text-right font-medium text-green-400 tabular-nums whitespace-nowrap">{Number(s.bonus) > 0 ? formatRupiah(Number(s.bonus)) : "-"}</td>
+                        <td className="px-2.5 py-3 text-right font-medium text-red-400 tabular-nums whitespace-nowrap">{Number(s.potongan) > 0 ? `-${formatRupiah(Number(s.potongan))}` : "-"}</td>
+                        <td className="px-2.5 py-3 text-right whitespace-nowrap">
+                          <span className="bg-green-500/10 text-green-400 font-black px-2.5 py-1.5 rounded-lg border border-green-500/20 tabular-nums" data-thp>{formatRupiah(thp)}</span>
                         </td>
-                        <td className="px-4 py-4 text-center">
-                          {s.email_status === "terkirim" && <span className="bg-green-500/10 text-green-300 text-[10px] font-bold px-2 py-0.5 rounded" title={s.email || ""} data-email="terkirim">Terkirim {jamPendek(s.email_dikirim_pada)}</span>}
-                          {s.email_status === "gagal" && <span className="bg-red-500/10 text-red-300 text-[10px] font-bold px-2 py-0.5 rounded cursor-help" title={s.email_galat || "Gagal"} data-email="gagal">Gagal ⓘ</span>}
-                          {s.email_status === "simulasi" && <span className="bg-blue-500/10 text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded" title="RESEND_API_KEY belum diset — email tidak benar-benar terkirim" data-email="simulasi">Simulasi</span>}
-                          {(!s.email_status || s.email_status === "belum") && <span className="text-[10px] text-gray-500" title={s.email || "tanpa email"} data-email="belum">{s.email ? "Belum" : "Tanpa email"}</span>}
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <div className="flex gap-2 justify-center">
-                            {draf && <button type="button" onClick={() => bukaEdit(s)} disabled={!!sibuk} className={KELAS_TOMBOL_ABU} data-aksi="input">⚙️ Input Gaji</button>}
-                            <button type="button" onClick={() => setLihat({ slip: tampil(s), draf })} className={KELAS_TOMBOL_BIRU} data-aksi="lihat">Lihat Slip</button>
-                            {!draf && <button type="button" onClick={() => unduhSlipPdf(tampil(s), aktif.label, namaBerkasSlip(aktif.label, s.nama))} className={KELAS_TOMBOL_ABU} data-aksi="unduh" title="Unduh PDF">⬇ PDF</button>}
-                            {!draf && <button type="button" onClick={() => aksiKirimSatu(s)} disabled={!!sibuk || !s.email} className={KELAS_TOMBOL_ABU} data-aksi="kirim-ulang" title={s.email ? `Kirim (ulang) ke ${s.email}` : "Karyawan tidak punya email"}>{sibukBaris ? "…" : s.email_status === "terkirim" ? "↻ Kirim ulang" : "✉ Kirim"}</button>}
+                        {!draf && <td className="px-2.5 py-3 text-center">
+                          {s.email_status === "terkirim" && <span className="bg-green-500/10 text-green-300 text-[11px] font-bold px-2 py-0.5 rounded" title={s.email || ""} data-email="terkirim">Terkirim {jamPendek(s.email_dikirim_pada)}</span>}
+                          {s.email_status === "gagal" && <span className="bg-red-500/10 text-red-300 text-[11px] font-bold px-2 py-0.5 rounded cursor-help" title={s.email_galat || "Gagal"} data-email="gagal">Gagal ⓘ</span>}
+                          {s.email_status === "simulasi" && <span className="bg-blue-500/10 text-blue-300 text-[11px] font-bold px-2 py-0.5 rounded" title="RESEND_API_KEY belum diset — email tidak benar-benar terkirim" data-email="simulasi">Simulasi</span>}
+                          {(!s.email_status || s.email_status === "belum") && <span className="text-[11px] text-gray-500" title={s.email || "tanpa email"} data-email="belum">{s.email ? "Belum" : "Tanpa email"}</span>}
+                        </td>}
+                        <td className="px-2.5 py-3 text-center">
+                          <div className="flex gap-1.5 justify-center flex-nowrap">
+                            {draf && <button type="button" onClick={() => bukaEdit(s)} disabled={!!sibuk} className={KELAS_TOMBOL_ABU} data-aksi="input" title="Isi gaji pokok, bonus, potongan">Input Gaji</button>}
+                            <button type="button" onClick={() => setLihat({ slip: tampil(s), draf })} className={KELAS_TOMBOL_BIRU} data-aksi="lihat" title="Lihat slip">Slip</button>
+                            {!draf && <button type="button" onClick={() => unduhSlipPdf(tampil(s), aktif.label, namaBerkasSlip(aktif.label, s.nama))} className={KELAS_TOMBOL_ABU} data-aksi="unduh" title="Unduh PDF">PDF</button>}
+                            {!draf && <button type="button" onClick={() => aksiKirimSatu(s)} disabled={!!sibuk || !s.email} className={KELAS_TOMBOL_ABU} data-aksi="kirim-ulang" title={s.email ? `${s.email_status === "terkirim" ? "Kirim ulang" : "Kirim"} ke ${s.email}` : "Karyawan tidak punya email"}>{sibukBaris ? "…" : s.email_status === "terkirim" ? "Kirim ulang" : "Kirim"}</button>}
                           </div>
                         </td>
                       </tr>
@@ -549,8 +555,8 @@ export default function AdminPayrollPage() {
             </div>
             <div className="p-6 space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 text-[9px] font-bold uppercase tracking-wider">Slip</p><p className="text-white font-bold">{ringkas.orang} karyawan</p></div>
-                <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 text-[9px] font-bold uppercase tracking-wider">Total THP</p><p className="text-green-300 font-black">{formatRupiah(ringkas.thp)}</p></div>
+                <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Slip</p><p className="text-white font-bold">{ringkas.orang} karyawan</p></div>
+                <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2"><p className="text-gray-500 text-[10px] font-bold uppercase tracking-wider">Total THP</p><p className="text-green-300 font-black">{formatRupiah(ringkas.thp)}</p></div>
               </div>
               {peringatan.tanpaEmail.length > 0 && (
                 <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200" data-peringatan="email">
@@ -565,7 +571,7 @@ export default function AdminPayrollPage() {
               <div className="pt-4 flex gap-3 border-t border-white/5">
                 <button type="button" onClick={() => setDialogFinal(false)} disabled={sibuk === "final"} className="w-1/3 py-2.5 text-xs font-bold text-gray-400 border border-white/10 rounded-xl hover:bg-white/5 transition-colors">Batal</button>
                 <button type="button" onClick={aksiFinalkan} disabled={sibuk === "final"} className="w-2/3 py-2.5 text-xs font-bold text-white bg-green-600 hover:bg-green-500 rounded-xl shadow-lg transition-colors disabled:opacity-60" data-aksi="final-ya">
-                  {sibuk === "final" ? "Memfinalkan…" : "✓ Ya, finalkan"}
+                  {sibuk === "final" ? "Memfinalkan…" : "Ya, finalkan"}
                 </button>
               </div>
             </div>

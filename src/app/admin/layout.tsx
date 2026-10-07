@@ -3,14 +3,38 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import PelacakOnline from "@/components/PelacakOnline";
+import MenuLainnya from "@/components/layout/MenuLainnya";
+import { useJebakFokus } from "@/lib/fokus";
+import { ambilPeran } from "@/lib/keuangan/klien";
+
+// Pengelompokan menu sidebar (desktop). Urutan di dalam grup mengikuti navItems.
+const GRUP_SIDEBAR: { judul: string; href: string[] }[] = [
+  { judul: "Operasional", href: ["/admin/dashboard", "/admin/kehadiran", "/admin/karyawan", "/admin/payroll"] },
+  { judul: "Kolaborasi", href: ["/admin/daily-task", "/admin/chat", "/admin/corporate"] },
+  { judul: "Perusahaan", href: ["/admin/keuangan", "/admin/audit"] },
+];
+
+// Tujuan utama nav bawah ponsel (maks. 5 — Material 3 / Apple HIG). Sisanya masuk "Lainnya".
+const NAV_UTAMA_PONSEL = ["/admin/dashboard", "/admin/kehadiran", "/admin/karyawan", "/admin/chat"];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isChatPage = !!pathname && pathname.includes('/chat'); // Chat = full-screen (sembunyikan header & bottom-nav)
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const modalKeluar = useRef<HTMLDivElement>(null);
+  useJebakFokus(modalKeluar, showLogoutModal, () => setShowLogoutModal(false));
+  // Keuangan hanya untuk yang terdaftar di finance.app_roles. Menu tetap tampil
+  // (agar bisa minta akses), tetapi diberi ikon gembok bila akun belum punya peran.
+  // Galat (schema belum diekspos, offline) dianggap "boleh" supaya pesan di halamannya tetap terbaca.
+  const [keuanganTerkunci, setKeuanganTerkunci] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    ambilPeran().then((p) => { if (alive) setKeuanganTerkunci(p === null); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   const doLogout = async () => {
     await supabase.auth.signOut();
@@ -44,7 +68,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#000000] text-gray-200 flex flex-col md:flex-row font-sans">
+    <div className="min-h-screen bg-latar text-gray-200 flex flex-col md:flex-row font-sans">
+      {/* Aksesibilitas: lompat langsung ke konten (tampil hanya saat difokus lewat keyboard) */}
+      <a href="#konten" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[10050] focus:rounded-lg focus:bg-primer focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white">Lewati ke konten</a>
       {/* Mendaftar ke presence "hadir-online" (monitoring online); tanpa UI */}
       <PelacakOnline />
 
@@ -55,7 +81,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <p className="text-[7.5px] font-black text-gray-500 uppercase tracking-widest mt-1.5 font-mono leading-none">Human Resource Information System</p>
         </div>
         <div className="flex items-center gap-2.5 shrink-0">
-          <Link href="/admin/pengaturan" title="Pengaturan Akun" className="w-8 h-8 rounded-full bg-primer/10 text-tint flex items-center justify-center font-black text-[10px] border border-primer/20 shadow-inner active:scale-90 transition-transform">HR</Link>
+          <Link href="/admin/pengaturan" title="Pengaturan Akun" className="w-8 h-8 rounded-full bg-primer/10 text-tint flex items-center justify-center font-black text-[11px] border border-primer/20 shadow-inner active:scale-90 transition-transform">HR</Link>
           <button onClick={() => setShowLogoutModal(true)} aria-label="Keluar" className="w-8 h-8 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex items-center justify-center active:scale-90 transition-transform cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
           </button>
@@ -68,21 +94,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* PERBAIKAN LOGOTYPE: Tampil Rata Kiri & Subtitle HRIS */}
         <div className="py-8 px-6 border-b border-white/10 flex flex-col items-start justify-center">
           <img src="/invisual-light.svg" alt="Invisual Studio" className="h-8 brightness-0 invert opacity-90 transition-transform hover:scale-105" style={{ width: "auto" }} />
-          <p className="text-[10px] font-medium text-gray-400 mt-2 tracking-wide">
+          <p className="text-[11px] font-medium text-gray-400 mt-2 tracking-wide">
             Human Resource & Internal Information System
           </p>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
-          {navItems.filter((item) => item.href !== "/admin/pengaturan").map((item) => {
-            const isActive = item.href === "/admin/corporate" ? (pathname === item.href || pathname.startsWith(item.href + "/")) : pathname === item.href;
-            return (
-              <Link key={item.name} href={item.href} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium text-sm ${isActive ? "bg-white text-black shadow-lg" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">{item.icon}</svg>
-                {item.name}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 p-4 space-y-5 overflow-y-auto" aria-label="Menu HR">
+          {GRUP_SIDEBAR.map((grup) => (
+            <div key={grup.judul}>
+              <p className="px-4 mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-600">{grup.judul}</p>
+              <div className="space-y-1">
+                {grup.href.map((href) => navItems.find((i) => i.href === href)).filter(Boolean).map((item) => {
+                  const it = item!;
+                  const isActive = it.href === "/admin/corporate" || it.href === "/admin/keuangan" ? (pathname === it.href || pathname.startsWith(it.href + "/")) : pathname === it.href;
+                  const terkunci = it.href === "/admin/keuangan" && keuanganTerkunci;
+                  return (
+                    <Link key={it.name} href={it.href} aria-current={isActive ? "page" : undefined} title={terkunci ? "Hanya untuk Owner & HR yang terdaftar di modul Keuangan" : undefined} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all font-medium text-sm ${isActive ? "bg-white text-black shadow-lg" : "text-gray-400 hover:text-white hover:bg-white/5"}`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 shrink-0" aria-hidden>{it.icon}</svg>
+                      <span className="truncate">{it.name}</span>
+                      {terkunci && (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5 ml-auto shrink-0 opacity-70" aria-label="Terkunci" data-kunci-keuangan><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="p-4 border-t border-white/10">
@@ -93,7 +131,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* AREA KONTEN UTAMA */}
-      <main className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0">
+      <main id="konten" tabIndex={-1} className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0 outline-none">
         <div className="p-4 md:p-8 flex-1 w-full max-w-7xl mx-auto">
           <div key={pathname} className={isChatPage ? "" : "page-fade"}>
             {children}
@@ -104,31 +142,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* BOTTOM NAVIGATION MOBILE */}
       <div className={`${isChatPage ? "hidden" : ""} md:hidden fixed bottom-0 left-0 right-0 bg-latar/90 backdrop-blur-md border-t border-white/10 z-[100] px-2 py-3 pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.5)]`}>
         <div className="flex justify-around items-center">
-          {navItems.filter((item) => item.href !== "/admin/pengaturan" && item.href !== "/admin/audit" && item.href !== "/admin/corporate" && item.href !== "/admin/keuangan" && item.href !== "/admin/daily-task").map((item) => {
+          {navItems.filter((item) => NAV_UTAMA_PONSEL.includes(item.href)).map((item) => {
             const isActive = pathname === item.href;
             return (
-              <Link key={item.name} href={item.href} className={`relative flex flex-col items-center gap-1 py-1 transition-colors duration-300 ${isActive ? "text-primer" : "text-gray-500 hover:text-gray-300"}`}>
+              <Link key={item.name} href={item.href} aria-current={isActive ? "page" : undefined} className={`relative flex flex-col items-center gap-1 py-1 transition-colors duration-300 ${isActive ? "text-primer" : "text-gray-500 hover:text-gray-300"}`}>
                 <span className={`flex items-center justify-center w-11 h-9 rounded-2xl transition-all duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] ${isActive ? "bg-primer/15 -translate-y-1 scale-105" : "translate-y-0 scale-100"}`}>
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={isActive ? 2.5 : 2} stroke="currentColor" className="w-6 h-6">{item.icon}</svg>
                 </span>
-                <span className={`text-[9px] font-bold transition-transform duration-300 ${isActive ? "-translate-y-0.5" : "translate-y-0"}`}>{(item as any).short || item.name}</span>
+                <span className={`text-[11px] font-bold transition-transform duration-300 ${isActive ? "-translate-y-0.5" : "translate-y-0"}`}>{(item as any).short || item.name}</span>
               </Link>
             );
           })}
+          {/* Tujuan ke-5: semua menu HR lain (Payroll, Daily Task, Vault, Keuangan, Log, Pengaturan) — dulu tak terjangkau dari ponsel */}
+          <MenuLainnya
+            item={navItems.filter((item) => !NAV_UTAMA_PONSEL.includes(item.href))}
+            aktif={!!pathname && !NAV_UTAMA_PONSEL.includes(pathname) && navItems.some((item) => !NAV_UTAMA_PONSEL.includes(item.href) && (pathname === item.href || pathname.startsWith(item.href + "/")))}
+            pathname={pathname || ""}
+          />
         </div>
       </div>
       
 
       {showLogoutModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="bg-kartu border border-white/10 w-full max-w-xs rounded-2xl p-6 text-center shadow-2xl">
+          <div ref={modalKeluar} role="dialog" aria-modal="true" aria-labelledby="judul-keluar" className="bg-kartu border border-white/10 w-full max-w-xs rounded-2xl p-6 text-center shadow-2xl">
             <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-red-500"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
             </div>
-            <h2 className="text-lg font-bold text-white mb-1.5">Keluar Panel HRD?</h2>
+            <h2 id="judul-keluar" className="text-lg font-bold text-white mb-1.5">Keluar Panel HRD?</h2>
             <p className="text-xs text-gray-500 mb-6 leading-relaxed">Sesi admin akan diakhiri. Anda perlu login kembali untuk masuk.</p>
             <div className="flex gap-2.5">
-              <button onClick={() => setShowLogoutModal(false)} className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-gray-300 font-bold rounded-xl transition-all text-xs border border-white/10 cursor-pointer">Batal</button>
+              <button onClick={() => setShowLogoutModal(false)} data-fokus-awal className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-gray-300 font-bold rounded-xl transition-all text-xs border border-white/10 cursor-pointer">Batal</button>
               <button onClick={doLogout} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all text-xs cursor-pointer">Ya, Keluar</button>
             </div>
           </div>

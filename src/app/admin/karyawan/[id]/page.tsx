@@ -8,6 +8,7 @@ import { Employee } from "@/lib/types";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
+import { teksTanggal } from "@/lib/tanggalTampil";
 import SlipModal from "@/components/payroll/SlipModal";
 import { formatRupiah, gajiPokokMaster, keSlipTampil, namaBerkasSlip } from "@/lib/payroll/hitung";
 import { unduhSlipPdf } from "@/lib/payroll/slipPdf";
@@ -19,6 +20,21 @@ const jamPendekSlip = (iso?: string | null) => {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 };
 
+// "2 thn 3 bln" dari tanggal bergabung (ISO); kosong bila tanggal tidak valid.
+function masaKerjaDari(iso?: string | null): string {
+  if (!iso) return "";
+  const mulai = new Date(String(iso).slice(0, 10) + "T00:00:00");
+  if (isNaN(mulai.getTime())) return "";
+  const kini = new Date();
+  let th = kini.getFullYear() - mulai.getFullYear();
+  let bl = kini.getMonth() - mulai.getMonth();
+  if (kini.getDate() < mulai.getDate()) bl--;
+  if (bl < 0) { th--; bl += 12; }
+  if (th < 0) return "";
+  if (th === 0 && bl === 0) return "Kurang dari 1 bulan";
+  return `${th > 0 ? `${th} thn` : ""}${th > 0 && bl > 0 ? " " : ""}${bl > 0 ? `${bl} bln` : ""}`;
+}
+
 export default function DetailKaryawanPage() {
   const toast = useToast();
   const params = useParams();
@@ -26,7 +42,6 @@ export default function DetailKaryawanPage() {
   const idKaryawan = params.id as string;
   
   const [employee, setEmployee] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<"Personal" | "Kepegawaian">("Personal");
   const [activeSidebar, setActiveSidebar] = useState("Personal");
 
   const [isEditRekeningOpen, setIsEditRekeningOpen] = useState(false);
@@ -162,26 +177,32 @@ export default function DetailKaryawanPage() {
     );
   }
 
-  const InfoRow = ({ label, value, isMono = false }: { label: string, value: string | number, isMono?: boolean }) => (
-    <div className="flex flex-col gap-1 border-b border-white/5 pb-3">
-      <span className="text-xs font-semibold text-gray-500">{label}</span>
-      <span className={`text-sm font-bold text-white ${isMono ? 'font-mono tracking-wide' : ''}`}>{value || "-"}</span>
-    </div>
-  );
+  const InfoRow = ({ label, value, isMono = false }: { label: string, value: string | number, isMono?: boolean }) => {
+    const kosong = value === undefined || value === null || value === "" || value === "-";
+    return (
+      <div className="flex flex-col gap-1 border-b border-white/5 pb-3">
+        <span className="text-xs font-semibold text-gray-500">{label}</span>
+        {kosong
+          ? <span className="text-sm italic text-gray-600">Belum diisi</span>
+          : <span className={`text-sm font-bold text-white ${isMono ? 'font-mono tracking-wide' : ''}`}>{value}</span>}
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-[1400px] w-full flex flex-col gap-6 pb-10 font-sans">
       
       <div className="flex justify-between items-center p-4 shadow-lg relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
         <div className="flex items-center gap-4">
-          <button onClick={() => router.push('/admin/karyawan')} className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors">
+          <button onClick={() => router.push('/admin/karyawan')} aria-label="Kembali ke daftar karyawan" title="Kembali" className="sentuh p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
           </button>
           <h1 className="text-xl md:text-2xl font-bold text-white">{employee.nama}</h1>
         </div>
-        <button className="border border-white/10 hover:bg-white/5 text-gray-300 px-4 py-2 rounded-lg text-xs md:text-sm transition-colors flex items-center gap-2 font-semibold">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-          Ekspor Detail
+        {/* Tombol "Ekspor Detail" lama tidak berfungsi — diganti tautan ubah data (membuka form edit di halaman Karyawan) */}
+        <button onClick={() => router.push(`/admin/karyawan?edit=${employee.idKaryawan}`)} className="border border-white/10 hover:bg-white/5 text-gray-300 px-4 py-2 rounded-lg text-xs md:text-sm transition-colors flex items-center gap-2 font-semibold">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.89.112l-2.848.316.316-2.848a4.5 4.5 0 011.112-1.89l12.48-12.48zM16.862 4.487L19.5 7.125" /></svg>
+          Ubah data
         </button>
       </div>
 
@@ -195,19 +216,20 @@ export default function DetailKaryawanPage() {
             </div>
             <h2 className="text-lg font-bold text-white relative z-10">{employee.nama}</h2>
             <p className="text-xs text-gray-400 relative z-10">{employee.jabatan}</p>
-            <span className={`mt-3 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider relative z-10 ${employee.statusKaryawan === 'PKWT' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
-              {employee.statusKaryawan}
+            <span className={`mt-3 px-3 py-1 rounded-full text-[11px] font-bold tracking-wider relative z-10 ${/PKWT|Kontrak|Internship|Probation/i.test(String(employee.statusKaryawan || employee.status || "")) ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
+              {employee.statusKaryawan || employee.status || "Status belum diisi"}
             </span>
           </div>
 
           <div className="p-4 flex flex-col gap-1 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
-            {["Personal", "Kehadiran", "Keuangan", "Karir", "Payroll", "Dokumen"].map((menu) => (
+            {["Personal", "Kepegawaian", "Kehadiran", "Keuangan", "Karir", "Payroll", "Dokumen"].map((menu) => (
               <button 
                 key={menu} 
                 onClick={() => bukaSidebar(menu)}
-                className={`w-full text-left px-4 py-3 rounded-xl text-sm font-semibold transition-colors flex items-center gap-3 ${activeSidebar === menu ? "bg-primer-terang/10 text-primer-terang border border-primer-terang/20" : "text-gray-400 hover:bg-white/5 hover:text-white border border-transparent"}`}
+                className={`w-full text-left px-4 py-3 rounded-xl text-sm font-semibold transition-colors flex items-center gap-3 ${activeSidebar === menu ? "bg-primer-terang/10 text-tint border border-primer-terang/20" : "text-gray-400 hover:bg-white/5 hover:text-white border border-transparent"}`}
               >
                 {menu === "Personal" && <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>}
+                {menu === "Kepegawaian" && <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z" /></svg>}
                 {menu === "Kehadiran" && <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
                 {menu === "Keuangan" && <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
                 {menu === "Karir" && <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg>}
@@ -223,51 +245,45 @@ export default function DetailKaryawanPage() {
           
           {activeSidebar === "Personal" && (
             <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-              <div className="flex gap-2 border-b border-white/5 pb-2">
-                <button onClick={() => setActiveTab("Personal")} className={`px-6 py-2 rounded-t-lg font-bold text-sm transition-colors border-b-2 ${activeTab === "Personal" ? "border-primer-terang text-primer-terang" : "border-transparent text-gray-500 hover:text-white"}`}>Personal</button>
-                <button onClick={() => setActiveTab("Kepegawaian")} className={`px-6 py-2 rounded-t-lg font-bold text-sm transition-colors border-b-2 ${activeTab === "Kepegawaian" ? "border-primer-terang text-primer-terang" : "border-transparent text-gray-500 hover:text-white"}`}>Kepegawaian</button>
+              <div className="p-6 md:p-8 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
+                <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4">Data Pribadi</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                  <InfoRow label="ID Karyawan" value={employee.idKaryawan} isMono />
+                  <InfoRow label="Jenis Kelamin" value={employee.jenisKelamin} />
+                  <InfoRow label="Kewarganegaraan" value={employee.kewarganegaraan} />
+                  <InfoRow label="NIK (KTP)" value={employee.nikKtp} isMono />
+                  <InfoRow label="Tanggal Lahir" value={employee.tanggalLahir ? teksTanggal(employee.tanggalLahir, { hari: false }) : ""} />
+                  <InfoRow label="Status Perkawinan" value={employee.statusPerkawinan} />
+                  <InfoRow label="Agama" value={employee.agama} />
+                  <InfoRow label="Golongan Darah" value={employee.golonganDarah} />
+                </div>
               </div>
+              <div className="p-6 md:p-8 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
+                <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4">Data Kontak</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                  <InfoRow label="Nomor Ponsel (WhatsApp)" value={employee.noPonsel} isMono />
+                  <InfoRow label="Email" value={employee.email} />
+                  <div className="md:col-span-2"><InfoRow label="Alamat Domisili" value={employee.alamatDomisili} /></div>
+                  <div className="md:col-span-2"><InfoRow label="Kontak Darurat" value={employee.kontakDarurat} /></div>
+                </div>
+              </div>
+            </div>
+          )}
 
-              {activeTab === "Personal" ? (
-                <div className="flex flex-col gap-6 animate-in fade-in duration-300">
-                  <div className="p-6 md:p-8 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
-                    <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4">Data Pribadi</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                      <InfoRow label="ID Karyawan" value={employee.idKaryawan} isMono />
-                      <InfoRow label="Jenis Kelamin" value="Tidak Diketahui" />
-                      <InfoRow label="Status Warga Negara" value="WNI (Indonesia)" />
-                      <InfoRow label="Data Identitas (NIK KTP)" value={employee.nikKtp} isMono />
-                      <InfoRow label="Tanggal Lahir" value={employee.tanggalLahir} />
-                      <InfoRow label="Status Perkawinan" value={employee.statusPerkawinan} />
-                      <InfoRow label="Agama" value={employee.agama} />
-                      <InfoRow label="Golongan Darah" value={employee.golonganDarah} />
-                    </div>
-                  </div>
-                  <div className="p-6 md:p-8 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
-                    <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4">Data Kontak</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                      <InfoRow label="Nomor Ponsel (WhatsApp)" value={employee.noPonsel || "-"} isMono />
-                      <InfoRow label="Email Pribadi" value={employee.email} />
-                      <div className="md:col-span-2"><InfoRow label="Alamat Domisili Lengkap" value={employee.alamatDomisili} /></div>
-                      <div className="md:col-span-2"><InfoRow label="Kontak Keadaan Mendesak" value={employee.kontakDarurat} /></div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-6 md:p-8 animate-in fade-in duration-300 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
-                  <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4">Informasi Kepegawaian</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                    <InfoRow label="Tanggal Bergabung" value={employee.tanggalBergabung} />
-                    <InfoRow label="Masa Kerja" value={employee.masaKerja} />
-                    <InfoRow label="Organisasi / Divisi" value={employee.organisasi} />
-                    <InfoRow label="Jabatan" value={employee.jabatan} />
-                    <InfoRow label="Lokasi Kantor" value={employee.lokasiKantor} />
-                    <InfoRow label="Jadwal Kerja" value={employee.jadwal || "Jadwal Reguler"} />
-                    <InfoRow label="Pangkat / Golongan" value={employee.pangkat || "-"} />
-                    <InfoRow label="Hak Akses Sistem" value={employee.peran} />
-                  </div>
-                </div>
-              )}
+          {activeSidebar === "Kepegawaian" && (
+            <div className="p-6 md:p-8 animate-in fade-in duration-300 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
+              <h3 className="text-lg font-bold text-white mb-6 border-b border-white/5 pb-4">Informasi Kepegawaian</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <InfoRow label="Tanggal Bergabung" value={employee.tanggalBergabung ? teksTanggal(employee.tanggalBergabung) : ""} />
+                <InfoRow label="Masa Kerja" value={employee.masaKerja || masaKerjaDari(employee.tanggalBergabung)} />
+                <InfoRow label="Organisasi / Divisi" value={employee.organisasi} />
+                <InfoRow label="Jabatan" value={employee.jabatan} />
+                <InfoRow label="Status Karyawan" value={employee.status} />
+                <InfoRow label="Lokasi Kantor" value={employee.lokasiKantor} />
+                <InfoRow label="Jadwal Kerja" value={employee.jadwal || (employee.jamMasuk && employee.jamKeluar ? `${employee.jamMasuk} – ${employee.jamKeluar}` : "")} />
+                <InfoRow label="Pangkat / Golongan" value={employee.pangkat} />
+                <InfoRow label="Hak Akses Sistem" value={employee.peran} />
+              </div>
             </div>
           )}
 
@@ -275,15 +291,15 @@ export default function DetailKaryawanPage() {
             <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div className="p-5 shadow-lg border-l-4 border-l-green-500 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
-                  <p className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest">Total Hadir</p>
+                  <p className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-wider">Total Hadir</p>
                   <p className="text-2xl font-black text-white">22 <span className="text-sm font-normal text-gray-400">Hari</span></p>
                 </div>
                 <div className="p-5 shadow-lg border-l-4 border-l-yellow-500 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
-                  <p className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest">Terlambat</p>
+                  <p className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-wider">Terlambat</p>
                   <p className="text-2xl font-black text-white">1 <span className="text-sm font-normal text-gray-400">Hari</span></p>
                 </div>
                 <div className="p-5 shadow-lg border-l-4 border-l-purple-500 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
-                  <p className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest">Cuti Terpakai</p>
+                  <p className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-wider">Cuti Terpakai</p>
                   <p className="text-2xl font-black text-white">{12 - (employee.sisaCuti !== undefined ? employee.sisaCuti : 12)} <span className="text-sm font-normal text-gray-400">Hari</span></p>
                 </div>
                 <div className="bg-primer-terang/10 border border-primer-terang/30 rounded-2xl p-5 shadow-lg relative overflow-hidden">
@@ -313,13 +329,13 @@ export default function DetailKaryawanPage() {
                         <td className="px-4 py-4 font-medium text-white">Hari ini, 23 Juni 2026</td>
                         <td className="px-4 py-4 font-mono text-green-400 text-center">08:45 WIB</td>
                         <td className="px-4 py-4 font-mono text-gray-500 text-center">-</td>
-                        <td className="px-4 py-4"><span className="bg-green-500/10 text-green-400 text-[10px] font-bold tracking-wider px-3 py-1.5 rounded-full border border-green-500/20 block w-max">On Duty</span></td>
+                        <td className="px-4 py-4"><span className="bg-green-500/10 text-green-400 text-[11px] font-bold tracking-wider px-3 py-1.5 rounded-full border border-green-500/20 block w-max">On Duty</span></td>
                       </tr>
                       <tr className="hover:bg-white/5 transition-colors">
                         <td className="px-4 py-4 font-medium text-white">Kemarin, 22 Juni 2026</td>
                         <td className="px-4 py-4 font-mono text-yellow-400 text-center">09:15 WIB</td>
                         <td className="px-4 py-4 font-mono text-white text-center">18:05 WIB</td>
-                        <td className="px-4 py-4"><span className="bg-yellow-500/10 text-yellow-400 text-[10px] font-bold tracking-wider px-3 py-1.5 rounded-full border border-yellow-500/20 block w-max">Terlambat</span></td>
+                        <td className="px-4 py-4"><span className="bg-yellow-500/10 text-yellow-400 text-[11px] font-bold tracking-wider px-3 py-1.5 rounded-full border border-yellow-500/20 block w-max">Terlambat</span></td>
                       </tr>
                     </tbody>
                   </table>
@@ -358,15 +374,15 @@ export default function DetailKaryawanPage() {
                   <div className="absolute left-[-5px] top-1 w-2.5 h-2.5 bg-primer-terang rounded-full ring-4 ring-kartu"></div>
                   <h4 className="text-white font-bold text-sm">Posisi Saat Ini</h4>
                   <p className="text-lg text-tint font-bold mt-1">{employee.jabatan}</p>
-                  <p className="text-xs text-gray-400 mt-1">{employee.tanggalBergabung} - Sekarang</p>
-                  <span className={`inline-block mt-2 px-2 py-1 rounded text-[10px] font-bold tracking-wider ${employee.statusKaryawan === 'PKWT' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
-                    {employee.statusKaryawan}
+                  <p className="text-xs text-gray-400 mt-1">{teksTanggal(employee.tanggalBergabung)} – Sekarang</p>
+                  <span className={`inline-block mt-2 px-2 py-1 rounded text-[11px] font-bold tracking-wider ${/PKWT|Kontrak|Internship|Probation/i.test(String(employee.statusKaryawan || employee.status || "")) ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
+                    {employee.statusKaryawan || employee.status || "Status belum diisi"}
                   </span>
                 </div>
                 <div className="relative pl-6">
                   <div className="absolute left-[-5px] top-1 w-2.5 h-2.5 bg-gray-600 rounded-full ring-4 ring-kartu"></div>
                   <h4 className="text-gray-400 font-bold text-sm">Bergabung dengan Invisual Studio</h4>
-                  <p className="text-xs text-gray-500 mt-1">Sistem mencatat tanggal orientasi pertama karyawan pada {employee.tanggalBergabung}.</p>
+                  <p className="text-xs text-gray-500 mt-1">Sistem mencatat tanggal orientasi pertama karyawan pada {teksTanggal(employee.tanggalBergabung)}.</p>
                 </div>
               </div>
             </div>
@@ -407,7 +423,7 @@ export default function DetailKaryawanPage() {
                           <div className="min-w-0">
                             <p className="font-bold text-white text-sm flex items-center gap-2">
                               Slip Gaji — {r.periode.label}
-                              {draf && <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">Draf</span>}
+                              {draf && <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30">Draf</span>}
                             </p>
                             <p className="text-xs text-gray-500 mt-0.5">
                               THP <span className="text-green-400 font-bold">{formatRupiah(t.gajiBersih)}</span>
@@ -457,8 +473,8 @@ export default function DetailKaryawanPage() {
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-white truncate">{doc.judul}</p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] text-gray-500 font-mono truncate max-w-[100px]">{doc.namaFile}</span>
-                            <span className="text-[10px] text-gray-600 bg-white/5 px-1.5 rounded">{doc.ukuran}</span>
+                            <span className="text-[11px] text-gray-500 font-mono truncate max-w-[100px]">{doc.namaFile}</span>
+                            <span className="text-[11px] text-gray-600 bg-white/5 px-1.5 rounded">{doc.ukuran}</span>
                           </div>
                         </div>
                       </div>
@@ -541,11 +557,11 @@ export default function DetailKaryawanPage() {
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mx-auto text-gray-500 mb-2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
                     </svg>
-                    <span className="text-sm font-bold text-primer-terang">
+                    <span className="text-sm font-bold text-tint">
                       {docFileName ? docFileName : "Klik atau seret berkas ke sini"}
                     </span>
                     {!docFileName && (
-                      <p className="text-[10px] text-gray-500 mt-1">Maksimal 5MB. Format didukung: .pdf, .jpg, .png</p>
+                      <p className="text-[11px] text-gray-500 mt-1">Maksimal 5MB. Format didukung: .pdf, .jpg, .png</p>
                     )}
                   </div>
                 </div>

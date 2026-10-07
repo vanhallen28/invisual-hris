@@ -12,20 +12,128 @@
 /* ═══════════════════════════════════════════════════════
    PALET STUDIO NOIR — satu sumber kebenaran warna.
    Dipakai sebagai utilitas biasa: bg-kartu, text-tint,
-   border-garis, hover:bg-kartu-hover, dst.
+   text-teks-redup, hover:bg-kartu-hover, dst.
 
-   ADITIF: hex lama (bg-[#141414]) tetap jalan, jadi
-   migrasi bisa bertahap tanpa merusak halaman mana pun.
+   Dua lapis:
+   1. NILAI MENTAH per tema (:root = gelap, html[data-tema="terang"] = terang).
+   2. TOKEN TAILWIND (@theme) yang MERUJUK nilai mentah lewat var(). Karena
+      merujuk variabel, utilitas beropasitas (bg-white/[0.03], border-white/10,
+      bg-black/80) dikompilasi menjadi color-mix(...) dan ikut berganti tema
+      saat runtime — tanpa menyentuh satu komponen pun.
 
-   Mau ubah rupa seluruh aplikasi? Ganti nilainya DI SINI
-   saja — semua halaman ikut otomatis.
+   Catatan: kode lama memakai `text-white` sebagai "teks utama" dan
+   `bg-black/80` sebagai "lapisan gelap modal". Karena itu --putih/--hitam
+   dipetakan ulang di tema terang (teks jadi gelap, lapisan jadi putih).
+   Tombol berwarna (bg-primer, bg-red-600, …) mendapat --color-white putih
+   kembali lewat aturan khusus di bawah supaya tulisannya tetap putih.
    ═══════════════════════════════════════════════════════ */
-@theme {
+:root {
+  color-scheme: dark;
   /* Permukaan (gelap → terang) */
-  --color-latar:       #0a0a0a;  /* latar halaman */
-  --color-input:       #111111;  /* isian form */
-  --color-kartu:       #141414;  /* panel & kartu */
-  --color-kartu-hover: #1a1a1a;  /* kartu saat disorot */
+  --permukaan-latar:       #0a0a0a;  /* latar halaman */
+  --permukaan-input:       #111111;  /* isian form */
+  --permukaan-kartu:       #141414;  /* panel & kartu */
+  --permukaan-kartu-hover: #1a1a1a;  /* kartu saat disorot */
+  /* "Putih" = teks utama & garis/tint (text-white, border-white/10, bg-white/[0.03]);
+     "Hitam" = lapisan gelap (bg-black/80). */
+  --putih: #ffffff;
+  --hitam: #000000;
+  /* Teks aksen biru */
+  --tint:       #b3c5ff;  /* tautan & label menonjol */
+  --tint-redup: #8ba7ff;  /* label sekunder */
+  /* Skala abu-abu teks. 500/600 dinaikkan dari bawaan Tailwind agar lolos
+     kontras WCAG AA di atas permukaan gelap (≈ 5,5:1 dan ≈ 4,5:1 di #141414). */
+  --abu-100: oklch(96.7% 0.003 264.542);
+  --abu-200: oklch(92.8% 0.006 264.531);
+  --abu-300: oklch(87.2% 0.01 258.338);
+  --abu-400: oklch(70.7% 0.022 261.325);
+  --abu-500: #868ea2;
+  --abu-600: #767f94;
+  --abu-700: oklch(37.3% 0.034 259.733);
+  --abu-800: oklch(27.8% 0.033 256.848);
+  --abu-900: oklch(21% 0.034 264.665);
+  /* Warna status (teks) — padanan terang didefinisikan di tema terang */
+  --sukses:     #4ade80;  /* green-400 */
+  --peringatan: #fbbf24;  /* amber-400 */
+  --bahaya:     #f87171;  /* red-400 */
+  --info:       #8ba7ff;
+}
+
+/* Paksa gelap untuk subtree tertentu (layar masuk: animasi logo putih) apa pun temanya.
+   Nilainya sama dengan :root di atas — bila :root diubah, ubah di sini juga. */
+.tema-gelap-paksa {
+  color-scheme: dark;
+  --permukaan-latar: #0a0a0a; --permukaan-input: #111111; --permukaan-kartu: #141414; --permukaan-kartu-hover: #1a1a1a;
+  --putih: #ffffff; --hitam: #000000; --tint: #b3c5ff; --tint-redup: #8ba7ff;
+  --abu-100: oklch(96.7% 0.003 264.542); --abu-200: oklch(92.8% 0.006 264.531); --abu-300: oklch(87.2% 0.01 258.338); --abu-400: oklch(70.7% 0.022 261.325);
+  --abu-500: #868ea2; --abu-600: #767f94; --abu-700: oklch(37.3% 0.034 259.733); --abu-800: oklch(27.8% 0.033 256.848); --abu-900: oklch(21% 0.034 264.665);
+  --sukses: #4ade80; --peringatan: #fbbf24; --bahaya: #f87171; --info: #8ba7ff;
+}
+
+/* ── TEMA TERANG (beta) — dipilih dari Pengaturan/Profil, disimpan di localStorage ── */
+html[data-tema="terang"] {
+  color-scheme: light;
+  --permukaan-latar:       #f3f5fa;
+  --permukaan-input:       #ffffff;
+  --permukaan-kartu:       #ffffff;
+  --permukaan-kartu-hover: #eef1f7;
+  --putih: #141a2b;   /* teks utama gelap; border-white/10 → garis gelap 10 % */
+  --hitam: #ffffff;   /* lapisan modal jadi putih transparan */
+  --tint:       #1a46c4;
+  --tint-redup: #2f58c9;
+  --abu-100: #1b2130;
+  --abu-200: #252c3d;
+  --abu-300: #343c50;
+  --abu-400: #4b546a;
+  --abu-500: #5f6880;
+  --abu-600: #717b93;
+  --abu-700: #9aa2b6;
+  --abu-800: #d6dbe6;
+  --abu-900: #e9ecf3;
+  --sukses:     #15803d;  /* green-700 */
+  --peringatan: #b45309;  /* amber-700 */
+  --bahaya:     #b91c1c;  /* red-700 */
+  --info:       #1d4ed8;
+  /* Warna status Tailwind yang dipakai sebagai TEKS (green-400, amber-300, …):
+     dipetakan ke tingkat lebih gelap agar terbaca di atas putih. */
+  --color-green-300: oklch(52.7% 0.154 150.069);  --color-green-400: oklch(52.7% 0.154 150.069);  --color-green-200: oklch(44.8% 0.119 151.328);
+  --color-emerald-300: oklch(50.8% 0.118 165.612); --color-emerald-400: oklch(50.8% 0.118 165.612);
+  --color-amber-200: oklch(47.3% 0.137 46.201);   --color-amber-300: oklch(47.3% 0.137 46.201);   --color-amber-400: oklch(55.5% 0.163 48.998);
+  --color-yellow-300: oklch(47.6% 0.114 61.907);  --color-yellow-400: oklch(47.6% 0.114 61.907);  --color-yellow-500: oklch(55.4% 0.135 66.442);
+  --color-red-300: oklch(50.5% 0.213 27.518);     --color-red-400: oklch(50.5% 0.213 27.518);     --color-red-500: oklch(57.7% 0.245 27.325);
+  --color-blue-300: oklch(48.8% 0.243 264.376);   --color-blue-400: oklch(48.8% 0.243 264.376);
+  --color-purple-300: oklch(49.6% 0.265 301.924); --color-purple-400: oklch(49.6% 0.265 301.924);
+  --color-cyan-300: oklch(52% 0.105 223.128);     --color-cyan-400: oklch(52% 0.105 223.128);
+  --color-orange-300: oklch(55.3% 0.195 38.402);  --color-orange-400: oklch(55.3% 0.195 38.402);
+  --color-primer-terang: #1f4fc4;
+  /* Tingkat 100–200 yang dipakai sebagai teks di atas tint (text-amber-100/75, text-green-200) → tingkat 800. */
+  --color-amber-100: oklch(47.3% 0.137 46.201);  --color-amber-200: oklch(47.3% 0.137 46.201);
+  --color-green-100: oklch(44.8% 0.119 151.328); --color-green-200: oklch(44.8% 0.119 151.328);
+  --color-red-100: oklch(44.4% 0.177 26.899);    --color-red-200: oklch(44.4% 0.177 26.899);
+  --color-blue-100: oklch(42.4% 0.199 265.638);  --color-blue-200: oklch(42.4% 0.199 265.638);
+  --color-yellow-100: oklch(47.6% 0.114 61.907); --color-yellow-200: oklch(47.6% 0.114 61.907);
+  --color-emerald-100: oklch(43.2% 0.095 166.913); --color-emerald-200: oklch(43.2% 0.095 166.913);
+  --color-purple-100: oklch(43.8% 0.218 303.724); --color-purple-200: oklch(43.8% 0.218 303.724);
+}
+/* Tombol/lencana berlatar warna pekat: tulisannya tetap putih di tema terang.
+   Memakai [class~=token] (kelas persis), bukan [class*=…], agar tidak menangkap
+   kelas lain seperti selection:bg-primer pada pembungkus halaman. */
+html[data-tema="terang"] :is([class~="bg-primer"], [class~="hover:bg-primer"], [class~="focus:bg-primer"], [class~="bg-primer-terang"], [class~="hover:bg-primer-terang"], [class~="bg-magenta"], [class~="hover:bg-magenta"], [class~="bg-red-500"], [class~="hover:bg-red-500"], [class~="bg-red-600"], [class~="hover:bg-red-600"], [class~="bg-green-500"], [class~="hover:bg-green-500"], [class~="bg-green-600"], [class~="hover:bg-green-600"], [class~="bg-green-600/90"], [class~="bg-emerald-500"], [class~="hover:bg-emerald-500"], [class~="bg-emerald-600"], [class~="bg-blue-500"], [class~="hover:bg-blue-500"], [class~="active:bg-blue-500"], [class~="bg-blue-600"], [class~="hover:bg-blue-600"], [class~="bg-purple-500"], [class~="hover:bg-purple-500"], [class~="bg-purple-600"], [class~="bg-amber-500"], [class~="bg-amber-400"], [class~="hover:bg-amber-300"], [class~="bg-yellow-500"], [class~="bg-yellow-400"], [class~="hover:bg-yellow-400"], [class~="bg-orange-400"], [class~="bg-cyan-500"]) {
+  --color-white: #ffffff;
+}
+/* Tombol kuning (bg-amber-400 text-black): di tema terang amber-400 dipetakan lebih gelap,
+   jadi tulisannya dibiarkan ikut --hitam (putih) agar kontras. */
+/* Logo putih (brightness-0 invert) menjadi logo gelap. */
+html[data-tema="terang"] .invert { --tw-invert: invert(0); }
+
+@theme {
+  /* Permukaan */
+  --color-latar:       var(--permukaan-latar);
+  --color-input:       var(--permukaan-input);
+  --color-kartu:       var(--permukaan-kartu);
+  --color-kartu-hover: var(--permukaan-kartu-hover);
+  --color-white: var(--putih);
+  --color-black: var(--hitam);
 
   /* Aksen merek */
   --color-primer:        #124bce;  /* tombol utama */
@@ -33,14 +141,84 @@
   --color-magenta:       #de236e;  /* aksen sekunder */
 
   /* Teks aksen biru */
-  --color-tint:       #b3c5ff;  /* tautan & label menonjol */
-  --color-tint-redup: #8ba7ff;  /* label sekunder */
+  --color-tint:       var(--tint);
+  --color-tint-redup: var(--tint-redup);
+
+  /* Abu-abu teks (lihat catatan kontras di :root) */
+  --color-gray-100: var(--abu-100);
+  --color-gray-200: var(--abu-200);
+  --color-gray-300: var(--abu-300);
+  --color-gray-400: var(--abu-400);
+  --color-gray-500: var(--abu-500);
+  --color-gray-600: var(--abu-600);
+  --color-gray-700: var(--abu-700);
+  --color-gray-800: var(--abu-800);
+  --color-gray-900: var(--abu-900);
+
+  /* ── TOKEN SEMANTIK (dipakai komponen baru; komponen lama tetap jalan) ──
+     text-teks · text-teks-redup · text-teks-samar · border-garis · border-garis-kuat
+     text-sukses · text-peringatan · text-bahaya · text-info (+ bg-sukses/10 dsb. untuk tint) */
+  --color-teks:        var(--putih);
+  --color-teks-redup:  var(--abu-400);
+  --color-teks-samar:  var(--abu-500);
+  --color-garis:       color-mix(in oklab, var(--putih) 10%, transparent);
+  --color-garis-kuat:  color-mix(in oklab, var(--putih) 20%, transparent);
+  --color-sukses:      var(--sukses);
+  --color-peringatan:  var(--peringatan);
+  --color-bahaya:      var(--bahaya);
+  --color-info:        var(--info);
 }
 
-/* Pengaturan Dasar Body (Dark Mode) */
+/* Permukaan terang permanen (slip gaji, pratinjau berkas putih) apa pun temanya:
+   teks gelap & abu-abu bawaan Tailwind supaya kontras di atas putih. */
+.permukaan-terang {
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-amber-100: oklch(96.2% 0.059 95.617);
+  --color-amber-800: oklch(47.3% 0.137 46.201);
+  --color-gray-400: oklch(70.7% 0.022 261.325);
+  --color-gray-500: oklch(55.1% 0.027 264.364);
+  --color-gray-600: oklch(44.6% 0.03 256.802);
+  --color-gray-700: oklch(37.3% 0.034 259.733);
+  --color-gray-800: oklch(27.8% 0.033 256.848);
+}
+
+/* ═══════════════════════════════════════════════════════
+   SKALA TIPOGRAFI — kelas pendek untuk komponen baru/yang disentuh.
+   t-label (11 px, kapital, renggang) · t-meta (12 px) · t-body (14 px)
+   t-title (16 px tebal) · t-display (font identitas). Tidak menimpa kelas lama.
+   ═══════════════════════════════════════════════════════ */
+.t-label   { font-size: 11px; line-height: 1.2; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+.t-meta    { font-size: 12px; line-height: 1.4; }
+.t-body    { font-size: 14px; line-height: 1.55; }
+.t-title   { font-size: 16px; line-height: 1.3; font-weight: 700; }
+.t-display { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
+.t-angka   { font-variant-numeric: tabular-nums; }
+
+/* Fokus keyboard yang terlihat di seluruh aplikasi (WCAG 2.4.7). Hanya
+   muncul saat navigasi keyboard (:focus-visible), tidak saat klik mouse. */
+:where(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--color-tint);
+  outline-offset: 2px;
+}
+:where(input, select, textarea):focus-visible {
+  outline-offset: 0;
+}
+
+/* Target sentuh minimal 32×32 px untuk tombol ikon kecil (WCAG 2.5.8 meminta
+   24 px; 32 px lebih nyaman di ponsel). Ukuran ikonnya sendiri tidak berubah. */
+.sentuh {
+  min-width: 2rem;
+  min-height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Pengaturan dasar body — mengikuti tema */
 body {
-  background-color: #0a0a0a;
-  color: #ffffff;
+  background-color: var(--permukaan-latar);
+  color: var(--putih);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -96,7 +274,7 @@ body {
 }
 
 .tabel-baris-rapi tbody td {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid color-mix(in oklab, var(--putih) 5%, transparent);
   transition: background-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -105,7 +283,7 @@ body {
 }
 
 .tabel-baris-rapi tbody tr:hover td {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: color-mix(in oklab, var(--putih) 5%, transparent);
 }
 
 .tabel-baris-rapi tbody tr:hover td:first-child {
@@ -120,9 +298,9 @@ body {
 
 /* Glassmorphism utility class (Untuk Kartu/Panel) */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in oklab, var(--putih) 3%, transparent);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid color-mix(in oklab, var(--putih) 10%, transparent);
   border-radius: 0.75rem;
 }
 
@@ -138,7 +316,7 @@ body {
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+  scrollbar-color: color-mix(in oklab, var(--putih) 14%, transparent) transparent;
 }
 
 /* Chrome, Safari, Edge */
@@ -150,11 +328,11 @@ body {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.14);
+  background-color: color-mix(in oklab, var(--putih) 14%, transparent);
   border-radius: 9999px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.26);
+  background-color: color-mix(in oklab, var(--putih) 26%, transparent);
 }
 *::-webkit-scrollbar-corner {
   background: transparent;
@@ -170,11 +348,11 @@ body {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.14);
+  background-color: color-mix(in oklab, var(--putih) 14%, transparent);
   border-radius: 9999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.26);
+  background-color: color-mix(in oklab, var(--putih) 26%, transparent);
 }
 
 /* Efek kilauan tombol Clock In */

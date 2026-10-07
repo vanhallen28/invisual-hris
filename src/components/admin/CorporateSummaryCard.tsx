@@ -74,7 +74,7 @@ export function CorporateSummaryCard() {
             <div className="mt-1.5 font-mono text-2xl font-bold text-white">
               {loading ? "–" : st.value}
             </div>
-            <div className="text-[10px] text-gray-500">{st.label}</div>
+            <div className="text-[11px] text-gray-500">{st.label}</div>
           </Link>
         ))}
       </div>

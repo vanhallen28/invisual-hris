@@ -14,7 +14,7 @@ import { namaPanggilan } from "@/lib/nama";
 import { daftarOnline, labelSejak } from "@/lib/online";
 import { pakaiKanal, berlangganan, potret, type PotretKanal } from "@/lib/onlineKanal";
 
-const KELAS_AVATAR = "w-7 h-7 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-[10px]";
+const KELAS_AVATAR = "w-7 h-7 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-[11px]";
 const POTRET_SERVER: PotretKanal = { status: "memuat", versi: 0, generasiJoin: 0, presence: {} };
 const potretServer = () => POTRET_SERVER;
 

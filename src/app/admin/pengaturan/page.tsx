@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import SakelarTema from "@/components/SakelarTema";
 import { supabase } from "@/lib/supabase";
 import { ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
 import LoadingLogo from "@/components/LoadingLogo";
@@ -285,9 +286,12 @@ export default function PengaturanAkunPage() {
   return (
     <div className="p-5 md:p-8 max-w-2xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Pengaturan Akun</h1>
+        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Pengaturan</h1>
         <p className="text-sm text-gray-500 mt-1">Kelola akun admin dan kredensial login karyawan.</p>
       </div>
+
+      {/* Tema tampilan (gelap/terang) — tersimpan di perangkat */}
+      <SakelarTema className="mb-5" />
 
       {/* identitas */}
       <div className="p-5 mb-5 flex items-center gap-4 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
@@ -308,19 +312,19 @@ export default function PengaturanAkunPage() {
         </p>
         <div className="grid grid-cols-2 gap-2 mt-4">
           <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Jam Masuk</label>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Jam Masuk</label>
             <input type="time" value={jkMasuk} onChange={(e) => setJkMasuk(e.target.value)} className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer [color-scheme:dark]" />
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Jam Pulang</label>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Jam Pulang</label>
             <input type="time" value={jkPulang} onChange={(e) => setJkPulang(e.target.value)} className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer [color-scheme:dark]" />
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Durasi Kerja (jam)</label>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Durasi Kerja (jam)</label>
             <input type="number" min={1} max={24} step={0.5} value={jkDurasi} onChange={(e) => setJkDurasi(e.target.value)} className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer" />
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Toleransi Telat (menit)</label>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Toleransi Telat (menit)</label>
             <input type="number" min={0} max={240} step={1} value={jkToleransi} onChange={(e) => setJkToleransi(e.target.value)} className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer" />
           </div>
         </div>
@@ -360,15 +364,15 @@ export default function PengaturanAkunPage() {
         </div>
         <div className="grid grid-cols-2 gap-2 mt-4">
           <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Latitude Kantor</label>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Latitude Kantor</label>
             <input value={geoLat} onChange={(e) => setGeoLat(e.target.value)} onBlur={(e) => simpanGeo("kantor_lat", e.target.value.trim())} placeholder="-6.9xxxx" className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer" />
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Longitude Kantor</label>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Longitude Kantor</label>
             <input value={geoLng} onChange={(e) => setGeoLng(e.target.value)} onBlur={(e) => simpanGeo("kantor_lng", e.target.value.trim())} placeholder="107.6xxxx" className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer" />
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-gray-500 mb-1 uppercase">Radius (meter)</label>
+            <label className="block text-[11px] font-bold text-gray-500 mb-1 uppercase">Radius (meter)</label>
             <input type="number" min={20} value={geoRadius} onChange={(e) => setGeoRadius(e.target.value)} onBlur={(e) => simpanGeo("kantor_radius", e.target.value.trim() || "150")} className="w-full bg-input border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primer" />
           </div>
           <div className="flex items-end">
@@ -384,11 +388,11 @@ export default function PengaturanAkunPage() {
         <Section id="email" open={open} setOpen={setOpen} icon={ICONS.email} title="Ubah Email Login" subtitle="Ganti alamat email untuk masuk">
           <form onSubmit={submitEmail} className="flex flex-col gap-3">
             <div>
-              <label className="block text-[10px] font-black text-gray-500 mb-1.5 uppercase tracking-widest">Email Saat Ini</label>
+              <label className="block text-[11px] font-black text-gray-500 mb-1.5 uppercase tracking-wider">Email Saat Ini</label>
               <input value={user?.email || ""} disabled className={`${inputCls} opacity-60 cursor-not-allowed`} />
             </div>
             <div>
-              <label className="block text-[10px] font-black text-gray-500 mb-1.5 uppercase tracking-widest">Email Baru</label>
+              <label className="block text-[11px] font-black text-gray-500 mb-1.5 uppercase tracking-wider">Email Baru</label>
               <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="email.baru@invisual.studio" className={inputCls} />
             </div>
             <Msg data={emailMsg} />
@@ -397,20 +401,20 @@ export default function PengaturanAkunPage() {
         </Section>
 
         <Section id="pass" open={open} setOpen={setOpen} icon={ICONS.lock} title={hasPassword ? "Ubah Password" : "Buat Password"} subtitle={hasPassword ? "Perbarui password akun Anda" : "Buat password agar bisa login tanpa Google"}
-          badge={!hasPassword ? <span className="text-[8px] font-bold text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded">Belum ada</span> : null}>
+          badge={!hasPassword ? <span className="text-[10px] font-bold text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded">Belum ada</span> : null}>
           <form onSubmit={submitPass} className="flex flex-col gap-3">
             {hasPassword && (
               <div>
-                <label className="block text-[10px] font-black text-gray-500 mb-1.5 uppercase tracking-widest">Password Saat Ini</label>
+                <label className="block text-[11px] font-black text-gray-500 mb-1.5 uppercase tracking-wider">Password Saat Ini</label>
                 <input type={showPass ? "text" : "password"} value={curPass} onChange={(e) => setCurPass(e.target.value)} placeholder="Password lama" className={inputCls} />
               </div>
             )}
             <div>
-              <label className="block text-[10px] font-black text-gray-500 mb-1.5 uppercase tracking-widest">Password Baru</label>
+              <label className="block text-[11px] font-black text-gray-500 mb-1.5 uppercase tracking-wider">Password Baru</label>
               <input type={showPass ? "text" : "password"} value={pass} onChange={(e) => setPass(e.target.value)} placeholder="Minimal 8 karakter" className={inputCls} />
             </div>
             <div>
-              <label className="block text-[10px] font-black text-gray-500 mb-1.5 uppercase tracking-widest">Konfirmasi Password Baru</label>
+              <label className="block text-[11px] font-black text-gray-500 mb-1.5 uppercase tracking-wider">Konfirmasi Password Baru</label>
               <input type={showPass ? "text" : "password"} value={pass2} onChange={(e) => setPass2(e.target.value)} placeholder="Ulangi password baru" className={inputCls} />
             </div>
             <label className="flex items-center gap-2 text-[11px] text-gray-500 cursor-pointer select-none">
@@ -424,7 +428,7 @@ export default function PengaturanAkunPage() {
         <Section id="nama" open={open} setOpen={setOpen} icon={ICONS.user} title="Ubah Nama" subtitle="Nama tampilan Anda di chat & sistem">
           <form onSubmit={submitName} className="flex flex-col gap-3">
             <div>
-              <label className="block text-[10px] font-black text-gray-500 mb-1.5 uppercase tracking-widest">Nama Tampilan</label>
+              <label className="block text-[11px] font-black text-gray-500 mb-1.5 uppercase tracking-wider">Nama Tampilan</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nama Anda" className={inputCls} />
             </div>
             <Msg data={nameMsg} />
@@ -435,7 +439,7 @@ export default function PengaturanAkunPage() {
         {/* MANAJEMEN KARYAWAN */}
         <div className="flex items-center gap-3 mt-4 mb-1">
           <div className="flex-1 h-px bg-white/10" />
-          <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Manajemen Karyawan</span>
+          <span className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Manajemen Karyawan</span>
           <div className="flex-1 h-px bg-white/10" />
         </div>
 
@@ -446,7 +450,7 @@ export default function PengaturanAkunPage() {
         {/* SISTEM */}
         <div className="flex items-center gap-3 mt-4 mb-1">
           <div className="flex-1 h-px bg-white/10" />
-          <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Sistem</span>
+          <span className="text-[11px] font-black text-gray-600 uppercase tracking-wider">Sistem</span>
           <div className="flex-1 h-px bg-white/10" />
         </div>
 
@@ -455,7 +459,7 @@ export default function PengaturanAkunPage() {
         </Section>
       </div>
 
-      <p className="text-center text-[10px] text-gray-700 mt-6">Semua perubahan tersimpan terenkripsi & aman.</p>
+      <p className="text-center text-[11px] text-gray-700 mt-6">Semua perubahan tersimpan terenkripsi & aman.</p>
     </div>
   );
 }

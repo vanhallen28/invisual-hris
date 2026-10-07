@@ -172,7 +172,7 @@ export default function GlobalSearch() {
             placeholder="Cari tugas, brief, papan, atau karyawan…"
             className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-600"
           />
-          {sibuk && <span className="text-[10px] text-zinc-600 shrink-0">mencari…</span>}
+          {sibuk && <span className="text-[11px] text-zinc-600 shrink-0">mencari…</span>}
           <button onClick={() => setBuka(false)} className="p-1 text-zinc-600 hover:text-white shrink-0"><X size={14} /></button>
         </div>
 
@@ -190,7 +190,7 @@ export default function GlobalSearch() {
             return (
               <div key={`${h.jenis}-${h.id}`}>
                 {kepala && (
-                  <div className="px-4 pt-3 pb-1 text-[9px] font-bold uppercase tracking-widest text-zinc-600">{LABEL[h.jenis]}</div>
+                  <div className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-600">{LABEL[h.jenis]}</div>
                 )}
                 <button
                   onClick={() => pilih(h)} onMouseEnter={() => setSorot(i)}
@@ -199,7 +199,7 @@ export default function GlobalSearch() {
                   <Ikon size={14} className={`shrink-0 ${i === sorot ? "text-blue-300" : "text-zinc-600"}`} />
                   <div className="min-w-0 flex-1">
                     <p className={`text-[13px] truncate ${i === sorot ? "text-white font-semibold" : "text-zinc-300"}`}>{h.judul}</p>
-                    {h.keterangan && <p className="text-[10px] text-zinc-600 truncate">{h.keterangan}</p>}
+                    {h.keterangan && <p className="text-[11px] text-zinc-600 truncate">{h.keterangan}</p>}
                   </div>
                   {i === sorot && <CornerDownLeft size={12} className="text-zinc-600 shrink-0" />}
                 </button>
@@ -208,7 +208,7 @@ export default function GlobalSearch() {
           })}
         </div>
 
-        <div className="flex items-center gap-3 px-4 py-2 border-t border-zinc-800 text-[9px] text-zinc-600">
+        <div className="flex items-center gap-3 px-4 py-2 border-t border-zinc-800 text-[10px] text-zinc-600">
           <span>↑↓ pilih</span><span>Enter buka</span><span>Esc tutup</span>
         </div>
       </div>

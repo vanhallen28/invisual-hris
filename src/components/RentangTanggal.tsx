@@ -108,7 +108,7 @@ export default function RentangTanggal({ nilai, onChange, hariIni, disabled }: P
       <p className="text-center text-xs font-bold text-white mb-2">{BULAN_ID[m]} {y}</p>
       <div className="grid grid-cols-7 gap-y-1">
         {HARI_KOP.map((h, i) => (
-          <span key={h} className={`text-center text-[10px] font-bold ${i >= 5 ? "text-gray-600" : "text-gray-500"}`}>{h}</span>
+          <span key={h} className={`text-center text-[11px] font-bold ${i >= 5 ? "text-gray-600" : "text-gray-500"}`}>{h}</span>
         ))}
         {gridBulan(y, m).map(({ iso, diBulan }) => {
           if (!diBulan) return <span key={iso} className="h-8" />;
@@ -149,7 +149,7 @@ export default function RentangTanggal({ nilai, onChange, hariIni, disabled }: P
       >
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-tint shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
         <span className="whitespace-nowrap">{labelRentang(nilai)}</span>
-        <span className="text-[10px] font-semibold text-gray-500 whitespace-nowrap">{jumlahHari(nilai)} hari</span>
+        <span className="text-[11px] font-semibold text-gray-500 whitespace-nowrap">{jumlahHari(nilai)} hari</span>
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={`w-3.5 h-3.5 text-gray-500 transition-transform ${buka ? "rotate-180" : ""}`}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
       </button>
 
@@ -164,7 +164,7 @@ export default function RentangTanggal({ nilai, onChange, hariIni, disabled }: P
             <div className="flex flex-col md:flex-row">
               {/* PRESET */}
               <div className="md:w-48 shrink-0 border-b md:border-b-0 md:border-r border-white/10 p-3">
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 px-1">Cepat</p>
+                <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">Cepat</p>
                 <div className="flex md:flex-col gap-1.5 overflow-x-auto md:overflow-visible pb-1 md:pb-0">
                   {PRESET.map((p) => (
                     <button
@@ -178,7 +178,7 @@ export default function RentangTanggal({ nilai, onChange, hariIni, disabled }: P
                   ))}
                 </div>
                 <label className="block mt-3 px-1">
-                  <span className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5">Periode gaji (21–20)</span>
+                  <span className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Periode gaji (21–20)</span>
                   <select
                     value=""
                     onChange={(e) => { const p = daftarPeriode[Number(e.target.value)]; if (p) { onChange(p); setBuka(false); } }}
@@ -208,11 +208,11 @@ export default function RentangTanggal({ nilai, onChange, hariIni, disabled }: P
 
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <label className="block">
-                    <span className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Dari</span>
+                    <span className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Dari</span>
                     <input type="date" value={teksDari} onChange={(e) => setTeksDari(e.target.value)} onBlur={() => komitInput("dari")} onKeyDown={(e) => { if (e.key === "Enter") komitInput("dari"); }} className="w-full bg-latar border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white outline-none focus:border-primer-terang [color-scheme:dark]" />
                   </label>
                   <label className="block">
-                    <span className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Sampai</span>
+                    <span className="block text-[11px] font-bold text-gray-500 uppercase mb-1">Sampai</span>
                     <input type="date" value={teksSampai} onChange={(e) => setTeksSampai(e.target.value)} onBlur={() => komitInput("sampai")} onKeyDown={(e) => { if (e.key === "Enter") komitInput("sampai"); }} className="w-full bg-latar border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white outline-none focus:border-primer-terang [color-scheme:dark]" />
                   </label>
                 </div>
@@ -220,7 +220,7 @@ export default function RentangTanggal({ nilai, onChange, hariIni, disabled }: P
                 <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
                   <p className="text-[11px] text-gray-400 min-w-0">
                     {draf ? <><span className="text-white font-bold">{labelRentang(draf)}</span> · {jumlahHari(draf)} hari</> : <>Mulai {labelRentang({ dari, sampai: dari })} — pilih tanggal akhir</>}
-                    <span className="block text-[10px] text-gray-600">Maksimal {MAKS_HARI_RENTANG} hari.</span>
+                    <span className="block text-[11px] text-gray-600">Maksimal {MAKS_HARI_RENTANG} hari.</span>
                   </p>
                   <div className="flex gap-2 shrink-0">
                     <button type="button" onClick={() => setBuka(false)} className="text-xs font-bold text-gray-300 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10">Batal</button>

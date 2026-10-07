@@ -308,7 +308,7 @@ export default function AdminDashboardPage() {
             style={{ animationDuration: "3s" }} 
           />
         </div>
-        <p className="text-gray-500 text-[10px] md:text-xs font-mono tracking-[0.25em] uppercase mt-8 animate-pulse">
+        <p className="text-gray-500 text-[11px] md:text-xs font-mono tracking-[0.25em] uppercase mt-8 animate-pulse">
           Menyinkronkan Data...
         </p>
       </div>
@@ -331,7 +331,7 @@ export default function AdminDashboardPage() {
             <div className="flex flex-col items-end gap-2">
               <RightHeaderControls />
               <div className="text-right hidden sm:block">
-                <p className="text-[10px] font-black text-primer-terang tracking-widest uppercase mt-1">Hari Ini • {todayDate}</p>
+                <p className="text-[11px] font-black text-tint tracking-wider uppercase mt-1">Hari Ini • {todayDate}</p>
               </div>
             </div>
           </div>
@@ -359,22 +359,22 @@ export default function AdminDashboardPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-20">
             <div onClick={() => setActiveModal("total")} className="p-5 shadow-lg cursor-pointer hover:bg-white/5 hover:scale-[1.02] hover:border-primer-terang/30 transition-all duration-200 group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
               <div className="absolute right-0 top-0 w-16 h-16 bg-primer-terang/10 rounded-bl-full group-hover:scale-125 transition-transform"></div>
-              <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest relative z-10">Total Karyawan</p>
+              <p className="text-[11px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-wider relative z-10">Total Karyawan</p>
               <p className="text-3xl md:text-4xl font-black text-white relative z-10">{employees.length}</p>
             </div>
             <div onClick={() => setActiveModal("hadir")} className="p-5 shadow-lg cursor-pointer hover:bg-white/5 hover:scale-[1.02] hover:border-green-500/30 transition-all duration-200 group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
               <div className="absolute right-0 top-0 w-16 h-16 bg-green-500/10 rounded-bl-full group-hover:scale-125 transition-transform"></div>
-              <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest relative z-10">Tepat Waktu</p>
+              <p className="text-[11px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-wider relative z-10">Tepat Waktu</p>
               <p className="text-3xl md:text-4xl font-black text-green-400 relative z-10">{onTimeToday.length}</p>
             </div>
             <div onClick={() => setActiveModal("terlambat")} className="p-5 shadow-lg cursor-pointer hover:bg-white/5 hover:scale-[1.02] hover:border-yellow-500/30 transition-all duration-200 group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
               <div className="absolute right-0 top-0 w-16 h-16 bg-yellow-500/10 rounded-bl-full group-hover:scale-125 transition-transform"></div>
-              <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest relative z-10">Terlambat</p>
+              <p className="text-[11px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-wider relative z-10">Terlambat</p>
               <p className="text-3xl md:text-4xl font-black text-yellow-400 relative z-10">{lateToday.length}</p>
             </div>
             <div onClick={() => setActiveModal("absen")} className="p-5 shadow-lg cursor-pointer hover:bg-white/5 hover:scale-[1.02] hover:border-red-500/30 transition-all duration-200 group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
               <div className="absolute right-0 top-0 w-16 h-16 bg-red-500/10 rounded-bl-full group-hover:scale-125 transition-transform"></div>
-              <p className="text-[10px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-widest relative z-10">Sakit / Cuti</p>
+              <p className="text-[11px] md:text-xs text-gray-500 font-bold mb-1 uppercase tracking-wider relative z-10">Sakit / Cuti</p>
               <p className="text-3xl md:text-4xl font-black text-red-400 relative z-10">{approvedLeaves.length}</p>
             </div>
           </div>
@@ -386,7 +386,7 @@ export default function AdminDashboardPage() {
                   <h3 className="text-lg font-bold text-white">Butuh Persetujuan</h3>
                   <p className="text-xs text-gray-400 mt-1">Persetujuan otomatis memotong saldo cuti tahunan.</p>
                 </div>
-                <span className="bg-primer-terang/20 text-tint text-[10px] font-bold px-3 py-1.5 rounded-full border border-primer-terang/30">{pendingApprovals.length} Tertunda</span>
+                <span className="bg-primer-terang/20 text-tint text-[11px] font-bold px-3 py-1.5 rounded-full border border-primer-terang/30">{pendingApprovals.length} Tertunda</span>
               </div>
               {pendingApprovals.length === 0 ? <div className="text-center py-10 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow"><p className="text-gray-500 text-sm">Tidak ada pengajuan izin tertunda.</p></div> : (
                 <div className="space-y-4 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
@@ -396,7 +396,7 @@ export default function AdminDashboardPage() {
                         <div className="w-10 h-10 rounded-full bg-primer-terang/20 flex items-center justify-center text-tint font-bold border border-primer-terang/30">{req.nama?.charAt(0).toUpperCase() || "?"}</div>
                         <div>
                           <h4 className="font-bold text-white text-sm">{req.nama}</h4>
-                          <span className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded font-bold uppercase mt-1 inline-block">{req.jenis}</span>
+                          <span className="text-[11px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded font-bold uppercase mt-1 inline-block">{req.jenis}</span>
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -416,7 +416,7 @@ export default function AdminDashboardPage() {
                   <div key={`log-${absen.id}`} className="relative pl-6 animate-in slide-in-from-left-2" style={{ animationDelay: `${idx * 50}ms` }}>
                     <div className={`absolute left-[-5px] top-1.5 w-2.5 h-2.5 rounded-full ring-4 ring-kartu ${absen.status === 'Terlambat' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
                     <p className="text-sm font-bold text-white">{absen.nama}</p>
-                    <span className="text-[10px] bg-white/5 text-gray-300 px-2 py-0.5 rounded font-mono border border-white/10 mt-1 inline-block">Masuk: {absen.waktuMasuk}</span>
+                    <span className="text-[11px] bg-white/5 text-gray-300 px-2 py-0.5 rounded font-mono border border-white/10 mt-1 inline-block">Masuk: {absen.waktuMasuk}</span>
                   </div>
                 ))}
                 {todayAttendances.length === 0 && <p className="text-xs text-gray-500 pl-4 italic">Belum ada absen.</p>}
@@ -493,7 +493,7 @@ export default function AdminDashboardPage() {
                   <div key={`log-${absen.id}`} className="relative pl-5" style={{ animationDelay: `${idx * 50}ms` }}>
                     <div className={`absolute left-[-5px] top-1.5 w-2 h-2 rounded-full ring-4 ring-latar ${absen.status === 'Terlambat' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
                     <p className="text-sm font-medium text-white">{absen.nama}</p>
-                    <span className="text-[10px] text-gray-500 font-mono mt-1 block">{absen.waktuMasuk} WIB</span>
+                    <span className="text-[11px] text-gray-500 font-mono mt-1 block">{absen.waktuMasuk} WIB</span>
                   </div>
                 ))}
                 {todayAttendances.length === 0 && <p className="text-xs text-gray-500 pl-4">No data today.</p>}
@@ -507,7 +507,7 @@ export default function AdminDashboardPage() {
           ⚙️ KUNCI PENTING: Z-INDEX 40 AGAR TOMBOL INI 100% BISA DIKLIK!
           ========================================================================= */}
       <div className="relative z-40 mt-4 px-2 pb-6">
-        <h3 className="text-sm font-bold text-gray-400 tracking-widest uppercase mb-4 pl-2 font-mono">Pusat Aksi Cepat Eksekutif</h3>
+        <h3 className="text-sm font-bold text-gray-400 tracking-wider uppercase mb-4 pl-2 font-mono">Pusat Aksi Cepat Eksekutif</h3>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <button onClick={handleExportCSV} className="bg-kartu border border-white/10 p-4 rounded-xl text-center hover:bg-white/10 transition-all text-xs font-bold text-gray-300 shadow-xl cursor-pointer pointer-events-auto">Export CSV</button>
           <button onClick={() => setShowBroadcastModal(true)} className="bg-kartu border border-white/10 p-4 rounded-xl text-center hover:bg-white/10 transition-all text-xs font-bold text-gray-300 shadow-xl cursor-pointer pointer-events-auto">Email Blast</button>
@@ -526,7 +526,7 @@ export default function AdminDashboardPage() {
             <div className="p-5 border-b border-white/5 bg-kartu flex justify-between items-center">
               <div className="flex items-center gap-2">
                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                 <h2 className="text-sm font-mono font-black text-red-400 uppercase tracking-widest">Manifest Masalah Diagnostik</h2>
+                 <h2 className="text-sm font-mono font-black text-red-400 uppercase tracking-wider">Manifest Masalah Diagnostik</h2>
               </div>
               <button onClick={() => setActiveModal(null)} className="text-gray-500 hover:text-white p-1.5 bg-white/5 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
@@ -537,13 +537,13 @@ export default function AdminDashboardPage() {
                   <div className="space-y-2">
                     <div>
                       <p className="font-bold text-sm text-white">{item.nama}</p>
-                      <p className="text-[10px] text-gray-500 font-mono mt-0.5">{item.idKaryawan}</p>
+                      <p className="text-[11px] text-gray-500 font-mono mt-0.5">{item.idKaryawan}</p>
                     </div>
                     {/* MERENDER DAFTAR PERMASALAHAN KOLOM SECARA DETAIL & SPESIFIK */}
                     <div className="space-y-1">
                       {item.issues.map((issue: string, i: number) => (
                         <p key={i} className="text-xs text-red-400 flex items-center gap-1.5">
-                          <span className="text-[8px]">❌</span> {issue}
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" aria-hidden></span> {issue}
                         </p>
                       ))}
                     </div>
@@ -628,7 +628,7 @@ export default function AdminDashboardPage() {
             </div>
             <form onSubmit={executeBroadcast} className="p-6 space-y-4">
               <div className="bg-input p-3 rounded-lg border border-white/10 flex justify-between items-center text-xs">
-                <span className="text-gray-500 font-bold uppercase tracking-widest">Dikirim Dari</span>
+                <span className="text-gray-500 font-bold uppercase tracking-wider">Dikirim Dari</span>
                 <span className="text-tint font-mono">business@invisual.studio</span>
               </div>
               <input type="text" placeholder="Subjek email..." value={broadcastSubject} onChange={(e) => setBroadcastSubject(e.target.value)} className="w-full bg-input border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-primer-terang outline-none placeholder-gray-600 transition-all" />
@@ -699,8 +699,8 @@ export default function AdminDashboardPage() {
                 <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
                   {employees.map(emp => (
                     <div key={emp.id} className="flex justify-between items-center p-3 bg-input rounded-lg border border-white/10">
-                      <div><p className="font-bold text-sm text-white">{emp.nama}</p><p className="text-[10px] text-gray-500 font-mono mt-0.5">{emp.idKaryawan} • {emp.jabatan}</p></div>
-                      <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-1 rounded font-bold">Aktif</span>
+                      <div><p className="font-bold text-sm text-white">{emp.nama}</p><p className="text-[11px] text-gray-500 font-mono mt-0.5">{emp.idKaryawan} • {emp.jabatan}</p></div>
+                      <span className="text-[11px] bg-blue-500/10 text-blue-400 px-2 py-1 rounded font-bold">Aktif</span>
                     </div>
                   ))}
                 </div>
@@ -709,7 +709,7 @@ export default function AdminDashboardPage() {
                 <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
                   {onTimeToday.map(absen => (
                     <div key={absen.id} className="flex justify-between items-center p-3 bg-input rounded-lg border border-white/10 border-l-2 border-l-green-500">
-                      <div><p className="font-bold text-sm text-white">{absen.nama}</p><p className="text-[10px] text-gray-500">{absen.lokasi || "Lokasi Terverifikasi"}</p></div>
+                      <div><p className="font-bold text-sm text-white">{absen.nama}</p><p className="text-[11px] text-gray-500">{absen.lokasi || "Lokasi Terverifikasi"}</p></div>
                       <span className="text-xs font-mono text-green-400">{absen.waktuMasuk} WIB</span>
                     </div>
                   ))}
@@ -720,7 +720,7 @@ export default function AdminDashboardPage() {
                 <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
                   {lateToday.map(absen => (
                     <div key={absen.id} className="flex justify-between items-center p-3 bg-input rounded-lg border border-white/10 border-l-2 border-l-yellow-500">
-                      <div><p className="font-bold text-sm text-white">{absen.nama}</p><p className="text-[10px] text-gray-500">{absen.lokasi}</p></div>
+                      <div><p className="font-bold text-sm text-white">{absen.nama}</p><p className="text-[11px] text-gray-500">{absen.lokasi}</p></div>
                       <span className="text-xs font-mono text-yellow-400">{absen.waktuMasuk} WIB</span>
                     </div>
                   ))}
@@ -731,8 +731,8 @@ export default function AdminDashboardPage() {
                 <div className="space-y-2 max-h-80 overflow-y-auto custom-scrollbar pr-2">
                   {approvedLeaves.map(leave => (
                     <div key={leave.id} className="flex flex-col p-3 bg-input rounded-lg border border-white/10 border-l-2 border-l-red-500">
-                      <div className="flex justify-between items-center"><p className="font-bold text-sm text-white">{leave.nama}</p><span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded font-bold uppercase">{leave.jenis}</span></div>
-                      <p className="text-[10px] text-gray-500 mt-1">{leave.tanggal}</p>
+                      <div className="flex justify-between items-center"><p className="font-bold text-sm text-white">{leave.nama}</p><span className="text-[11px] bg-red-500/10 text-red-400 px-2 py-1 rounded font-bold uppercase">{leave.jenis}</span></div>
+                      <p className="text-[11px] text-gray-500 mt-1">{leave.tanggal}</p>
                     </div>
                   ))}
                   {approvedLeaves.length === 0 && <p className="text-sm text-gray-500 text-center py-4">Tidak ada cuti/sakit.</p>}

@@ -6,10 +6,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Avatar from "@/components/Avatar";
 import PelacakOnline from "@/components/PelacakOnline";
+import { useJebakFokus } from "@/lib/fokus";
 
 
 
@@ -22,6 +23,8 @@ const [userAvatar, setUserAvatar] = useState("");
 const [userRole, setUserRole] = useState("Staff");
 const [showLogoutModal, setShowLogoutModal] = useState(false);
 const [isManager, setIsManager] = useState(false);
+const modalKeluar = useRef<HTMLDivElement>(null);
+useJebakFokus(modalKeluar, showLogoutModal, () => setShowLogoutModal(false));
 
 
 
@@ -114,7 +117,9 @@ const navItems = [
 
 
 return (
-  <div className="min-h-screen bg-[#000000] text-gray-200 flex flex-col md:flex-row font-sans selection:bg-primer selection:text-white">
+  <div className="min-h-screen bg-latar text-gray-200 flex flex-col md:flex-row font-sans selection:bg-primer selection:text-white">
+    {/* Aksesibilitas: lompat langsung ke konten (tampil hanya saat difokus lewat keyboard) */}
+    <a href="#konten" className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[10050] focus:rounded-lg focus:bg-primer focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white">Lewati ke konten</a>
     {/* Mendaftar ke presence "hadir-online" (monitoring online di dasbor HR/manager); tanpa UI, tak pernah mengganggu halaman */}
     <PelacakOnline />
   
@@ -122,7 +127,7 @@ return (
     <header className={`${isChatPage ? "hidden" : ""} md:hidden w-full bg-latar/95 backdrop-blur-xl border-b border-white/5 px-5 py-4 sticky top-0 z-[99] flex items-center justify-between shadow-sm`}>
       <div className="flex flex-col items-start justify-center">
         <img src="/invisual-light.svg" alt="Invisual Studio" className="h-[22px] brightness-0 invert opacity-90 object-contain text-left" style={{ width: "auto" }} />
-        <p className="text-[7.5px] font-black text-gray-500 uppercase tracking-widest mt-1.5 font-mono leading-none text-left">
+        <p className="text-[7.5px] font-black text-gray-500 uppercase tracking-wider mt-1.5 font-mono leading-none text-left">
           Human Resource & Internal Information System
         </p>
       </div>
@@ -141,7 +146,7 @@ return (
     <aside className="hidden md:flex flex-col w-64 border-r border-white/10 bg-latar min-h-screen shrink-0 sticky top-0 z-50">
       <div className="py-8 px-6 border-b border-white/10 flex flex-col items-start justify-center w-full">
         <img src="/invisual-light.svg" alt="Invisual Studio" className="h-[32px] brightness-0 invert opacity-90 object-contain text-left transition-transform hover:scale-105" style={{ width: "auto" }} />
-        <p className="text-[8.5px] font-black text-gray-500 uppercase tracking-widest mt-2 leading-tight font-mono text-left">
+        <p className="text-[8.5px] font-black text-gray-500 uppercase tracking-wider mt-2 leading-tight font-mono text-left">
           Human Resource & Internal Information System
         </p>
       </div>
@@ -168,7 +173,7 @@ return (
         <div className="bg-input border border-white/5 rounded-xl p-3 flex items-center justify-between shadow-inner">
           <div className="overflow-hidden pr-2 flex-1">
             <p className="text-sm font-bold text-white truncate">{userName}</p>
-            <p className="text-[10px] text-gray-500 font-mono truncate">{userRole}</p>
+            <p className="text-[11px] text-gray-500 font-mono truncate">{userRole}</p>
           </div>
           <button onClick={openLogoutConfirmation} title="Keluar" className="w-8 h-8 rounded-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white flex items-center justify-center transition-all shrink-0 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 ml-0.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
@@ -180,7 +185,7 @@ return (
 
 
 
-    <main className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0 bg-[#000000]">
+    <main id="konten" tabIndex={-1} className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0 bg-latar outline-none">
       <div className="p-5 md:p-8 flex-1 w-full max-w-6xl mx-auto">
         <div key={pathname} className={isChatPage ? "" : "page-fade"}>
           {children}
@@ -197,11 +202,11 @@ return (
         {navItems.filter((item: any) => (!item.hanyaManajer || isManager) && !(isManager && item.href === "/user/daily-task")).map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
-            <Link key={item.name} href={item.href} className={`relative flex flex-col items-center flex-1 gap-1 py-1 transition-colors duration-300 ${isActive ? "text-primer" : "text-gray-500 hover:text-gray-300"}`}>
+            <Link key={item.name} href={item.href} aria-current={isActive ? "page" : undefined} className={`relative flex flex-col items-center flex-1 gap-1 py-1 transition-colors duration-300 ${isActive ? "text-primer" : "text-gray-500 hover:text-gray-300"}`}>
               <span className={`flex items-center justify-center w-10 h-9 rounded-2xl transition-all duration-300 ease-[cubic-bezier(.34,1.56,.64,1)] ${isActive ? "bg-primer/15 -translate-y-1 scale-105" : "translate-y-0 scale-100"}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={isActive ? 2.5 : 2} stroke="currentColor" className="w-[20px] h-[20px]">{item.icon}</svg>
               </span>
-              <span className={`text-[9px] font-bold tracking-wide transition-transform duration-300 ${isActive ? "-translate-y-0.5" : "translate-y-0"}`}>{(item as any).short || item.name}</span>
+              <span className={`text-[11px] font-bold tracking-wide transition-transform duration-300 ${isActive ? "-translate-y-0.5" : "translate-y-0"}`}>{(item as any).short || item.name}</span>
             </Link>
           );
         })}
@@ -214,14 +219,14 @@ return (
     {/* 🔥 MODAL LOGOUT KUSTOM */}
     {showLogoutModal && (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-        <div className="bg-input border border-white/10 w-full max-w-sm rounded-3xl shadow-2xl p-8 relative flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+        <div ref={modalKeluar} role="dialog" aria-modal="true" aria-labelledby="judul-keluar" className="bg-input border border-white/10 w-full max-w-sm rounded-3xl shadow-2xl p-8 relative flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
           <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-5 border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-7 h-7"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
           </div>
-          <h2 className="text-xl font-bold text-white mb-2 tracking-tight">Keluar Portal Karyawan?</h2>
+          <h2 id="judul-keluar" className="text-xl font-bold text-white mb-2 tracking-tight">Keluar Portal Karyawan?</h2>
           <p className="text-sm text-gray-400 mb-8 leading-relaxed">Sesi kerja Anda akan ditutup. Anda harus masuk kembali untuk menggunakan sistem.</p>
           <div className="flex w-full gap-3">
-            <button onClick={() => setShowLogoutModal(false)} className="flex-1 py-3.5 bg-white/5 hover:bg-white/10 text-gray-300 font-bold rounded-xl transition-all text-xs border border-white/10 cursor-pointer">
+            <button onClick={() => setShowLogoutModal(false)} data-fokus-awal className="flex-1 py-3.5 bg-white/5 hover:bg-white/10 text-gray-300 font-bold rounded-xl transition-all text-xs border border-white/10 cursor-pointer">
               Batal
             </button>
             <button onClick={executeLogout} className="flex-1 py-3.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(239,68,68,0.3)] text-xs cursor-pointer">

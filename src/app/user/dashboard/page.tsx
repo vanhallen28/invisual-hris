@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { Camera, Moon, CircleCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { TOLERANSI_TELAT_MENIT, JAM_KERJA_JAM } from "@/lib/keterlambatan";
 import { nilaiMasuk, jamPulangHariIni, labelKompensasi, formatDurasi, MENIT_LEMBUR_MIN, type KompensasiAktif, type TandaLembur } from "@/lib/lembur";
@@ -13,6 +14,7 @@ import { simpanFotoAbsen, tungguMaksimal } from "@/lib/fotoAbsen";
 import { type ModeKerja, statusRemoteHariIni, modeBawaan, keteranganRemote, muatPengajuanRemote } from "@/lib/kerjaRemote";
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
+import { teksTanggal } from "@/lib/tanggalTampil";
 
 // Gaya sel bento + cahaya biru yang mengikuti kursor.
 // Murni tampilan: tanpa state, tanpa efek samping.
@@ -418,9 +420,13 @@ export default function UserDashboardPage() {
 
 
 
-      {/* HEADER TANGGAL */}
-      <div className="flex justify-end mb-1 md:mb-2">
-        <div className="bg-kartu border border-white/5 px-4 py-2.5 rounded-xl flex items-center gap-3 shadow-lg">
+      {/* HEADER: sapaan + tanggal */}
+      <div className="flex flex-wrap justify-between items-end gap-3 mb-1 md:mb-2">
+        <div className="min-w-0">
+          <h1 className="font-display text-xl md:text-2xl font-bold text-white tracking-tight truncate">Halo, {String(currentUser?.nama || "").split(" ")[0] || "Karyawan"}</h1>
+          <p className="text-xs md:text-sm text-gray-400 mt-0.5">Absen cepat di sini. Riwayat lengkap & pengajuan izin ada di <a href="/user/kehadiran" className="text-tint hover:text-white font-semibold">Absen →</a></p>
+        </div>
+        <div className="bg-kartu border border-white/5 px-4 py-2.5 rounded-xl flex items-center gap-3 shadow-lg shrink-0">
           <span className="w-2 h-2 bg-magenta rounded-full animate-pulse"></span>
           <p className="text-xs font-bold text-white tracking-wide">{todayDate}</p>
         </div>
@@ -431,23 +437,23 @@ export default function UserDashboardPage() {
         {/* KIRI: TERMINAL KAMERA ABSENSI — sel bento utama */}
         <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} col-span-2 lg:col-start-1 lg:row-start-2 lg:row-span-2 p-4 md:p-6 flex flex-col`}>
           <h3 className="text-base md:text-lg font-bold text-white mb-3 md:mb-4 border-b border-white/5 pb-3 md:pb-4 flex justify-between items-center">
-            Terminal Absensi
+            Absen cepat
             {isAttendanceComplete ? (
-              <span className="text-[8px] md:text-[10px] bg-green-500/10 text-green-400 px-2 md:px-3 py-1 rounded-full border border-green-500/20 uppercase tracking-widest flex items-center gap-1 shrink-0">
+              <span className="text-[10px] md:text-[11px] bg-green-500/10 text-green-400 px-2 md:px-3 py-1 rounded-full border border-green-500/20 uppercase tracking-wider flex items-center gap-1 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span> Selesai
               </span>
             ) : todayAttendance?.waktuMasuk ? (
-              <span className="text-[8px] md:text-[10px] bg-blue-500/10 text-tint px-2 md:px-3 py-1 rounded-full border border-primer/30 uppercase tracking-widest flex items-center gap-1 shrink-0">
+              <span className="text-[10px] md:text-[11px] bg-blue-500/10 text-tint px-2 md:px-3 py-1 rounded-full border border-primer/30 uppercase tracking-wider flex items-center gap-1 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-primer animate-pulse"></span> On Duty
               </span>
             ) : (
-              <span className="text-[8px] md:text-[10px] bg-yellow-500/10 text-yellow-400 px-2 md:px-3 py-1 rounded-full border border-yellow-500/20 uppercase tracking-widest flex items-center gap-1 shrink-0">
+              <span className="text-[10px] md:text-[11px] bg-yellow-500/10 text-yellow-400 px-2 md:px-3 py-1 rounded-full border border-yellow-500/20 uppercase tracking-wider flex items-center gap-1 shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span> Standby
               </span>
             )}
           </h3>
           
-          <div className="w-full aspect-video bg-black rounded-xl md:rounded-2xl border border-white/10 flex items-center justify-center relative overflow-hidden mb-4 md:mb-6">
+          <div className="w-full aspect-video bg-[#000] rounded-xl md:rounded-2xl border border-white/10 flex items-center justify-center relative overflow-hidden mb-4 md:mb-6">
             {isFlashing && <div className="absolute inset-0 bg-white z-50 animate-out fade-out duration-150"></div>}
 
             {/* 🔄 OVERLAY LOADING saat sedang menyimpan absensi (clock-in/out) */}
@@ -462,12 +468,12 @@ export default function UserDashboardPage() {
             ) : isAttendanceComplete ? (
               <div className="flex flex-col items-center gap-2 md:gap-3 text-gray-500">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 md:w-12 md:h-12 opacity-50"><path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>
-                <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-center">Kamera Dinonaktifkan</p>
+                <p className="text-[10px] md:text-[11px] font-bold uppercase tracking-wider text-center">Kamera Dinonaktifkan</p>
               </div>
             ) : hasCameraPermission === false ? (
               <div className="text-center px-4">
                 <p className="text-red-400 text-xs md:text-sm font-bold mb-1">Kamera Ditolak</p>
-                <p className="text-[9px] md:text-xs text-gray-500">Izinkan kamera di pengaturan browser.</p>
+                <p className="text-[10px] md:text-xs text-gray-500">Izinkan kamera di pengaturan browser.</p>
               </div>
             ) : (
               <>
@@ -475,8 +481,8 @@ export default function UserDashboardPage() {
                 {!cameraOn && !capturedPhoto && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 bg-latar">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 md:w-10 md:h-10 text-gray-600 mb-2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /><path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" /></svg>
-                    <p className="text-gray-500 text-[10px] md:text-xs font-bold">Kamera Nonaktif</p>
-                    <p className="text-gray-700 text-[8px] md:text-[10px] mt-0.5">{isAttendanceComplete ? "Absensi hari ini sudah selesai" : `Tekan ${!todayAttendance ? "Clock In" : "Clock Out"} untuk mulai absen`}</p>
+                    <p className="text-gray-500 text-[11px] md:text-xs font-bold">Kamera Nonaktif</p>
+                    <p className="text-gray-700 text-[10px] md:text-[11px] mt-0.5">{isAttendanceComplete ? "Absensi hari ini sudah selesai" : `Tekan ${!todayAttendance ? "Clock In" : "Clock Out"} untuk mulai absen`}</p>
                   </div>
                 )}
               </>
@@ -488,11 +494,11 @@ export default function UserDashboardPage() {
               <>
                 {/* Pemberitahuan penyimpanan foto (UU PDP): foto disimpan 7 hari untuk verifikasi HR */}
                 <div className="absolute top-2 md:top-3 right-2 md:right-3 max-w-[70%] bg-black/60 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 z-10">
-                  <span className="block text-[8px] md:text-[10px] text-gray-200 leading-snug text-right">Foto disimpan 7 hari untuk verifikasi HR, lalu terhapus otomatis</span>
+                  <span className="block text-[10px] md:text-[11px] text-gray-200 leading-snug text-right">Foto disimpan 7 hari untuk verifikasi HR, lalu terhapus otomatis</span>
                 </div>
                 <div className="absolute bottom-2 md:bottom-4 left-2 md:left-4 bg-black/60 backdrop-blur-md px-2 md:px-3 py-1 md:py-1.5 rounded-md md:rounded-lg border border-white/10 flex items-center gap-1.5 md:gap-2 z-10">
                   <span className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full animate-pulse"></span>
-                  <span className="text-[8px] md:text-[10px] text-white font-mono tracking-widest truncate">Face ID</span>
+                  <span className="text-[10px] md:text-[11px] text-white font-mono tracking-wider truncate">Face ID</span>
                 </div>
                 <div className="absolute inset-0 border-[1px] border-white/10 grid grid-cols-3 grid-rows-3 pointer-events-none z-10 opacity-30">
                   <div className="border-r border-b border-white/10"></div><div className="border-r border-b border-white/10"></div><div className="border-b border-white/10"></div>
@@ -513,7 +519,7 @@ export default function UserDashboardPage() {
               <div className="flex flex-col gap-2.5">
                 {captureMode === "in" && (
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Lokasi kerja</p>
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">Lokasi kerja</p>
                     <div className="grid grid-cols-3 gap-2">
                       {([
                         { key: "Kantor", label: "Kantor", boleh: true },
@@ -542,7 +548,7 @@ export default function UserDashboardPage() {
                       })}
                     </div>
                     {keteranganRemote(stRemote) && (
-                      <p className="text-[10px] text-gray-500 mt-2 leading-relaxed">{keteranganRemote(stRemote)}</p>
+                      <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">{keteranganRemote(stRemote)}</p>
                     )}
                   </div>
                 )}
@@ -552,7 +558,7 @@ export default function UserDashboardPage() {
                   disabled={isActionLoading || !cameraOn}
                   className={`flex-1 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 disabled:opacity-50 text-xs md:text-sm ${captureMode === "in" ? "bg-primer hover:bg-blue-600" : "bg-magenta hover:bg-magenta"}`}
                 >
-                  {isActionLoading ? (<><LoadingLogo size={20} withRing={false} /> Menyimpan Wajah...</>) : (<>📸 Absen Sekarang</>)}
+                  {isActionLoading ? (<><LoadingLogo size={20} withRing={false} /> Menyimpan Wajah...</>) : (<><Camera className="w-4 h-4" aria-hidden /> Absen Sekarang</>)}
                 </button>
                 <button onClick={cancelCapture} disabled={isActionLoading} className="px-4 md:px-5 py-3.5 md:py-4 rounded-xl md:rounded-2xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 font-bold transition-all disabled:opacity-50 text-xs md:text-sm">
                   Batal
@@ -561,11 +567,11 @@ export default function UserDashboardPage() {
               </div>
             ) : !todayAttendance ? (
               <button onClick={() => startCapture("in")} className="w-full bg-primer hover:bg-blue-600 text-white font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
-                📸 CLOCK IN SEKARANG
+                <Camera className="w-4 h-4" aria-hidden /> CLOCK IN SEKARANG
               </button>
             ) : (
               <button onClick={() => startCapture("out")} className="w-full bg-magenta/10 hover:bg-magenta text-magenta hover:text-white border border-magenta/30 font-bold py-3.5 md:py-4 rounded-xl md:rounded-2xl transition-all flex justify-center items-center gap-2 text-xs md:text-sm">
-                📸 CLOCK OUT (PULANG)
+                <Camera className="w-4 h-4" aria-hidden /> CLOCK OUT (PULANG)
               </button>
             )}
           </div>
@@ -575,30 +581,30 @@ export default function UserDashboardPage() {
         <div className="contents mo-stagger">
           
           <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} col-span-2 lg:col-span-4 lg:row-start-1 p-4 md:p-5`}>
-            <h3 className="text-[10px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-widest truncate">Catatan Hari Ini</h3>
+            <h3 className="text-[11px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-wider truncate">Catatan Hari Ini</h3>
             {tandaHariIni && (
-              <div data-chip-lembur className="mb-3 text-[10px] md:text-xs bg-amber-500/10 border border-amber-500/20 text-amber-200 rounded-lg px-3 py-2">🌙 Ditandai lembur hari ini — hari kerja berikutnya {labelKompensasi(tandaHariIni.kompensasi, jamMasuk, jamKeluar)} (berlaku bila clock-out ≥ 1 jam setelah jam pulang).</div>
+              <div data-chip-lembur className="mb-3 text-[11px] md:text-xs bg-amber-500/10 border border-amber-500/20 text-amber-200 rounded-lg px-3 py-2 flex items-start gap-2"><Moon className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden /><span>Ditandai lembur hari ini — hari kerja berikutnya {labelKompensasi(tandaHariIni.kompensasi, jamMasuk, jamKeluar)} (berlaku bila clock-out ≥ 1 jam setelah jam pulang).</span></div>
             )}
             {kompensasiHariIni && (
-              <div data-chip-kompensasi className="mb-3 text-[10px] md:text-xs bg-green-500/10 border border-green-500/20 text-green-200 rounded-lg px-3 py-2">✅ Kompensasi lembur {kompensasiHariIni.dari}: {labelKompensasi(kompensasiHariIni.tanda.kompensasi, jamMasuk, jamKeluar)}{kompensasiHariIni.terpakai ? " · terpakai" : ""}.</div>
+              <div data-chip-kompensasi className="mb-3 text-[11px] md:text-xs bg-green-500/10 border border-green-500/20 text-green-200 rounded-lg px-3 py-2 flex items-start gap-2"><CircleCheck className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden /><span>Kompensasi lembur {teksTanggal(kompensasiHariIni.dari, { tahun: false })}: {labelKompensasi(kompensasiHariIni.tanda.kompensasi, jamMasuk, jamKeluar)}{kompensasiHariIni.terpakai ? " · terpakai" : ""}.</span></div>
             )}
             <div className="grid grid-cols-2 gap-3 md:gap-4">
               <div className="bg-white/[0.04] p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5 relative overflow-hidden mo-lift">
                 <div className="absolute right-0 top-0 w-8 h-8 md:w-12 md:h-12 bg-primer/10 rounded-bl-full"></div>
-                <p className="text-[9px] md:text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-wider md:tracking-widest relative z-10 truncate">Masuk</p>
+                <p className="text-[10px] md:text-[11px] text-gray-500 mb-1 font-bold uppercase tracking-wider md:tracking-wider relative z-10 truncate">Masuk</p>
                 <p className="text-lg md:text-2xl font-mono font-bold text-white relative z-10 truncate">{todayAttendance?.waktuMasuk || "--:--"}</p>
                 {todayAttendance?.status && (
-                  <p className={`text-[8px] md:text-[10px] mt-1 font-bold uppercase tracking-wider md:tracking-widest relative z-10 truncate ${todayAttendance.status === 'Terlambat' ? 'text-yellow-500' : 'text-green-400'}`}>
+                  <p className={`text-[10px] md:text-[11px] mt-1 font-bold uppercase tracking-wider md:tracking-wider relative z-10 truncate ${todayAttendance.status === 'Terlambat' ? 'text-yellow-500' : 'text-green-400'}`}>
                     {todayAttendance.status}
                   </p>
                 )}
               </div>
               <div className="bg-white/[0.04] p-3 md:p-4 rounded-xl md:rounded-2xl border border-white/5 relative overflow-hidden mo-lift">
                 <div className="absolute right-0 top-0 w-8 h-8 md:w-12 md:h-12 bg-magenta/10 rounded-bl-full"></div>
-                <p className="text-[9px] md:text-[10px] text-gray-500 mb-1 font-bold uppercase tracking-wider md:tracking-widest relative z-10 truncate">Pulang</p>
+                <p className="text-[10px] md:text-[11px] text-gray-500 mb-1 font-bold uppercase tracking-wider md:tracking-wider relative z-10 truncate">Pulang</p>
                 <p className="text-lg md:text-2xl font-mono font-bold text-white relative z-10 truncate">{todayAttendance?.waktuKeluar || "--:--"}</p>
                 {!todayAttendance?.waktuKeluar && todayAttendance?.jamPulangSeharusnya && (
-                  <p className="text-[8px] md:text-[10px] mt-1 font-bold uppercase tracking-wider relative z-10 truncate text-tint">Wajib: {todayAttendance.jamPulangSeharusnya}</p>
+                  <p className="text-[10px] md:text-[11px] mt-1 font-bold uppercase tracking-wider relative z-10 truncate text-tint">Wajib: {todayAttendance.jamPulangSeharusnya}</p>
                 )}
               </div>
             </div>
@@ -606,23 +612,23 @@ export default function UserDashboardPage() {
 
           {/* TUGAS SAYA — dari Daily Task & Content Hub */}
           <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} col-span-2 lg:col-start-3 lg:row-start-2 p-4 md:p-5 flex flex-col`}>
-            <h3 className="text-[10px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-widest flex justify-between items-center gap-2">
+            <h3 className="text-[11px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-wider flex justify-between items-center gap-2">
               <span>Tugas Saya</span>
-              <a href="/user/daily-task" className="text-[9px] md:text-[10px] font-bold text-tint hover:text-white bg-primer/15 hover:bg-primer border border-primer/30 px-2.5 py-1 rounded-lg transition-colors normal-case tracking-normal">Buka Daily Task</a>
+              <a href="/user/daily-task" className="text-[10px] md:text-[11px] font-bold text-tint hover:text-white bg-primer/15 hover:bg-primer border border-primer/30 px-2.5 py-1 rounded-lg transition-colors normal-case tracking-normal">Buka Daily Task</a>
             </h3>
             <div className="flex-1 space-y-2.5 md:space-y-3 overflow-y-auto max-h-40 custom-scrollbar pr-1">
               {myTasks.length === 0 ? (
-                <p className="text-xs text-gray-500 text-center py-4">Belum ada tugas yang ditugaskan.</p>
+                <p className="text-xs text-gray-500 text-center py-4">Belum ada tugas untuk Anda. Brief baru akan muncul di sini.</p>
               ) : (
                 myTasks.map((t, idx) => (
                   <div key={t.id || idx} className="flex justify-between items-center bg-white/[0.04] p-2.5 md:p-3 rounded-xl border border-white/5 mo-lift">
                     <div className="overflow-hidden pr-2">
-                      <p className="text-[10px] md:text-xs font-bold text-white truncate">{t.title || "Tanpa judul"}</p>
-                      <p className="text-[8px] md:text-[10px] text-gray-500 font-mono truncate">
+                      <p className="text-[11px] md:text-xs font-bold text-white truncate">{t.title || "Tanpa judul"}</p>
+                      <p className="text-[10px] md:text-[11px] text-gray-500 font-mono truncate">
                         {t.publish_at ? new Date(t.publish_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "Belum dijadwalkan"}
                       </p>
                     </div>
-                    <span className="shrink-0 text-[7px] md:text-[9px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase bg-primer/15 text-tint border border-primer/25">
+                    <span className="shrink-0 text-[10px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase bg-primer/15 text-tint border border-primer/25">
                       {t.status || "Brief"}
                     </span>
                   </div>
@@ -632,30 +638,30 @@ export default function UserDashboardPage() {
           </div>
 
           <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} col-span-2 lg:col-start-3 lg:row-start-3 p-4 md:p-5 flex flex-col`}>
-            <h3 className="text-[10px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-widest flex justify-between items-center">
+            <h3 className="text-[11px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-wider flex justify-between items-center">
               <span>Riwayat Absensi Terakhir</span>
             </h3>
             <div className="flex-1 space-y-2.5 md:space-y-3 overflow-y-auto max-h-40 custom-scrollbar pr-1">
               {recentAttendances.length === 0 ? (
-                <p className="text-xs text-gray-500 text-center py-4">Belum ada riwayat.</p>
+                <p className="text-xs text-gray-500 text-center py-4">Belum ada riwayat — absen pertama Anda akan tercatat di sini.</p>
               ) : (
                 recentAttendances.map((att, idx) => (
                   <div key={idx} className="flex justify-between items-center bg-white/[0.04] p-2.5 md:p-3 rounded-xl border border-white/5 mo-lift">
                     <div className="overflow-hidden pr-2">
-                      <p className="text-[10px] md:text-xs font-bold text-white truncate">{att.tanggal}</p>
-                      <p className="text-[8px] md:text-[10px] text-gray-500 font-mono truncate">{att.lokasi}</p>
+                      <p className="text-[11px] md:text-xs font-bold text-white truncate" title={att.tanggal}>{teksTanggal(att.tanggal)}</p>
+                      <p className="text-[10px] md:text-[11px] text-gray-500 font-mono truncate">{att.lokasi}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-[10px] md:text-xs font-mono text-white mb-0.5">{att.waktuMasuk}{att.waktuKeluar ? ` – ${att.waktuKeluar}` : ""}</p>
+                      <p className="text-[11px] md:text-xs font-mono text-white mb-0.5">{att.waktuMasuk}{att.waktuKeluar ? ` – ${att.waktuKeluar}` : ""}</p>
                       {!att.waktuKeluar && att.tanggal < todayISO ? (
-                        <span className="text-[7px] md:text-[9px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase bg-orange-500/10 text-orange-400">Lupa absen pulang</span>
+                        <span className="text-[10px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase bg-orange-500/10 text-orange-400">Lupa absen pulang</span>
                       ) : (
-                        <span className={`text-[7px] md:text-[9px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase ${att.status === 'Terlambat' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-green-500/10 text-green-400'}`}>
+                        <span className={`text-[10px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase ${att.status === 'Terlambat' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-green-500/10 text-green-400'}`}>
                           {att.status}
                         </span>
                       )}
-                      {Number(att.lembur_menit) >= MENIT_LEMBUR_MIN && <span className="ml-1 text-[7px] md:text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-amber-500/10 text-amber-300" title="Lembur tercatat">Lembur {formatDurasi(att.lembur_menit)}</span>}
-                      {att.kompensasi_lembur && <span className="ml-1 text-[7px] md:text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-green-500/10 text-green-300" title={`Kompensasi lembur ${att.kompensasi_dari || ""}`}>Kompensasi</span>}
+                      {Number(att.lembur_menit) >= MENIT_LEMBUR_MIN && <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase bg-amber-500/10 text-amber-300" title="Lembur tercatat">Lembur {formatDurasi(att.lembur_menit)}</span>}
+                      {att.kompensasi_lembur && <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase bg-green-500/10 text-green-300" title={`Kompensasi lembur ${att.kompensasi_dari || ""}`}>Kompensasi</span>}
                     </div>
                   </div>
                 ))
@@ -664,21 +670,24 @@ export default function UserDashboardPage() {
           </div>
 
           <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} col-span-2 lg:col-span-4 lg:row-start-4 p-4 md:p-5 flex flex-col`}>
-            <h3 className="text-[10px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-widest flex justify-between items-center">
+            <h3 className="text-[11px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-wider flex justify-between items-center">
               <span>Status Pengajuan Terakhir</span>
             </h3>
             <div className="flex-1 space-y-2.5 md:space-y-3 overflow-y-auto max-h-40 custom-scrollbar pr-1">
               {recentLeaves.length === 0 ? (
-                <p className="text-xs text-gray-500 text-center py-4">Belum ada pengajuan.</p>
+                <div className="text-center py-4">
+                  <p className="text-xs text-gray-500">Belum ada pengajuan.</p>
+                  <a href="/user/kehadiran" className="inline-block mt-2 text-xs font-bold text-tint hover:text-white bg-primer/15 hover:bg-primer border border-primer/30 px-3 py-1.5 rounded-lg transition-colors">Ajukan izin / cuti</a>
+                </div>
               ) : (
                 recentLeaves.map((leave, idx) => (
                   <div key={idx} className="flex justify-between items-center bg-white/[0.04] p-2.5 md:p-3 rounded-xl border border-white/5 mo-lift">
                     <div className="overflow-hidden pr-2">
-                      <p className="text-[10px] md:text-xs font-bold text-white truncate">{leave.jenis}</p>
-                      <p className="text-[8px] md:text-[10px] text-gray-500 font-mono truncate">{leave.tanggal}</p>
+                      <p className="text-[11px] md:text-xs font-bold text-white truncate">{leave.jenis}</p>
+                      <p className="text-[10px] md:text-[11px] text-gray-500 truncate" title={leave.tanggal}>{teksTanggal(leave.tanggal)}</p>
                     </div>
                     <div className="shrink-0">
-                      <span className={`text-[7px] md:text-[9px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase border
+                      <span className={`text-[10px] md:text-[10px] font-bold px-1.5 md:px-2 py-0.5 rounded uppercase border
                         ${leave.status === 'Disetujui' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 
                           leave.status === 'Ditolak' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 
                           'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'}`}>

@@ -48,7 +48,7 @@ export default function LoadingLogo({
       </div>
 
       {text && (
-        <p className="text-xs md:text-sm tracking-widest font-mono uppercase text-gray-400 animate-pulse">
+        <p className="text-xs md:text-sm tracking-wider font-mono uppercase text-gray-400 animate-pulse">
           {text}
         </p>
       )}

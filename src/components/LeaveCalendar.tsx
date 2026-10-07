@@ -169,18 +169,18 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
   const tombolKeputusan = (l: any, kecil = false) => l.status === "Disetujui" ? null : (
     <div className={`flex gap-1.5 ${kecil ? "" : "mt-3"}`}>
       <button type="button" disabled={memproses === l.id} onClick={(e) => { e.stopPropagation(); putuskan(l, "Disetujui"); }}
-        className={`${kecil ? "px-2.5 py-1 text-[10px]" : "flex-1 py-2.5 text-xs"} font-bold rounded-lg bg-green-600 hover:bg-green-500 text-white disabled:opacity-50`}>
+        className={`${kecil ? "px-2.5 py-1 text-[11px]" : "flex-1 py-2.5 text-xs"} font-bold rounded-lg bg-green-600 hover:bg-green-500 text-white disabled:opacity-50`}>
         {memproses === l.id ? "…" : "Setujui"}
       </button>
       <button type="button" disabled={memproses === l.id} onClick={(e) => { e.stopPropagation(); putuskan(l, "Ditolak"); }}
-        className={`${kecil ? "px-2.5 py-1 text-[10px]" : "flex-1 py-2.5 text-xs"} font-bold rounded-lg bg-white/5 hover:bg-red-500/80 text-gray-300 hover:text-white border border-white/10 disabled:opacity-50`}>
+        className={`${kecil ? "px-2.5 py-1 text-[11px]" : "flex-1 py-2.5 text-xs"} font-bold rounded-lg bg-white/5 hover:bg-red-500/80 text-gray-300 hover:text-white border border-white/10 disabled:opacity-50`}>
         Tolak
       </button>
     </div>
   );
 
   const chipJenis = (kat: Kategori) => (
-    <span className="inline-flex items-center gap-1 text-[10px] text-gray-400"><span className={`w-1.5 h-1.5 rounded-full ${KATEGORI[kat].dot}`} />{KATEGORI[kat].label}</span>
+    <span className="inline-flex items-center gap-1 text-[11px] text-gray-400"><span className={`w-1.5 h-1.5 rounded-full ${KATEGORI[kat].dot}`} />{KATEGORI[kat].label}</span>
   );
 
   return (
@@ -225,7 +225,7 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
         <>
           <div className="grid grid-cols-7 gap-1 md:gap-1.5">
             {HARI.map((h, i) => (
-              <div key={h} className={`text-center text-[9px] md:text-[10px] font-bold uppercase py-1 ${i === 0 || i === 6 ? "text-gray-600" : "text-gray-500"}`}>{h}</div>
+              <div key={h} className={`text-center text-[10px] md:text-[11px] font-bold uppercase py-1 ${i === 0 || i === 6 ? "text-gray-600" : "text-gray-500"}`}>{h}</div>
             ))}
             {cells.map((d, i) => {
               if (d === null) return <div key={i} className="min-h-[52px] md:min-h-[84px]" />;
@@ -244,8 +244,8 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
                   className={`rounded-lg border p-1 md:p-1.5 min-h-[52px] md:min-h-[84px] overflow-hidden cursor-pointer transition-colors hover:border-primer-terang/60 focus:outline-none focus:ring-2 focus:ring-primer-terang ${isToday ? "border-primer bg-primer/5" : akhirPekan ? "border-white/5 bg-white/[0.015]" : "border-white/5 bg-kartu"}`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[10px] md:text-xs font-bold ${isToday ? "text-tint-redup" : akhirPekan ? "text-gray-600" : "text-gray-400"}`}>{d}</span>
-                    {list.length > 0 && <span className="md:hidden text-[8px] font-bold text-tint-redup">{list.length}</span>}
+                    <span className={`text-[11px] md:text-xs font-bold ${isToday ? "text-tint-redup" : akhirPekan ? "text-gray-600" : "text-gray-400"}`}>{d}</span>
+                    {list.length > 0 && <span className="md:hidden text-[10px] font-bold text-tint-redup">{list.length}</span>}
                   </div>
                   <div className="space-y-0.5 hidden md:block">
                     {list.slice(0, 3).map((l, j) => {
@@ -255,7 +255,7 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
                           key={j}
                           type="button"
                           onClick={(e) => { e.stopPropagation(); setRincianId(l.id); }}
-                          className={`w-full flex items-center gap-1 text-left text-[9px] font-bold px-1 py-0.5 rounded ${sc.bg} ${sc.t} truncate hover:brightness-125`}
+                          className={`w-full flex items-center gap-1 text-left text-[10px] font-bold px-1 py-0.5 rounded ${sc.bg} ${sc.t} truncate hover:brightness-125`}
                           title={`${rapikanNama(l.nama)} — ${l.jenis} (${l.status})`}
                         >
                           <span className={`w-1 h-1 rounded-full shrink-0 ${KATEGORI[l.kat as Kategori].dot}`} />
@@ -263,7 +263,7 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
                         </button>
                       );
                     })}
-                    {list.length > 3 && <div className="text-[8px] text-gray-500 px-1">+{list.length - 3} lagi</div>}
+                    {list.length > 3 && <div className="text-[10px] text-gray-500 px-1">+{list.length - 3} lagi</div>}
                   </div>
                   {/* ponsel: titik saja agar muat */}
                   <div className="flex flex-wrap gap-0.5 md:hidden">
@@ -275,7 +275,7 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
           </div>
 
           {/* Legenda = saringan status (bisa diklik) */}
-          <div className="flex flex-wrap items-center gap-2 mt-4 text-[10px] text-gray-400">
+          <div className="flex flex-wrap items-center gap-2 mt-4 text-[11px] text-gray-400">
             {(["Disetujui", "Menunggu"] as const).map((st) => (
               <button key={st} type="button" aria-pressed={tampilStatus[st]}
                 onClick={() => setTampilStatus((s) => ({ ...s, [st]: !s[st] }))}
@@ -300,13 +300,13 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
               </svg>
-              <span className="text-[10px] font-black text-gray-500 group-hover/dd:text-gray-300 uppercase tracking-widest transition-colors">
+              <span className="text-[11px] font-black text-gray-500 group-hover/dd:text-gray-300 uppercase tracking-wider transition-colors">
                 Daftar Cuti/Izin — {BULAN[ym.m]} {ym.y}
               </span>
               {jumlahMenunggu > 0 && (
-                <span className="ml-auto text-[10px] font-bold text-yellow-300 bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-full">{jumlahMenunggu} menunggu</span>
+                <span className="ml-auto text-[11px] font-bold text-yellow-300 bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-full">{jumlahMenunggu} menunggu</span>
               )}
-              <span className={`${jumlahMenunggu > 0 ? "" : "ml-auto"} text-[10px] font-bold text-tint-redup bg-primer/10 border border-primer/20 px-2 py-0.5 rounded-full`}>
+              <span className={`${jumlahMenunggu > 0 ? "" : "ml-auto"} text-[11px] font-bold text-tint-redup bg-primer/10 border border-primer/20 px-2 py-0.5 rounded-full`}>
                 {monthLeaves.length}
               </span>
             </button>
@@ -328,11 +328,11 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: sc.dot }} />
                       <AvatarKaryawan id={l.idKaryawan} nama={rapikanNama(l.nama)} className="hidden sm:flex w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/10 text-white items-center justify-center font-bold text-xs" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-white truncate">{rapikanNama(l.nama)} <span className="text-[10px] font-normal text-gray-500">· {l.jenis}</span></p>
-                        <p className="text-[10px] text-gray-500 truncate">{l.tanggal}{l.alasan ? ` — ${l.alasan}` : ""}</p>
+                        <p className="text-xs font-bold text-white truncate">{rapikanNama(l.nama)} <span className="text-[11px] font-normal text-gray-500">· {l.jenis}</span></p>
+                        <p className="text-[11px] text-gray-500 truncate">{l.tanggal}{l.alasan ? ` — ${l.alasan}` : ""}</p>
                       </div>
                       {tombolKeputusan(l, true)}
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${sc.bg} ${sc.t} shrink-0`}>{l.status}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${sc.bg} ${sc.t} shrink-0`}>{l.status}</span>
                     </div>
                   );
                 })}
@@ -353,7 +353,7 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
                 <p className="font-bold text-white text-sm">{tglPanjang(hariDipilih)}</p>
                 <p className="text-[11px] text-gray-500">{daftarHari.length} cuti/izin{jenisDipilih !== "semua" || !tampilStatus.Disetujui || !tampilStatus.Menunggu ? " (sesuai saringan)" : ""}</p>
               </div>
-              <button onClick={() => setHariDipilih(null)} className="text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0" title="Tutup"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+              <button onClick={() => setHariDipilih(null)} className="sentuh text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0" title="Tutup"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             <div className="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-2">
               {daftarHari.length === 0 ? (
@@ -372,10 +372,10 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
                           <p className="text-[11px] text-gray-400 truncate">{l.jenis}</p>
                         </div>
                       </div>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${sc.bg} ${sc.t} shrink-0`}>{l.status}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${sc.bg} ${sc.t} shrink-0`}>{l.status}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2 mt-1.5">
-                      <span className="text-[10px] text-gray-500">{l.range.start === l.range.end ? tglPendek(l.range.start) : `${tglPendek(l.range.start)} – ${tglPendek(l.range.end)}`}</span>
+                      <span className="text-[11px] text-gray-500">{l.range.start === l.range.end ? tglPendek(l.range.start) : `${tglPendek(l.range.start)} – ${tglPendek(l.range.end)}`}</span>
                       {tombolKeputusan(l, true)}
                     </div>
                   </div>
@@ -405,10 +405,10 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
                   <AvatarKaryawan id={rincian.idKaryawan} nama={rapikanNama(rincian.nama)} className="w-10 h-10 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-sm" />
                   <div className="min-w-0">
                     <p className="font-bold text-white text-sm truncate">{rapikanNama(rincian.nama)}</p>
-                    <div className="flex items-center gap-2 mt-0.5">{chipJenis(rincian.kat)}<span className={`text-[9px] font-bold px-2 py-0.5 rounded ${sc.bg} ${sc.t}`}>{rincian.status}</span></div>
+                    <div className="flex items-center gap-2 mt-0.5">{chipJenis(rincian.kat)}<span className={`text-[10px] font-bold px-2 py-0.5 rounded ${sc.bg} ${sc.t}`}>{rincian.status}</span></div>
                   </div>
                 </div>
-                <button onClick={() => setRincianId(null)} className="text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0" title="Tutup"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                <button onClick={() => setRincianId(null)} className="sentuh text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0" title="Tutup"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
               </div>
               <div className="p-4">
                 {baris("Jenis", rincian.jenis || "-")}

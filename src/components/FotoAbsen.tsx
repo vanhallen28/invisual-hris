@@ -62,10 +62,10 @@ function KotakFoto({ label, jam, path, url, memuat, kedaluwarsa, belumPulang, hi
   else if (!url || rusak) pesan = kedaluwarsa ? `Sudah terhapus otomatis (> ${UMUR_FOTO_HARI} hari)` : hilang ? "Berkas foto tidak ditemukan di penyimpanan" : "Foto tidak bisa dibuka";
   return (
     <div className="min-w-0">
-      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">{label}{jam ? <span className="text-gray-300 normal-case font-mono ml-1">{jam}</span> : null}</p>
+      <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">{label}{jam ? <span className="text-gray-300 normal-case font-mono ml-1">{jam}</span> : null}</p>
       {pesan ? (
         <div className="aspect-[3/4] rounded-lg border border-dashed border-white/10 bg-white/[0.02] flex items-center justify-center p-2 text-center">
-          <span className="text-[10px] text-gray-500 leading-snug">{pesan}</span>
+          <span className="text-[11px] text-gray-500 leading-snug">{pesan}</span>
         </div>
       ) : (
         <button type="button" onClick={() => onBuka(url!)} className="block w-full aspect-[3/4] rounded-lg overflow-hidden border border-white/10 hover:border-primer-terang focus:outline-none focus:ring-2 focus:ring-primer-terang" title="Perbesar">
@@ -108,7 +108,7 @@ export function FotoAbsenPasangan({ att, hariIni }: { att: any; hariIni: string 
         <KotakFoto key={`m-${ulang}`} label="Masuk" jam={att?.waktuMasuk} path={fm} url={fm ? url[fm] : undefined} memuat={memuat} kedaluwarsa={lama} hilang={!!fm && hilang.has(fm)} onBuka={setBesar} onRusak={tandaiRusak} />
         <KotakFoto key={`k-${ulang}`} label="Pulang" jam={att?.waktuKeluar} path={fk} url={fk ? url[fk] : undefined} memuat={memuat} kedaluwarsa={lama} belumPulang={!att?.waktuKeluar} hilang={!!fk && hilang.has(fk)} onBuka={setBesar} onRusak={tandaiRusak} />
       </div>
-      <p className="text-[10px] text-gray-600 mt-2">
+      <p className="text-[11px] text-gray-600 mt-2">
         Foto disimpan {UMUR_FOTO_HARI} hari, lalu terhapus otomatis.
         {bisaDiulang && <> <button type="button" onClick={() => setUlang((n) => n + 1)} className="font-bold text-tint hover:text-white underline underline-offset-2">Muat ulang foto</button></>}
       </p>
@@ -185,7 +185,7 @@ export function GaleriFotoAbsen({ hariIni, fokusId, onTutup }: { hariIni: string
             <h2 className="font-bold text-white text-sm">Foto Absensi</h2>
             <p className="text-[11px] text-gray-500 mt-0.5">Selfie saat clock-in & clock-out · tersimpan {UMUR_FOTO_HARI} hari lalu terhapus otomatis</p>
           </div>
-          <button onClick={onTutup} className="text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0" title="Tutup"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+          <button onClick={onTutup} className="sentuh text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0" title="Tutup"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
         </div>
 
         <div className="px-4 pt-3 pb-2 border-b border-white/5 flex flex-col gap-2.5">
@@ -237,8 +237,8 @@ export function GaleriFotoAbsen({ hariIni, fokusId, onTutup }: { hariIni: string
                         <p className="text-sm font-bold text-white truncate">{rapikanNama(a.nama)}</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        {a.mode_kerja && a.mode_kerja !== "Kantor" && <span className="text-[9px] font-bold uppercase bg-primer/15 text-tint-redup px-1.5 py-0.5 rounded border border-primer/30">{a.mode_kerja}</span>}
-                        <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${a.status === "Terlambat" ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-green-500/10 text-green-400 border-green-500/20"}`}>{a.status || "-"}</span>
+                        {a.mode_kerja && a.mode_kerja !== "Kantor" && <span className="text-[10px] font-bold uppercase bg-primer/15 text-tint-redup px-1.5 py-0.5 rounded border border-primer/30">{a.mode_kerja}</span>}
+                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border ${a.status === "Terlambat" ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" : "bg-green-500/10 text-green-400 border-green-500/20"}`}>{a.status || "-"}</span>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">

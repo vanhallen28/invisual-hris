@@ -2,12 +2,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Clock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import PerformancePanel from "@/components/PerformancePanel";
 import { logAudit } from "@/lib/audit";
 import Avatar from "@/components/Avatar";
 import { unggahMediaPublik } from "@/lib/media";
 import { useToast } from "@/components/Toast";
+import { teksTanggal } from "@/lib/tanggalTampil";
+import { KerangkaTabel, KerangkaKepala, KeadaanKosong } from "@/components/Kerangka";
 import { ambilAturanJamKerjaDetail } from "@/lib/jamKerja";
 
 export default function AdminKaryawanPage() {
@@ -354,19 +357,11 @@ export default function AdminKaryawanPage() {
   // =========================================================================
   if (isLoading) {
     return (
-      <div className="w-full flex flex-col items-center justify-center min-h-[75vh] animate-in fade-in zoom-in-95 duration-500">
-        <div className="relative flex items-center justify-center">
-          <div className="absolute inset-0 bg-primer-terang/20 rounded-full blur-2xl animate-pulse"></div>
-          <img 
-            src="/logo.png" 
-            alt="Memuat Invisual..." 
-            className="relative w-16 h-16 animate-spin object-contain" 
-            style={{ animationDuration: "3s" }} 
-          />
+      <div className="w-full flex flex-col gap-6 pb-28 md:pb-10 font-sans text-gray-300 animate-in fade-in duration-300">
+        <KerangkaKepala />
+        <div className="p-4 md:p-6 rounded-xl border border-white/10 bg-white/[0.03]">
+          <KerangkaTabel baris={5} label="Memuat daftar karyawan…" />
         </div>
-        <p className="text-gray-500 text-[10px] md:text-xs font-mono tracking-[0.25em] uppercase mt-8 animate-pulse">
-          Menyinkronkan Database...
-        </p>
       </div>
     );
   }
@@ -378,10 +373,10 @@ export default function AdminKaryawanPage() {
       {/* HEADER UTAMA */}
       <div className="p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Database Karyawan</h1>
-          <p className="text-xs text-gray-400 mt-1 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]"></span>
-            Terhubung & Sinkronisasi Live dengan Supabase Server
+          <h1 className="font-display text-2xl font-bold text-white tracking-tight">Karyawan</h1>
+          <p className="text-xs text-gray-400 mt-1">
+            {showArchived ? `${filteredEmployees.length} karyawan diarsipkan` : `${filteredEmployees.length} dari ${employees.filter((e) => e.isAktif !== false).length} karyawan aktif`}
+            {(searchQuery || selectedStatusFilter !== "Semua") && <span className="text-gray-500"> · tersaring</span>}
           </p>
         </div>
         
@@ -408,7 +403,7 @@ export default function AdminKaryawanPage() {
             {pengingatKontrak.map(({ emp, sisa }) => (
               <div key={emp.idKaryawan} className="flex items-center justify-between gap-3 text-xs bg-black/20 rounded-lg px-3 py-2">
                 <span className="font-bold text-white truncate">{emp.nama} <span className="text-gray-500 font-normal">· {emp.jabatan || "-"}</span></span>
-                <span className="text-amber-300 font-mono shrink-0">{sisa === 0 ? "Berakhir HARI INI" : `${sisa} hari lagi`} ({emp.tanggalBerakhirKontrak})</span>
+                <span className="text-amber-300 font-mono shrink-0">{sisa === 0 ? "Berakhir HARI INI" : `${sisa} hari lagi`} ({teksTanggal(emp.tanggalBerakhirKontrak, { hari: false })})</span>
               </div>
             ))}
           </div>
@@ -432,67 +427,80 @@ export default function AdminKaryawanPage() {
       {/* TABEL DATA KARYAWAN */}
       <div className="p-4 md:p-6 overflow-hidden relative rounded-xl border border-white/10 bg-white/[0.03] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 kartu-glow">
         {filteredEmployees.length === 0 ? (
-           <div className="text-center py-20 text-gray-500">Tidak ada data karyawan yang cocok dengan pencarian Anda.</div>
+          <KeadaanKosong
+            judul={showArchived ? "Arsip kosong" : searchQuery || selectedStatusFilter !== "Semua" ? "Tidak ada yang cocok" : "Belum ada karyawan"}
+            keterangan={showArchived ? "Karyawan yang dinonaktifkan akan muncul di sini." : searchQuery || selectedStatusFilter !== "Semua" ? "Coba kata kunci lain atau hapus saringan status." : "Tambahkan karyawan pertama untuk mulai mencatat kehadiran."}
+            aksi={
+              searchQuery || selectedStatusFilter !== "Semua" ? (
+                <button type="button" onClick={() => { setSearchQuery(""); setSelectedStatusFilter("Semua"); }} className="px-4 py-2 rounded-xl text-xs font-bold bg-white/5 hover:bg-white/10 text-gray-200 border border-white/10">Hapus saringan</button>
+              ) : !showArchived ? (
+                <button type="button" onClick={openAddModal} className="px-4 py-2 rounded-xl text-xs font-bold bg-white text-black hover:bg-gray-200">Tambah Karyawan Baru</button>
+              ) : undefined
+            }
+          />
         ) : (
           <>
           <div className="overflow-x-auto custom-scrollbar hidden md:block">
             <table className="w-full text-left text-sm text-gray-300 min-w-[900px] tabel-baris-rapi">
-              <thead className="border-b border-white/10 text-gray-500 text-[10px] md:text-xs uppercase tracking-wider">
+              <thead className="border-b border-white/10 text-gray-500 text-[11px] md:text-xs uppercase tracking-wide">
                 <tr>
-                  <th className="px-6 py-4 font-bold">Nama Staf (Klik Profil)</th>
-                  <th className="px-6 py-4 font-bold">Kontak Akses</th>
-                  <th className="px-6 py-4 font-bold">Departemen & Status</th>
-                  <th className="px-6 py-4 font-bold text-center">Sisa Cuti</th>
-                  <th className="px-6 py-4 font-bold text-right">Tindakan</th>
+                  <th className="px-4 py-3 font-bold">Nama</th>
+                  <th className="px-4 py-3 font-bold">Kontak</th>
+                  <th className="px-4 py-3 font-bold">Jabatan & Status</th>
+                  <th className="px-4 py-3 font-bold text-center">Sisa Cuti</th>
+                  <th className="px-4 py-3 font-bold text-right">Tindakan</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredEmployees.map((emp, index) => (
                   <tr key={emp.idKaryawan || `emp-${index}`} className={`group ${idKontrakSegera.has(emp.idKaryawan) ? "bg-amber-500/[0.05]" : ""}`}>
                     
-                    <td className="px-6 py-5">
+                    <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
-                        <Avatar url={emp.avatarUrl} name={emp.nama} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-base shrink-0 group-hover:bg-white/10 transition-colors" />
-                        <div onClick={() => setSelectedProfile(emp)} className="cursor-pointer group/name">
-                          <p className="font-bold text-white text-base leading-tight group-hover/name:text-blue-400 transition-colors flex items-center gap-2">{emp.nama} <span className="text-[10px] opacity-0 group-hover/name:opacity-100 transition-opacity">↗</span></p>
-                          <p className="text-xs text-gray-500 font-mono font-medium mt-1">{emp.idKaryawan}</p>
-                        </div>
+                        <Avatar url={emp.avatarUrl} name={emp.nama} className="w-9 h-9 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-sm shrink-0 group-hover:bg-white/10 transition-colors" />
+                        <button type="button" onClick={() => setSelectedProfile(emp)} title="Lihat profil" className="text-left cursor-pointer group/name">
+                          <span className="font-bold text-white text-sm leading-tight group-hover/name:text-tint transition-colors flex items-center gap-2">{emp.nama} <span className="text-[11px] opacity-0 group-hover/name:opacity-100 transition-opacity" aria-hidden>↗</span></span>
+                          <span className="block text-xs text-gray-500 font-mono font-medium mt-0.5">{emp.idKaryawan}</span>
+                        </button>
                       </div>
                     </td>
                     
-                    <td className="px-6 py-5">
+                    <td className="px-4 py-3.5">
                       <p className="text-sm text-gray-300 font-medium">{emp.email}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{emp.noPonsel || "-"}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{emp.noPonsel || <span className="italic text-gray-600">Belum diisi</span>}</p>
                     </td>
 
-                    <td className="px-6 py-5">
-                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider block w-max mb-1.5
-                        ${emp.status === 'Tetap' ? 'bg-green-500/10 text-green-400 border border-green-500/10' : 
-                          emp.status === 'PKWT (Kontrak)' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/10' : 
-                          emp.status === 'Internship' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 
-                          'bg-purple-500/10 text-purple-400 border border-purple-500/10'}`}>
-                        {emp.status}
-                      </span>
-                      <span className="text-xs text-gray-400 font-medium">{emp.jabatan || emp.departemen || "Belum ada jabatan"}</span>
-                      {emp.user_id && (
-                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider block w-max mt-1.5 ${roleMap[emp.user_id] === 'manager' ? 'bg-primer-terang/15 text-tint-redup border border-primer-terang/25' : 'bg-white/5 text-gray-400 border border-white/10'}`}>
-                          {roleMap[emp.user_id] === 'manager' ? '★ Manager' : 'Member'}
+                    <td className="px-4 py-3.5">
+                      <p className="text-sm text-gray-200 font-medium">{emp.jabatan || emp.departemen || <span className="italic text-gray-600">Jabatan belum diisi</span>}</p>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide
+                          ${emp.status === 'Tetap' ? 'bg-green-500/10 text-green-400 border border-green-500/10' : 
+                            emp.status === 'PKWT (Kontrak)' ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/10' : 
+                            emp.status === 'Internship' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 
+                            'bg-purple-500/10 text-purple-400 border border-purple-500/10'}`}>
+                          {emp.status}
                         </span>
-                      )}
+                        {emp.user_id && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide ${roleMap[emp.user_id] === 'manager' ? 'bg-primer-terang/15 text-tint-redup border border-primer-terang/25' : 'bg-white/5 text-gray-400 border border-white/10'}`} title="Peran di Daily Task">
+                            {roleMap[emp.user_id] === 'manager' ? 'Manager' : 'Member'}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
-                    <td className="px-6 py-5 text-center">
-                      <span className="inline-block px-3 py-1.5 bg-input border border-white/10 text-gray-300 font-mono font-medium rounded-lg">
-                        {emp.sisaCuti} Hari
+                    <td className="px-4 py-3.5 text-center">
+                      <span className="inline-block px-2.5 py-1 bg-input border border-white/10 text-gray-300 font-mono text-xs font-medium rounded-lg tabular-nums">
+                        {emp.sisaCuti} hari
                       </span>
                     </td>
 
-                    <td className="px-6 py-5 text-right">
+                    <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openEditModal(emp)} className="text-gray-500 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-all border border-transparent hover:border-white/10" title="Ubah Data">
+                        <button onClick={() => openEditModal(emp)} className="sentuh text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-all border border-transparent hover:border-white/10" title="Ubah data" aria-label={`Ubah data ${emp.nama}`}>
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.89.112l-2.848.316.316-2.848a4.5 4.5 0 011.112-1.89l12.48-12.48zM16.862 4.487L19.5 7.125" /></svg>
                         </button>
-                        <button onClick={() => setDeleteConfirm({ show: true, id: emp.idKaryawan, nama: emp.nama })} className="text-gray-500 hover:text-red-500 p-2 rounded-lg hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20" title="Hapus Karyawan">
+                        <span className="w-px h-5 bg-white/10 mx-1" aria-hidden />
+                        <button onClick={() => setDeleteConfirm({ show: true, id: emp.idKaryawan, nama: emp.nama })} className="sentuh text-red-400/70 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20" title="Hapus karyawan (permanen)" aria-label={`Hapus ${emp.nama}`}>
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                         </button>
                       </div>
@@ -510,18 +518,18 @@ export default function AdminKaryawanPage() {
                 <div className="flex items-start gap-3">
                   <Avatar url={emp.avatarUrl} name={emp.nama} className="w-11 h-11 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-base shrink-0" />
                   <div className="flex-1 min-w-0" onClick={() => setSelectedProfile(emp)}>
-                    <p className="font-bold text-white text-sm leading-tight truncate">{emp.nama} <span className="text-[10px] text-gray-500">↗</span></p>
+                    <p className="font-bold text-white text-sm leading-tight truncate">{emp.nama} <span className="text-[11px] text-gray-500">↗</span></p>
                     <p className="text-[11px] text-gray-500 font-mono mt-0.5 truncate">{emp.idKaryawan}</p>
                     <p className="text-[11px] text-gray-400 mt-1 truncate">{emp.email}</p>
                   </div>
                   {emp.user_id && (
-                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md uppercase shrink-0 ${roleMap[emp.user_id] === 'manager' ? 'bg-primer/15 text-tint-redup border border-primer/25' : 'bg-white/5 text-gray-400 border border-white/10'}`}>
-                      {roleMap[emp.user_id] === 'manager' ? '★ Mgr' : 'Member'}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase shrink-0 ${roleMap[emp.user_id] === 'manager' ? 'bg-primer/15 text-tint-redup border border-primer/25' : 'bg-white/5 text-gray-400 border border-white/10'}`}>
+                      {roleMap[emp.user_id] === 'manager' ? 'Mgr' : 'Member'}
                     </span>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-3">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md uppercase ${emp.status === 'Tetap' ? 'bg-green-500/10 text-green-400' : emp.status === 'PKWT (Kontrak)' ? 'bg-yellow-500/10 text-yellow-500' : emp.status === 'Internship' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-purple-500/10 text-purple-400'}`}>{emp.status}</span>
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md uppercase ${emp.status === 'Tetap' ? 'bg-green-500/10 text-green-400' : emp.status === 'PKWT (Kontrak)' ? 'bg-yellow-500/10 text-yellow-500' : emp.status === 'Internship' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-purple-500/10 text-purple-400'}`}>{emp.status}</span>
                   <span className="text-[11px] text-gray-400 truncate max-w-[45%]">{emp.jabatan || "—"}</span>
                   <span className="text-[11px] text-gray-500 ml-auto whitespace-nowrap">Cuti: {emp.sisaCuti} hari</span>
                 </div>
@@ -581,7 +589,7 @@ export default function AdminKaryawanPage() {
             <div className="p-6 space-y-6 overflow-y-auto max-h-[65vh] custom-scrollbar text-sm bg-latar">
               
               <div className="bg-input p-5 rounded-2xl border border-white/10 space-y-4">
-                <h4 className="text-[10px] font-bold text-gray-500 tracking-widest uppercase font-mono">A. Identitas & Kontak Personal</h4>
+                <h4 className="text-[11px] font-bold text-gray-500 tracking-wider uppercase font-mono">A. Identitas & Kontak Personal</h4>
                 <div className="grid grid-cols-2 gap-y-4 gap-x-4">
                   <div>
                     <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">Nomor KTP (NIK)</p>
@@ -601,21 +609,21 @@ export default function AdminKaryawanPage() {
                   </div>
                   <div className="col-span-2">
                     <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">Alamat KTP</p>
-                    <p className="text-gray-200 font-medium leading-relaxed bg-white/5 p-3 rounded-lg border border-white/10">📍 {selectedProfile.alamatKtp || "— Belum diisi —"}</p>
+                    <p className="text-gray-200 font-medium leading-relaxed bg-white/5 p-3 rounded-lg border border-white/10">{selectedProfile.alamatKtp || "— Belum diisi —"}</p>
                   </div>
                   <div className="col-span-2">
                     <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">Alamat Domisili</p>
-                    <p className="text-gray-200 font-medium leading-relaxed bg-white/5 p-3 rounded-lg border border-white/10">📍 {selectedProfile.alamatDomisili || "— Belum diisi —"}</p>
+                    <p className="text-gray-200 font-medium leading-relaxed bg-white/5 p-3 rounded-lg border border-white/10">{selectedProfile.alamatDomisili || "— Belum diisi —"}</p>
                   </div>
                 </div>
               </div>
 
               <div className="bg-input p-5 rounded-2xl border border-white/10 space-y-4">
-                <h4 className="text-[10px] font-bold text-gray-500 tracking-widest uppercase font-mono">B. Kontrak Kepegawaian Invisual</h4>
+                <h4 className="text-[11px] font-bold text-gray-500 tracking-wider uppercase font-mono">B. Kontrak Kepegawaian Invisual</h4>
                 <div className="grid grid-cols-2 gap-y-4 gap-x-4">
                   <div>
                     <label className="text-[11px] text-gray-500 font-bold uppercase block mb-1">Status Hubungan Kerja</label>
-                    <span className="inline-block text-[10px] font-bold bg-white/10 text-white border border-white/20 px-2.5 py-1 rounded-md uppercase tracking-wider">{selectedProfile.status}</span>
+                    <span className="inline-block text-[11px] font-bold bg-white/10 text-white border border-white/20 px-2.5 py-1 rounded-md uppercase tracking-wider">{selectedProfile.status}</span>
                   </div>
                   <div>
                     <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">Sisa Jatah Cuti Tahunan</p>
@@ -627,13 +635,13 @@ export default function AdminKaryawanPage() {
                   </div>
                   <div>
                     <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">Total Masa Kerja Aktif</p>
-                    <p className="text-blue-400 font-bold">🕒 {calculateMasaKerja(selectedProfile.tanggalBergabung)}</p>
+                    <p className="text-blue-400 font-bold flex items-center gap-1"><Clock className="w-3.5 h-3.5" aria-hidden />{calculateMasaKerja(selectedProfile.tanggalBergabung)}</p>
                   </div>
                 </div>
               </div>
 
               <div className="bg-input p-5 rounded-2xl border border-white/10 space-y-4">
-                <h4 className="text-[10px] font-bold text-gray-500 tracking-widest uppercase font-mono">C. Informasi Finansial & Payroll</h4>
+                <h4 className="text-[11px] font-bold text-gray-500 tracking-wider uppercase font-mono">C. Informasi Finansial & Payroll</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-4">
                   <div className="md:col-span-2">
                     <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">Gaji Pokok Utama</p>
@@ -645,7 +653,7 @@ export default function AdminKaryawanPage() {
                   </div>
                   <div>
                     <p className="text-[11px] text-gray-500 font-bold uppercase mb-1">Nomor Rekening Bank</p>
-                    <p className="text-white font-mono font-bold text-base tracking-widest bg-white/5 px-2 py-1 rounded inline-block border border-white/10">{selectedProfile.noRekening || "— Belum diisi —"}</p>
+                    <p className="text-white font-mono font-bold text-base tracking-wider bg-white/5 px-2 py-1 rounded inline-block border border-white/10">{selectedProfile.noRekening || "— Belum diisi —"}</p>
                   </div>
                 </div>
               </div>
@@ -654,7 +662,7 @@ export default function AdminKaryawanPage() {
             </div>
 
             <div className="p-4 border-t border-white/5 bg-kartu flex gap-3">
-              <button onClick={() => { setSelectedProfile(null); openEditModal(selectedProfile); }} className="w-1/2 py-3 bg-white text-black hover:bg-gray-200 font-bold rounded-xl text-sm transition-all shadow-lg">⚙️ Edit Seluruh Data</button>
+              <button onClick={() => { setSelectedProfile(null); openEditModal(selectedProfile); }} className="w-1/2 py-3 bg-white text-black hover:bg-gray-200 font-bold rounded-xl text-sm transition-all shadow-lg">Edit Seluruh Data</button>
               <button onClick={() => setSelectedProfile(null)} className="w-1/2 py-3 bg-kartu-hover hover:bg-white/5 border border-white/10 text-white font-bold rounded-xl text-sm transition-colors">Tutup Profil</button>
             </div>
           </div>
@@ -669,7 +677,7 @@ export default function AdminKaryawanPage() {
               <div>
                 <h2 className="text-lg font-bold text-white tracking-tight">{isEditMode ? "Ubah Data Staf" : "Registrasi Karyawan Baru"}</h2>
               </div>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg border border-white/10"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+              <button onClick={() => setShowModal(false)} className="sentuh text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg border border-white/10"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
             
             <form onSubmit={handleSaveData} className="p-6 overflow-y-auto max-h-[70vh] custom-scrollbar space-y-6 bg-latar">
@@ -752,7 +760,7 @@ export default function AdminKaryawanPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-[11px] font-bold text-gray-500 uppercase">Alamat Domisili</label>
-                      <label className="flex items-center gap-1.5 text-[10px] text-gray-400 cursor-pointer normal-case">
+                      <label className="flex items-center gap-1.5 text-[11px] text-gray-400 cursor-pointer normal-case">
                         <input type="checkbox" checked={formData.domisiliSamaKtp} onChange={(e) => setFormData({...formData, domisiliSamaKtp: e.target.checked, ...(e.target.checked ? { alamatDomisili: formData.alamatKtp } : {})})} className="rounded bg-input border-white/20 w-3 h-3" />
                         Sama dengan KTP
                       </label>
@@ -807,7 +815,7 @@ export default function AdminKaryawanPage() {
                     <div className="md:col-span-3">
                       <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Tanggal Berakhir Kontrak (PKWT)</label>
                       <input type="date" value={formData.tanggalBerakhirKontrak} onChange={(e) => setFormData({...formData, tanggalBerakhirKontrak: e.target.value})} className="w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-white/30 outline-none [color-scheme:dark]" />
-                      <p className="text-[10px] text-gray-500 mt-1">Dipakai untuk pengingat H-7 sebelum kontrak berakhir.</p>
+                      <p className="text-[11px] text-gray-500 mt-1">Dipakai untuk pengingat H-7 sebelum kontrak berakhir.</p>
                     </div>
                   )}
 
@@ -816,7 +824,7 @@ export default function AdminKaryawanPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-[11px] font-bold text-tint-redup uppercase">Jam Kerja Standar</p>
-                          <p className="text-[10px] text-gray-500 mt-0.5">Dipakai untuk menentukan status "Terlambat". Tim dengan jam berbeda bisa diatur di sini.</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">Dipakai untuk menentukan status "Terlambat". Tim dengan jam berbeda bisa diatur di sini.</p>
                         </div>
                         <label className="inline-flex items-center gap-2 cursor-pointer shrink-0 pt-0.5">
                           <span className={`text-[11px] font-bold ${formData.fleksibel ? "text-tint" : "text-gray-500"}`}>Fleksibel</span>
@@ -824,38 +832,38 @@ export default function AdminKaryawanPage() {
                         </label>
                       </div>
                       {formData.fleksibel && (
-                        <p className="text-[10px] text-tint-redup mt-2 bg-primer/10 border border-primer/20 rounded-lg px-2.5 py-1.5">Jam kerja fleksibel aktif — karyawan ini <span className="font-bold">tidak pernah dihitung terlambat</span> saat absen.</p>
+                        <p className="text-[11px] text-tint-redup mt-2 bg-primer/10 border border-primer/20 rounded-lg px-2.5 py-1.5">Jam kerja fleksibel aktif — karyawan ini <span className="font-bold">tidak pernah dihitung terlambat</span> saat absen.</p>
                       )}
                     </div>
                     <div className="col-span-2">
                       <label className="flex items-start justify-between gap-3 cursor-pointer">
                         <div>
                           <p className="text-[11px] font-bold text-tint-redup uppercase">Freelancer</p>
-                          <p className="text-[10px] text-gray-500 mt-0.5">Akses dibatasi — hanya bisa membuka channel chat yang ditandai untuk freelancer.</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">Akses dibatasi — hanya bisa membuka channel chat yang ditandai untuk freelancer.</p>
                         </div>
                         <input type="checkbox" checked={!!formData.isFreelancer} onChange={(e) => setFormData({ ...formData, isFreelancer: e.target.checked })} className="accent-primer w-4 h-4 shrink-0 mt-0.5" />
                       </label>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase">Jam Masuk</label>
+                      <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Jam Masuk</label>
                       <input type="time" disabled={formData.fleksibel} value={formData.jamMasuk} onChange={(e) => setFormData({...formData, jamMasuk: e.target.value})} className={`w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primer outline-none [color-scheme:dark] ${formData.fleksibel ? "opacity-40 cursor-not-allowed" : ""}`} />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase">Jam Keluar</label>
+                      <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Jam Keluar</label>
                       <input type="time" disabled={formData.fleksibel} value={formData.jamKeluar} onChange={(e) => setFormData({...formData, jamKeluar: e.target.value})} className={`w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primer outline-none [color-scheme:dark] ${formData.fleksibel ? "opacity-40 cursor-not-allowed" : ""}`} />
                     </div>
                     <div className="col-span-2">
-                      <label className="block text-[10px] font-bold text-gray-500 mb-1.5 uppercase">Toleransi Keterlambatan (menit)</label>
+                      <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Toleransi Keterlambatan (menit)</label>
                       <input type="number" min={0} disabled={formData.fleksibel} value={formData.toleransiTelat} onChange={(e) => setFormData({...formData, toleransiTelat: e.target.value === "" ? "" : Number(e.target.value)})} placeholder="mis. 5" className={`w-full bg-input border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:border-primer outline-none ${formData.fleksibel ? "opacity-40 cursor-not-allowed" : ""}`} />
-                      <p className="text-[10px] text-gray-500 mt-1">Absen dianggap "Terlambat" hanya jika lewat jam masuk + toleransi ini. 0 = ketat. (Fleksibel = tak pernah telat.) Standar perusahaan diatur di Pengaturan → Jam Kerja &amp; Toleransi; isian di sini = pengecualian untuk karyawan ini.</p>
+                      <p className="text-[11px] text-gray-500 mt-1">Absen dianggap "Terlambat" hanya jika lewat jam masuk + toleransi ini. 0 = ketat. (Fleksibel = tak pernah telat.) Standar perusahaan diatur di Pengaturan → Jam Kerja &amp; Toleransi; isian di sini = pengecualian untuk karyawan ini.</p>
                     </div>
                   </div>
 
                   {formData.status === "Internship" && (
                     <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-5 bg-cyan-500/[0.04] border border-cyan-500/20 rounded-xl p-4">
                       <div className="md:col-span-2 flex items-center gap-2">
-                        <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">Data Magang</span>
-                        <span className="text-[10px] text-gray-600">— hanya untuk status Internship</span>
+                        <span className="text-[11px] font-black text-cyan-400 uppercase tracking-wider">Data Magang</span>
+                        <span className="text-[11px] text-gray-600">— hanya untuk status Internship</span>
                       </div>
                       <div>
                         <label className="block text-[11px] font-bold text-gray-500 mb-1.5 uppercase">Institusi / Kampus Asal</label>
@@ -873,14 +881,14 @@ export default function AdminKaryawanPage() {
                       <option value="member">Member — hanya melihat &amp; mengerjakan tugasnya sendiri (My Tasks)</option>
                       <option value="manager">Manager — mengelola seluruh board (buat, assign, atur semua tugas)</option>
                     </select>
-                    <p className="text-[10px] text-gray-600 mt-1.5">Menentukan tampilan menu Daily Task karyawan. Bisa diubah kapan saja lewat tombol Edit.</p>
+                    <p className="text-[11px] text-gray-600 mt-1.5">Menentukan tampilan menu Daily Task karyawan. Bisa diubah kapan saja lewat tombol Edit.</p>
                   </div>
 
                   {formData.role === "manager" && (
                     <div className="md:col-span-3 space-y-3">
                       <div className="bg-primer/5 border border-primer/20 rounded-lg p-4">
                         <label className="block text-[11px] font-bold text-tint-redup mb-1 uppercase">Board yang boleh diakses</label>
-                        <p className="text-[10px] text-gray-500 mb-3">Kosongkan = akses SEMUA board. Centang untuk membatasi ke board tertentu saja.</p>
+                        <p className="text-[11px] text-gray-500 mb-3">Kosongkan = akses SEMUA board. Centang untuk membatasi ke board tertentu saja.</p>
                         <div className="flex flex-wrap gap-2">
                           {allBoards.length === 0 ? (
                             <span className="text-[11px] text-gray-600">Belum ada board di Daily Task.</span>
@@ -901,21 +909,21 @@ export default function AdminKaryawanPage() {
                             })
                           )}
                         </div>
-                        <p className={`text-[10px] mt-3 ${formData.boardAccess.length ? "text-magenta" : "text-gray-600"}`}>
+                        <p className={`text-[11px] mt-3 ${formData.boardAccess.length ? "text-magenta" : "text-gray-600"}`}>
                           {formData.boardAccess.length ? `Dibatasi ke ${formData.boardAccess.length} board — board lain tersembunyi otomatis.` : "Saat ini: akses semua board."}
                         </p>
                       </div>
                       <label className="flex items-center justify-between bg-input border border-white/10 rounded-lg px-4 py-3 cursor-pointer">
                         <div className="pr-3">
                           <span className="text-sm font-bold text-white">Akses Content Hub</span>
-                          <p className="text-[10px] text-gray-500 mt-0.5">Izinkan melihat &amp; mengelola Content Hub (marketing &amp; sosmed).</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">Izinkan melihat &amp; mengelola Content Hub (marketing &amp; sosmed).</p>
                         </div>
                         <input type="checkbox" checked={formData.contentHub} onChange={(e) => setFormData({ ...formData, contentHub: e.target.checked })} className="accent-primer w-4 h-4 shrink-0" />
                       </label>
                       <label className="flex items-center justify-between bg-input border border-white/10 rounded-lg px-4 py-3 cursor-pointer">
                         <div className="pr-3">
                           <span className="text-sm font-bold text-white">Akses Corporate Vault</span>
-                          <p className="text-[10px] text-gray-500 mt-0.5">Izinkan membuka Corporate Vault (dokumen, email, langganan).</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">Izinkan membuka Corporate Vault (dokumen, email, langganan).</p>
                         </div>
                         <input type="checkbox" checked={formData.corporateAccess} onChange={(e) => setFormData({ ...formData, corporateAccess: e.target.checked })} className="accent-primer w-4 h-4 shrink-0" />
                       </label>
@@ -927,7 +935,7 @@ export default function AdminKaryawanPage() {
                       <label className="flex items-center justify-between bg-input border border-white/10 rounded-lg px-4 py-3 cursor-pointer">
                         <div className="pr-3">
                           <span className="text-sm font-bold text-white">Akses ACC Brief</span>
-                          <p className="text-[10px] text-gray-500 mt-0.5">Izinkan menyetujui (ACC) brief di halaman Antrean — tanpa jadi Manager penuh.</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5">Izinkan menyetujui (ACC) brief di halaman Antrean — tanpa jadi Manager penuh.</p>
                         </div>
                         <input type="checkbox" checked={!!formData.accBrief} onChange={(e) => setFormData({ ...formData, accBrief: e.target.checked })} className="accent-primer w-4 h-4 shrink-0" />
                       </label>

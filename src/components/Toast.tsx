@@ -1,6 +1,11 @@
 "use client";
 
 import { createContext, useContext, useCallback, useState, useRef } from "react";
+import { useJebakFokus } from "@/lib/fokus";
+
+// Maksimal toast yang tampil bersamaan; yang lebih lama digeser keluar (NN/g: jangan menumpuk notifikasi).
+const MAKS_TAMPIL = 2;
+const LAMA_TAMPIL_MS = 4000;
 
 /**
  * Toast global INVISUAL.
@@ -97,9 +102,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const tampil = useCallback((jenis: Jenis, pesan: string) => {
     const id = ++urutan.current;
-    setToasts((t) => [...t, { id, jenis, pesan }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000);
+    setToasts((t) => [...t, { id, jenis, pesan }].slice(-MAKS_TAMPIL));
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), LAMA_TAMPIL_MS);
   }, []);
+  const tutupToast = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
+  const kotakKonfirmasi = useRef<HTMLDivElement>(null);
 
   const api: ToastAPI = {
     sukses: (p) => tampil("sukses", p),
@@ -121,28 +128,34 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     konfirmasi?.resolve(nilai);
     setKonfirmasi(null);
   };
+  useJebakFokus(kotakKonfirmasi, !!konfirmasi, () => tutupKonfirmasi(false));
 
   return (
     <Ctx.Provider value={api}>
       {children}
 
       {/* Tumpukan toast */}
-      <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[10000] w-[92%] max-w-sm flex flex-col gap-2 pointer-events-none">
+      <div role="status" aria-live="polite" className="fixed top-5 left-1/2 -translate-x-1/2 z-[10000] w-[92%] max-w-sm flex flex-col gap-2 pointer-events-none">
         {toasts.map((t) => {
           const g = GAYA[t.jenis];
           return (
             <div
               key={t.id}
-              className="relative flex items-center gap-3.5 bg-kartu border border-white/10 rounded-2xl shadow-2xl px-4 py-3.5 overflow-hidden animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-auto"
+              onClick={() => tutupToast(t.id)}
+              title="Klik untuk menutup"
+              className="relative flex items-center gap-3.5 bg-kartu border border-white/10 rounded-2xl shadow-2xl px-4 py-3.5 overflow-hidden animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-auto cursor-pointer"
             >
               <span className={`absolute left-0 top-0 bottom-0 w-1 ${g.garis}`} />
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${g.kotak}`}>
                 <Ikon jenis={t.jenis} />
               </div>
               <div className="flex-1 min-w-0 pr-1">
-                <p className={`text-[10px] font-black uppercase tracking-widest mb-0.5 ${g.label}`}>{g.teks}</p>
+                <p className={`text-[11px] font-black uppercase tracking-wider mb-0.5 ${g.label}`}>{g.teks}</p>
                 <p className="text-[13px] font-semibold text-white leading-snug">{t.pesan}</p>
               </div>
+              <button type="button" onClick={(e) => { e.stopPropagation(); tutupToast(t.id); }} aria-label="Tutup notifikasi" className="shrink-0 w-8 h-8 -mr-1 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-3.5 h-3.5" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
           );
         })}
@@ -153,11 +166,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         <>
           <div className="fixed inset-0 bg-black/70 z-[10001]" onClick={() => tutupKonfirmasi(false)} />
           <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4 pointer-events-none">
-            <div className="w-full max-w-sm bg-kartu border border-white/10 rounded-2xl shadow-2xl p-5 pointer-events-auto animate-in zoom-in-95 fade-in duration-200">
-              <p className="text-sm text-white leading-relaxed mb-5">{konfirmasi.pesan}</p>
+            <div ref={kotakKonfirmasi} role="dialog" aria-modal="true" aria-labelledby="pesan-konfirmasi" className="w-full max-w-sm bg-kartu border border-white/10 rounded-2xl shadow-2xl p-5 pointer-events-auto animate-in zoom-in-95 fade-in duration-200">
+              <p id="pesan-konfirmasi" className="text-sm text-white leading-relaxed mb-5">{konfirmasi.pesan}</p>
               <div className="flex gap-2.5">
                 <button
                   onClick={() => tutupKonfirmasi(false)}
+                  data-fokus-awal
                   className="flex-1 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-semibold text-gray-300 transition-colors"
                 >
                   {konfirmasi.labelTidak}

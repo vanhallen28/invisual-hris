@@ -2,6 +2,7 @@
 'use client';
 
 import { rp } from '@/lib/keuangan/format';
+import { CircleCheck } from "lucide-react";
 import type { StatusAnggaran } from '@/lib/keuangan/tipe';
 
 export default function PeringatanAnggaran({ item }: { item: StatusAnggaran[] }) {
@@ -10,7 +11,7 @@ export default function PeringatanAnggaran({ item }: { item: StatusAnggaran[] })
   if (!kritis.length) {
     return (
       <div className="rounded-xl border border-white/10 bg-white/[0.03] px-5 py-6 text-center">
-        <p className="text-sm font-semibold text-green-400">Semua anggaran aman ✓</p>
+        <p className="text-sm font-semibold text-green-400 flex items-center gap-1.5"><CircleCheck className="w-4 h-4" aria-hidden />Semua anggaran aman</p>
         <p className="mt-1 text-[13px] text-gray-500">
           Tidak ada kategori yang melewati 80% dari batasnya.
         </p>
@@ -32,7 +33,7 @@ export default function PeringatanAnggaran({ item }: { item: StatusAnggaran[] })
             }`}
           >
             <span
-              className={`shrink-0 pt-0.5 text-[10px] font-bold uppercase tracking-wider ${
+              className={`shrink-0 pt-0.5 text-[11px] font-bold uppercase tracking-wider ${
                 lewat ? 'text-red-400' : 'text-amber-400'
               }`}
             >
