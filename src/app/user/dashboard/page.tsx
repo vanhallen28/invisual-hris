@@ -16,6 +16,8 @@ import { type ModeKerja, statusRemoteHariIni, modeBawaan, keteranganRemote, muat
 import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
 import { teksTanggal } from "@/lib/tanggalTampil";
+import { useTema } from "@/lib/tema";
+import DasborKaryawanBrutal from "@/components/brutal/DasborKaryawanBrutal";
 
 // Gaya sel bento + cahaya biru yang mengikuti kursor.
 // Murni tampilan: tanpa state, tanpa efek samping.
@@ -37,6 +39,7 @@ const bentoLeave = (e: { currentTarget: HTMLDivElement }) => {
 
 export default function UserDashboardPage() {
   const toast = useToast();
+  const [tema] = useTema();   // Neo-Brutal ("terang") memakai tata letak sendiri; tema gelap tidak berubah
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -421,6 +424,7 @@ export default function UserDashboardPage() {
 
 
 
+      {tema !== "terang" ? (<>
       {/* HEADER: sapaan + tanggal */}
       <div className="flex flex-wrap justify-between items-end gap-3 mb-1 md:mb-2">
         <div className="min-w-0">
@@ -705,6 +709,40 @@ export default function UserDashboardPage() {
 
         </div>
       </div>
+      </>) : (
+        /* Tema Neo-Brutal: tata letak mockup; alur absen tetap fungsi halaman ini */
+        <DasborKaryawanBrutal
+          currentUser={currentUser}
+          todayISO={todayISO}
+          todayAttendance={todayAttendance}
+          jamMasuk={jamMasuk}
+          jamKeluar={jamKeluar}
+          isFleksibel={isFleksibel}
+          kantorRadius={kantorRadius}
+          modeKerja={modeKerja}
+          setModeKerja={setModeKerja}
+          stRemote={stRemote}
+          bolehWFH={bolehWFH}
+          bolehWFC={bolehWFC}
+          captureMode={captureMode}
+          cameraOn={cameraOn}
+          capturedPhoto={capturedPhoto}
+          isFlashing={isFlashing}
+          isActionLoading={isActionLoading}
+          hasCameraPermission={hasCameraPermission}
+          videoRef={videoRef}
+          canvasRef={canvasRef}
+          startCapture={startCapture}
+          cancelCapture={cancelCapture}
+          handleClockIn={handleClockIn}
+          handleClockOut={handleClockOut}
+          tandaHariIni={tandaHariIni}
+          kompensasiHariIni={kompensasiHariIni}
+          myTasks={myTasks}
+          recentAttendances={recentAttendances}
+          recentLeaves={recentLeaves}
+        />
+      )}
 
 
 

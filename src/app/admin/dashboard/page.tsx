@@ -24,6 +24,8 @@ import InfoLibur from "@/components/InfoLibur";
 import { MENIT_LEMBUR_MIN, type TandaLembur } from "@/lib/lembur";
 import { muatTandaLembur } from "@/lib/lemburData";
 import { teksTanggal } from "@/lib/tanggalTampil";
+import { useTema } from "@/lib/tema";
+import DasborHRBrutal from "@/components/brutal/DasborHRBrutal";
 
 // Cek apakah HARI INI termasuk dalam periode izin/cuti.
 // Kolom `tanggal` berupa string: "2025-07-16", "2025-07-16 s/d 2025-07-20",
@@ -85,6 +87,7 @@ function BentoCell({
 export default function AdminDashboardPage() {
   const toast = useToast();
   const router = useRouter();
+  const [tema] = useTema();   // Neo-Brutal ("terang") memakai tata letak sendiri; tema gelap tidak berubah
 
   const [adminEmail, setAdminEmail] = useState<string>("Memuat...");
   const todayDate = new Date().toLocaleDateString("id-ID", { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -522,7 +525,7 @@ export default function AdminDashboardPage() {
       {/* =========================================================================
           VIEW MODE 1: THEME GLOW NEO-3D
           ========================================================================= */}
-      {true && (
+      {tema !== "terang" ? (
         <div className="w-full flex flex-col gap-6 pb-6 font-sans animate-in fade-in duration-500">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 relative z-20">
             <div>
@@ -851,6 +854,32 @@ export default function AdminDashboardPage() {
             </BentoCell>
           </div>
         </div>
+      ) : (
+        /* Tema Neo-Brutal: tata letak mockup; data & aksi tetap dari halaman ini */
+        <DasborHRBrutal
+          todayISO={todayISO}
+          isLoading={isLoading}
+          employees={employees}
+          onTimeToday={onTimeToday}
+          lateToday={lateToday}
+          approvedLeaves={approvedLeaves}
+          remoteToday={remoteToday}
+          belumAbsen={belumAbsen}
+          hadirTotal={hadirTotal}
+          absenLog={absenLog}
+          pendingApprovals={pendingApprovals}
+          jamMasukPetaHariIni={jamMasukPetaHariIni}
+          tandaLemburHariIni={tandaLemburHariIni}
+          saringLog={saringLog}
+          setSaringLog={setSaringLog}
+          anomali={{ jumlah: anomalyList.length, total: totalAnomali, data: anomaliData, telat: anomaliTelat, sembunyi: sembunyiAnomali, onSembunyi: sembunyikanAnomaliHariIni, onTampil: tampilkanAnomali }}
+          versiLembur={versiLembur}
+          bukaRincian={setActiveModal}
+          bukaFoto={(fokusId) => setGaleriFoto({ fokusId })}
+          onKeputusan={handleApprovalAction}
+          onLemburBerubah={() => { setVersiLembur((v) => v + 1); fetchDashboardData(); }}
+          aksi={{ exportCsv: handleExportCSV, email: () => setShowBroadcastModal(true), wa: () => setShowWABroadcastModal(true), payroll: () => router.push("/admin/payroll"), backup: handleBackupDatabase }}
+        />
       )}
 
 
