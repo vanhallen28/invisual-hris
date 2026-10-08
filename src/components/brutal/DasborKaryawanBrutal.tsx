@@ -179,7 +179,7 @@ export default function DasborKaryawanBrutal({ videoRef, canvasRef, ...p }: Prop
           <div className="nb-jam" data-kamera={modusKamera ? "" : undefined}>
             {p.isFlashing && <div style={{ position: "absolute", inset: 0, background: "#fff", zIndex: 5 }} />}
             {p.isActionLoading && (
-              <div style={{ position: "absolute", inset: 0, zIndex: 4, background: "rgba(17,17,17,.7)", display: "grid", placeItems: "center" }}>
+              <div style={{ position: "absolute", inset: 0, zIndex: 4, background: "rgba(255,243,214,.92)", display: "grid", placeItems: "center" }}>
                 <LoadingLogo size={56} text="Menyimpan Wajah..." />
               </div>
             )}

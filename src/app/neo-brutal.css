@@ -227,7 +227,8 @@ html[data-tema="terang"] {
   :is(tr, li, [class*="rounded-xl"]):nth-child(5n+5) [class*="rounded-full"][class*="bg-white/5"][class*="border-white/10"] { background-color: var(--nb-biru) !important; }
 
   /* ── Sidebar desktop: kartu biru mengambang ──────────────────────── */
-  aside {
+  /* hanya sidebar tata letak (admin/karyawan) — bukan <aside> di dalam halaman seperti Chat */
+  aside[class~="min-h-screen"] {
     margin: 16px 0 16px 16px;
     min-height: calc(100vh - 32px) !important;
     height: calc(100vh - 32px);
@@ -241,22 +242,25 @@ html[data-tema="terang"] {
     --color-gray-500: rgba(255, 255, 255, 0.78); --color-gray-600: rgba(255, 255, 255, 0.7);
     color: #ffffff;
   }
-  aside img[class~="invert"] { filter: brightness(0) invert(1) !important; opacity: 1 !important; }
+  /* panel <aside> di dalam halaman (Chat: daftar channel & anggota) → panel putih bergaris */
+  aside:not([class~="min-h-screen"])[class*="border-r"] { border-right: var(--nb-g) solid var(--nb-tinta) !important; }
+  aside:not([class~="min-h-screen"])[class*="border-l"] { border-left: var(--nb-g) solid var(--nb-tinta) !important; }
+  aside[class~="min-h-screen"] img[class~="invert"] { filter: brightness(0) invert(1) !important; opacity: 1 !important; }
   /* kartu pengguna di bawah sidebar karyawan: kartu putih bertinta hitam (dulu teks putih di atas putih) */
-  aside [class~="bg-input"][class*="rounded-xl"] {
+  aside[class~="min-h-screen"] [class~="bg-input"][class*="rounded-xl"] {
     background-color: #ffffff !important; border: var(--nb-g) solid var(--nb-tinta) !important; box-shadow: var(--nb-b2) !important;
     --color-white: var(--nb-tinta); --color-gray-500: #3d3d3d;
   }
-  aside :is([class*="border-b"], [class*="border-t"]) { border-color: rgba(255, 255, 255, 0.25) !important; }
-  aside nav a { font-weight: 700; }
-  aside :is(a[aria-current="page"], a[class~="bg-primer"]) {
+  aside[class~="min-h-screen"] :is([class*="border-b"], [class*="border-t"]) { border-color: rgba(255, 255, 255, 0.25) !important; }
+  aside[class~="min-h-screen"] nav a { font-weight: 700; }
+  aside[class~="min-h-screen"] :is(a[aria-current="page"], a[class~="bg-primer"]) {
     background-color: var(--nb-kuning) !important;
     color: var(--nb-tinta) !important;
     border: var(--nb-g) solid var(--nb-tinta) !important;
     box-shadow: var(--nb-b2) !important;
   }
-  aside :is(a[aria-current="page"], a[class~="bg-primer"]) * { color: var(--nb-tinta) !important; }
-  aside a:not([aria-current="page"]):hover { background-color: rgba(255, 255, 255, 0.14) !important; }
+  aside[class~="min-h-screen"] :is(a[aria-current="page"], a[class~="bg-primer"]) * { color: var(--nb-tinta) !important; }
+  aside[class~="min-h-screen"] a:not([aria-current="page"]):hover { background-color: rgba(255, 255, 255, 0.14) !important; }
 
   /* ── Kepala halaman ponsel ───────────────────────────────────────── */
   header[class*="md:hidden"], div[class*="md:hidden"][class*="sticky"][class*="top-0"] {
@@ -286,6 +290,27 @@ html[data-tema="terang"] {
 
   /* Lembar "Lainnya" di ponsel */
   [class*="rounded-t-3xl"][class~="bg-kartu"] { border: var(--nb-g) solid var(--nb-tinta) !important; border-bottom: 0 !important; box-shadow: none !important; }
+  /* Lembar "Lainnya" memakai kelas .bayangan-bawah (pil hitam nav) → dikembalikan jadi kartu krem
+     bertinta hitam: dulu judul & nama menu putih di atas putih/hitam sehingga tak terbaca. */
+  [data-lembar-lainnya] .bayangan-bawah {
+    left: 12px !important; right: 12px !important; bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    background-color: var(--nb-krem) !important; color: var(--nb-tinta) !important;
+    border: var(--nb-g) solid var(--nb-tinta) !important; border-radius: 18px !important; box-shadow: var(--nb-b) !important;
+    --color-white: var(--nb-tinta); --color-gray-300: var(--nb-tinta); --color-gray-400: #3d3d3d; --color-gray-500: #3d3d3d;
+    --color-primer: var(--nb-sidebar);
+  }
+  [data-lembar-lainnya] .bayangan-bawah :is(a, button, p, span) { color: var(--nb-tinta) !important; }
+  [data-lembar-lainnya] .bayangan-bawah [aria-hidden][class*="rounded-full"][class*="h-1"] { background-color: var(--nb-tinta) !important; opacity: .35; }
+  [data-lembar-lainnya] .bayangan-bawah a {
+    background-color: #ffffff !important; border: var(--nb-g) solid var(--nb-tinta) !important; border-radius: var(--nb-r) !important;
+    box-shadow: var(--nb-b3) !important;
+  }
+  [data-lembar-lainnya] .bayangan-bawah a > span:first-child {
+    background-color: var(--nb-krem) !important; border: var(--nb-g2) solid var(--nb-tinta); transform: none !important;
+  }
+  [data-lembar-lainnya] .bayangan-bawah a[aria-current="page"] { background-color: var(--nb-kuning) !important; }
+  [data-lembar-lainnya] .bayangan-bawah a[aria-current="page"] > span:first-child { background-color: #ffffff !important; }
+  [data-lembar-lainnya] .bayangan-bawah > div > button { background-color: #ffffff !important; border: var(--nb-g2) solid var(--nb-tinta); }
 
   /* ── Lapisan modal: arang transparan (bukan putih) ──────────────── */
   [class~="fixed"][class~="inset-0"]:is([class*="bg-black/"]) { background-color: rgba(17, 17, 17, 0.45) !important; }
@@ -673,5 +698,30 @@ html[data-tema="terang"] {
   .nb-akun-sidebar small { display: block; font-size: 12px; color: var(--nb-tinta) !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nb-akun-sidebar button { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; border: var(--nb-g2) solid var(--nb-tinta); background: var(--nb-pink); color: var(--nb-tinta); display: grid; place-items: center; cursor: pointer; }
   .nb-akun-sidebar button svg { width: 14px; height: 14px; }
-  aside .nb-akun-sidebar ~ a[title="Pengaturan"] { display: none; }
+  aside[class~="min-h-screen"] .nb-akun-sidebar ~ a[title="Pengaturan"] { display: none; }
+
+  /* ── Animasi memuat: logo putih → hitam, ring hitam, tampil di tengah layar ──
+     logo.png berwarna putih (untuk tema gelap) sehingga hilang di atas krem. */
+  img[src*="logo.png"] { filter: brightness(0) !important; }
+  .pwa-splash { background: var(--nb-krem) !important; }
+  /* di dalam tombol biru (teks putih) logo tetap putih agar terbaca */
+  :is(button, a):is([class~="bg-primer"], [class~="bg-primer-terang"], [class~="bg-blue-500"], [class~="bg-blue-600"]) img[src*="logo.png"] { filter: brightness(0) invert(1) !important; }
+  /* cincin berputar & cahaya biru di belakang logo → hitam / kuning */
+  [class~="animate-spin"][class*="border-t-primer-terang"] { border-top-color: var(--nb-tinta) !important; border-right-color: rgba(17, 17, 17, 0.25) !important; }
+  div:has(> img[src*="logo.png"][class~="animate-spin"]) > [class*="bg-primer-terang/20"][class*="blur"] { background-color: rgba(255, 210, 63, 0.55) !important; }
+  /* lapisan "Menyimpan Wajah..." di atas kamera: krem, bukan hitam */
+  [class~="absolute"][class~="inset-0"][class*="bg-black/70"]:has(img[src*="logo.png"]) { background-color: rgba(255, 243, 214, 0.92) !important; backdrop-filter: none !important; }
+  /* layar memuat satu halaman penuh → di tengah layar (bukan di tengah area konten).
+     z-index 30: sidebar, kepala & nav bawah ponsel tetap di atasnya, jadi pengguna tetap bisa
+     pindah halaman bila pemuatan lama. */
+  aside[class~="min-h-screen"]:not([class*="z-"]) { z-index: 35; }
+  main div:is([class~="h-[80vh]"], [class~="min-h-[70vh]"], [class~="min-h-[75vh]"], [class~="min-h-[60vh]"]):not([class~="h-full"]):has(img[src*="logo.png"]):not(:has(input, button, table)) {
+    position: fixed !important; inset: 0 !important; z-index: 30; min-height: 0 !important; height: auto !important; margin: 0 !important;
+    display: flex !important; flex-direction: column; align-items: center !important; justify-content: center !important;
+    background-color: var(--nb-krem);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect width='2' height='2' fill='%23e2c98f'/%3E%3C/svg%3E");
+    background-size: 20px 20px;
+  }
+  /* teks di bawah logo */
+  :is(div, p):has(> img[src*="logo.png"]) ~ p, div:has(> div > div > img[src*="logo.png"]) > p { color: var(--nb-tinta) !important; font-weight: 700; }
 }
