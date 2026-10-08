@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
+import "./neo-brutal.css"; // tema Neo-Brutal — hanya aktif di html[data-tema="terang"]
 import PwaSetup from "@/components/PwaSetup";
 import PwaSplash from "@/components/PwaSplash";
 import ChatToaster from "@/components/ChatToaster";

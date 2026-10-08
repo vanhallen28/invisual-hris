@@ -1,0 +1,294 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   TEMA NEO-BRUTAL — pengganti tema "terang" (sakelar tema: Gelap / Neo-Brutal).
+   Nilai tersimpan tetap localStorage['invisual_tema'] = "terang" → html[data-tema="terang"].
+
+   ATURAN BERKAS INI:
+   • Variabel didefinisikan pada html[data-tema="terang"] dan seluruh aturan gaya berada
+     di dalam satu blok @scope dengan akar yang sama — TEMA GELAP TIDAK TERSENTUH SAMA
+     SEKALI (atribut itu tidak pernah ada di tema gelap).
+   • Batas bawah `to (.tema-gelap-paksa)`: subpohon yang dipaksa gelap (Kanvas Test
+     Project, layar login, ganti password) tidak ikut bergaya neo-brutal.
+   • Peramban tanpa dukungan @scope mengabaikan blok gaya → tetap tampil terang biasa.
+   • Hanya gaya visual: tidak ada perubahan struktur halaman atau logika.
+   Palet & ukuran diukur dari piksel mockup (8 Okt 2026).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Font khusus Neo-Brutal (berkas lokal, lisensi OFL — lihat app/fonts/NB-*-OFL.txt).
+   Hanya diunduh peramban saat dipakai, jadi tema gelap tidak pernah memuatnya. */
+@font-face { font-family: "NB Display"; src: url("./fonts/NB-ArchivoBlack.woff2") format("woff2"); font-weight: 400 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "NB Mono"; src: url("./fonts/NB-JetBrainsMono-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "NB Mono"; src: url("./fonts/NB-JetBrainsMono-ExtraBold.woff2") format("woff2"); font-weight: 800 900; font-style: normal; font-display: swap; }
+
+html[data-tema="terang"] {
+  --nb-tinta: #111111;
+  --nb-krem: #fff3d6;               /* latar & isi kartu dalam */
+  --nb-titik: #e2c98f;              /* titik 2×2 px, jarak 20 px */
+  --nb-kuning: #ffd23f;
+  --nb-pink: #ff90c8;
+  --nb-hijau: #5fe3a1;
+  --nb-biru: #7aa2ff;
+  --nb-ungu: #c3a6ff;
+  --nb-jingga: #ff9f5a;
+  --nb-magenta: #de236e;            /* LIVE, angka notifikasi */
+  --nb-sidebar: #124bce;
+  --nb-kartu-isi: #fff3d6;          /* kartu di dalam kartu (pengajuan, dsb.) */
+  --nb-g: 3px;                      /* garis kartu, sidebar, menu aktif */
+  --nb-g2: 2px;                     /* garis tombol, lencana, isian */
+  --nb-r: 10px;                     /* sudut kartu */
+  --nb-b: 6px 6px 0 var(--nb-tinta);   /* bayangan kartu */
+  --nb-b2: 4px 4px 0 var(--nb-tinta);  /* bayangan tombol & menu aktif */
+  --nb-b3: 2px 2px 0 var(--nb-tinta);  /* bayangan lencana */
+  --nb-font-judul: "NB Display", "Archivo Black", "Arial Black", var(--font-display), sans-serif;
+  --nb-font-mono: "NB Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* token tema terang yang disetel ulang untuk neo-brutal */
+  --permukaan-latar: #fff3d6;
+  --permukaan-kartu: #ffffff;
+  --permukaan-kartu-hover: #fff3d6;
+  --permukaan-input: #ffffff;
+  --putih: #111111;
+  --tint: #124bce;
+  --tint-redup: #124bce;
+  --abu-400: #2b2b2b; --abu-500: #3d3d3d; --abu-600: #555555; --abu-700: #8a8a8a;
+}
+
+@scope (html[data-tema="terang"]) to (.tema-gelap-paksa) {
+
+  /* ── Latar krem bertitik ─────────────────────────────────────────── */
+  body {
+    background-color: var(--nb-krem);
+    /* pola titik persis mockup: kotak 2×2 px #e2c98f setiap 20 px */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect width='2' height='2' fill='%23e2c98f'/%3E%3C/svg%3E");
+    background-size: 20px 20px;
+    background-repeat: repeat;
+  }
+  /* pembungkus layout & konten utama transparan agar titiknya tampak */
+  div[class~="min-h-screen"][class~="bg-latar"], main[class~="bg-latar"] { background-color: transparent; }
+
+  /* ── Tipografi ───────────────────────────────────────────────────── */
+  h1 {
+    font-family: var(--nb-font-judul) !important;
+    font-weight: 400 !important;      /* Archivo Black sudah setebal-tebalnya */
+    text-transform: uppercase;
+    letter-spacing: 0.005em;
+    line-height: 1.05 !important;
+    color: var(--nb-tinta);
+  }
+  /* ukuran judul halaman mengikuti mockup: "DASBOR" ±52 px di desktop, "HALO, ANDI!" ±22 px di ponsel */
+  main h1:first-of-type, main > div > div > div > h1 { font-size: clamp(1.4rem, 1rem + 2.6vw, 3.25rem) !important; }
+  /* judul kartu: kapital tebal seperti "LOG ABSENSI", "PENGAJUAN", "TUGAS SAYA" */
+  h2 {
+    font-family: var(--nb-font-judul) !important;
+    font-weight: 400 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    color: var(--nb-tinta);
+  }
+  h3 { color: var(--nb-tinta); }
+  /* angka besar (ringkasan, ubin) */
+  :is(p, span, div)[class*="font-black"]:is([class*="text-2xl"], [class*="text-3xl"], [class*="text-4xl"], [class*="text-5xl"]) {
+    font-family: var(--nb-font-judul) !important; font-weight: 400 !important; letter-spacing: 0;
+  }
+  /* jam & angka berkolom */
+  .font-mono, [class~="font-mono"] { font-family: var(--nb-font-mono) !important; font-weight: 700; }
+
+  /* ── Kartu: garis tebal + bayangan keras ─────────────────────────── */
+  :is(.kartu-glow,
+      [class*="rounded-2xl"][class~="bg-kartu"], [class*="rounded-3xl"][class~="bg-kartu"],
+      [class*="rounded-2xl"][class*="bg-white/[0.0"], [class*="rounded-3xl"][class*="bg-white/[0.0"],
+      [class*="rounded-xl"][class*="bg-white/[0.03]"][class*="p-5"]) {
+    border: var(--nb-g) solid var(--nb-tinta) !important;
+    box-shadow: var(--nb-b) !important;
+    background-color: #ffffff;
+    border-radius: var(--nb-r);
+  }
+  .kartu-glow::before { display: none; }
+
+  /* Kartu di dalam kartu → garis lebih tipis, isi krem muda, bayangan kecil */
+  :is(.kartu-glow, [class*="rounded-2xl"][class~="bg-kartu"], [class*="rounded-3xl"][class~="bg-kartu"], [class*="rounded-2xl"][class*="bg-white/[0.0"])
+    :is([class*="rounded-xl"][class*="bg-white/[0.0"], [class*="rounded-2xl"][class*="bg-white/[0.0"], [class*="rounded-xl"][class~="bg-kartu"][class*="border"]) {
+    border: var(--nb-g2) solid var(--nb-tinta) !important;
+    box-shadow: var(--nb-b3) !important;
+    background-color: var(--nb-kartu-isi) !important;
+    border-radius: var(--nb-r);
+  }
+
+  /* Kartu ringkasan bergaris kiri (Absen karyawan, dsb.) → blok pastel penuh */
+  [class*="border-l-green"]  { background-color: var(--nb-hijau) !important; }
+  [class*="border-l-yellow"] { background-color: var(--nb-pink) !important; }
+  [class*="border-l-red"]    { background-color: #ffffff !important; }
+  [class*="border-l-primer"] { background-color: var(--nb-biru) !important; }
+  :is([class*="border-l-green"], [class*="border-l-yellow"], [class*="border-l-red"], [class*="border-l-primer"]) {
+    border: var(--nb-g) solid var(--nb-tinta) !important;
+    box-shadow: var(--nb-b) !important;
+    border-radius: var(--nb-r);
+  }
+  :is([class*="border-l-green"], [class*="border-l-yellow"], [class*="border-l-red"], [class*="border-l-primer"]) :is(p, span) { color: var(--nb-tinta) !important; }
+
+  /* Kartu ringkasan Kehadiran (bilah warna di kiri) → blok pastel sesuai warnanya */
+  button:has(> [class~="absolute"][class~="w-1"][class~="bg-green-500"])  { background-color: var(--nb-hijau) !important; }
+  button:has(> [class~="absolute"][class~="w-1"][class~="bg-yellow-500"]) { background-color: var(--nb-pink) !important; }
+  button:has(> [class~="absolute"][class~="w-1"][class~="bg-purple-500"]) { background-color: var(--nb-biru) !important; }
+  button:has(> [class~="absolute"][class~="w-1"][class~="bg-red-500"])    { background-color: var(--nb-kuning) !important; }
+  button:has(> [class~="absolute"][class~="w-1"]) > [class~="absolute"][class~="w-1"] { display: none; }
+  button:has(> [class~="absolute"][class~="w-1"]) :is(p, span) { color: var(--nb-tinta) !important; }
+
+  /* Chip kecil berbayang (tanggal hari ini, dsb.) */
+  [class*="rounded-xl"][class~="bg-kartu"][class*="shadow"]:not(:has(*[class*="rounded-xl"])) {
+    border: var(--nb-g2) solid var(--nb-tinta) !important; box-shadow: var(--nb-b3) !important;
+  }
+
+  /* ── Panel peringatan (kuning / merah) → pita pastel bergaris ─────── */
+  [class*="rounded-"][class*="border-amber-500/"][class*="bg-amber-500/"]:is([class*="p-4"], [class*="p-5"]) {
+    background-color: var(--nb-kartu-isi) !important; border: var(--nb-g) solid var(--nb-tinta) !important; box-shadow: var(--nb-b) !important;
+  }
+  [class*="rounded-"][class*="border-red-500/"][class*="bg-red-500/"]:is([class*="p-4"], [class*="py-2.5"], [class*="py-3"]) {
+    background-color: var(--nb-pink) !important; border: var(--nb-g) solid var(--nb-tinta) !important; box-shadow: var(--nb-b3) !important;
+  }
+
+  /* ── Tombol ──────────────────────────────────────────────────────── */
+  :is(button, a):is([class~="bg-primer"], [class~="bg-primer-terang"], [class~="bg-magenta"], [class~="bg-red-500"], [class~="bg-red-600"],
+      [class~="bg-green-500"], [class~="bg-green-600"], [class~="bg-green-600/90"], [class~="bg-emerald-500"], [class~="bg-emerald-600"],
+      [class~="bg-blue-500"], [class~="bg-blue-600"], [class~="bg-purple-600"], [class~="bg-amber-400"], [class~="bg-amber-500"], [class~="bg-yellow-500"]) {
+    border: var(--nb-g2) solid var(--nb-tinta) !important;
+    box-shadow: var(--nb-b2) !important;
+    transition: transform .08s ease, box-shadow .08s ease;
+  }
+  :is(button, a):is([class~="bg-green-500"], [class~="bg-green-600"], [class~="bg-green-600/90"], [class~="bg-emerald-500"], [class~="bg-emerald-600"]) {
+    background-color: var(--nb-hijau) !important; color: var(--nb-tinta) !important;
+  }
+  :is(button, a):is([class~="bg-primer"], [class~="bg-primer-terang"], [class~="bg-blue-500"], [class~="bg-blue-600"]) { background-color: var(--nb-sidebar) !important; }
+  :is(button, a):is([class~="bg-red-500"], [class~="bg-red-600"], [class~="bg-magenta"]) { background-color: var(--nb-pink) !important; color: var(--nb-tinta) !important; }
+  :is(button, a):is([class~="bg-amber-400"], [class~="bg-amber-500"], [class~="bg-yellow-500"]) { background-color: var(--nb-kuning) !important; color: var(--nb-tinta) !important; }
+  :is(button, a):is([class~="bg-primer"], [class~="bg-primer-terang"], [class~="bg-green-500"], [class~="bg-green-600"], [class~="bg-green-600/90"], [class~="bg-red-600"], [class~="bg-red-500"], [class~="bg-blue-600"], [class~="bg-amber-400"]):not(:disabled):active {
+    transform: translate(4px, 4px); box-shadow: none !important;
+  }
+  /* tombol sekunder (latar tipis) → putih bergaris */
+  button:is([class*="bg-white/5"], [class*="bg-white/[0.03]"], [class*="bg-white/[0.04]"], [class~="bg-kartu-hover"]):not([class*="w-full"][class*="h-full"]):not([class*="rounded-full"]):not(.kartu-glow) {
+    background-color: #ffffff !important;
+    border: var(--nb-g2) solid var(--nb-tinta) !important;
+    box-shadow: var(--nb-b3) !important;
+    color: var(--nb-tinta);
+  }
+
+  /* Keputusan pengajuan (kartu kecil ber-p-3.5): Setujui hijau, Tolak putih bergaris — seperti mockup */
+  [class*="bg-white/[0.03]"][class*="p-3.5"][class*="rounded-xl"] button[class~="bg-primer-terang"] {
+    background-color: var(--nb-hijau) !important; color: var(--nb-tinta) !important;
+  }
+  button[class~="text-gray-400"][class~="hover:text-white"][class~="px-3"][class~="py-2"][class~="text-xs"][class~="font-bold"] {
+    background-color: #ffffff !important; color: var(--nb-tinta) !important;
+    border: var(--nb-g2) solid var(--nb-tinta) !important; box-shadow: var(--nb-b2) !important; border-radius: var(--nb-r);
+    padding-inline: 1rem !important;
+  }
+  /* avatar inisial pengajuan (lingkaran tint biru) → pastel bergaris */
+  [class*="rounded-full"][class*="bg-primer-terang/20"][class*="border-primer-terang/30"] {
+    background-color: var(--nb-ungu) !important; color: var(--nb-tinta) !important; border: var(--nb-g2) solid var(--nb-tinta) !important;
+  }
+
+  /* ── Isian ───────────────────────────────────────────────────────── */
+  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([class*="bg-transparent"]), select, textarea:not([class*="bg-transparent"])) {
+    border: var(--nb-g2) solid var(--nb-tinta) !important;
+    background-color: #ffffff !important;
+    color: var(--nb-tinta);
+    border-radius: 10px;
+  }
+  :is(div, label)[class*="border"]:has(> svg):has(> input) {
+    border: var(--nb-g2) solid var(--nb-tinta) !important; background-color: #ffffff !important; border-radius: 10px;
+  }
+  :is(div, label)[class*="border"]:has(> svg) > input { border: 0 !important; background-color: transparent !important; }
+  input[type="checkbox"] { accent-color: var(--nb-tinta); }
+
+  /* ── Tabel: kepala pita hitam, garis baris hitam ─────────────────── */
+  thead { background-color: var(--nb-tinta) !important; }
+  thead :is(th, th *) { color: #ffffff !important; }
+  thead th { border-color: var(--nb-tinta) !important; }
+  tbody > tr { border-color: rgba(17, 17, 17, 0.85) !important; }
+  :is([class*="divide-white/"]) > * { border-color: rgba(17, 17, 17, 0.85) !important; }
+
+  /* ── Lencana status → pil pastel bergaris ────────────────────────── */
+  span[class*="px-"][class*="rounded"]:is([class*="bg-green-500/"], [class*="bg-emerald-500/"]) { background-color: var(--nb-hijau) !important; }
+  span[class*="px-"][class*="rounded"]:is([class*="bg-yellow-500/"], [class*="bg-amber-500/"], [class*="bg-orange-500/"]) { background-color: var(--nb-kuning) !important; }
+  span[class*="px-"][class*="rounded"]:is([class*="bg-red-500/"], [class*="bg-rose-500/"], [class*="bg-pink-500/"]) { background-color: var(--nb-pink) !important; }
+  span[class*="px-"][class*="rounded"]:is([class*="bg-blue-500/"], [class*="bg-primer/"], [class*="bg-primer-terang/"], [class*="bg-cyan-500/"]) { background-color: var(--nb-biru) !important; }
+  span[class*="px-"][class*="rounded"]:is([class*="bg-purple-500/"], [class*="bg-violet-500/"]) { background-color: var(--nb-ungu) !important; }
+  span[class*="px-"][class*="rounded"]:is([class*="bg-green-500/"], [class*="bg-emerald-500/"], [class*="bg-yellow-500/"], [class*="bg-amber-500/"], [class*="bg-orange-500/"], [class*="bg-red-500/"], [class*="bg-rose-500/"], [class*="bg-pink-500/"], [class*="bg-blue-500/"], [class*="bg-primer/"], [class*="bg-primer-terang/"], [class*="bg-cyan-500/"], [class*="bg-purple-500/"], [class*="bg-violet-500/"]) {
+    color: var(--nb-tinta) !important;
+    border: var(--nb-g2) solid var(--nb-tinta) !important;
+    box-shadow: var(--nb-b3);
+  }
+  span[class*="px-"][class*="rounded"]:is([class*="bg-green-500/"], [class*="bg-emerald-500/"], [class*="bg-yellow-500/"], [class*="bg-amber-500/"], [class*="bg-orange-500/"], [class*="bg-red-500/"], [class*="bg-rose-500/"], [class*="bg-pink-500/"], [class*="bg-blue-500/"], [class*="bg-primer/"], [class*="bg-primer-terang/"], [class*="bg-cyan-500/"], [class*="bg-purple-500/"], [class*="bg-violet-500/"]) * { color: var(--nb-tinta) !important; }
+
+  /* ── Avatar inisial → lingkaran pastel bergaris (warna bergilir per baris) ── */
+  [class*="rounded-full"][class*="bg-white/5"][class*="border-white/10"] {
+    background-color: var(--nb-kuning) !important; border: var(--nb-g2) solid var(--nb-tinta) !important; color: var(--nb-tinta) !important;
+  }
+  :is(tr, li, [class*="rounded-xl"]):nth-child(5n+2) [class*="rounded-full"][class*="bg-white/5"][class*="border-white/10"] { background-color: var(--nb-ungu) !important; }
+  :is(tr, li, [class*="rounded-xl"]):nth-child(5n+3) [class*="rounded-full"][class*="bg-white/5"][class*="border-white/10"] { background-color: var(--nb-jingga) !important; }
+  :is(tr, li, [class*="rounded-xl"]):nth-child(5n+4) [class*="rounded-full"][class*="bg-white/5"][class*="border-white/10"] { background-color: var(--nb-hijau) !important; }
+  :is(tr, li, [class*="rounded-xl"]):nth-child(5n+5) [class*="rounded-full"][class*="bg-white/5"][class*="border-white/10"] { background-color: var(--nb-biru) !important; }
+
+  /* ── Sidebar desktop: kartu biru mengambang ──────────────────────── */
+  aside {
+    margin: 16px 0 16px 16px;
+    min-height: calc(100vh - 32px) !important;
+    height: calc(100vh - 32px);
+    top: 16px !important;
+    background-color: var(--nb-sidebar) !important;
+    border: var(--nb-g) solid var(--nb-tinta) !important;
+    border-radius: var(--nb-r);
+    box-shadow: var(--nb-b);
+    --color-white: #ffffff;
+    --color-gray-200: #ffffff; --color-gray-300: #ffffff; --color-gray-400: rgba(255, 255, 255, 0.92);
+    --color-gray-500: rgba(255, 255, 255, 0.78); --color-gray-600: rgba(255, 255, 255, 0.7);
+    color: #ffffff;
+  }
+  aside img[class~="invert"] { filter: brightness(0) invert(1) !important; opacity: 1 !important; }
+  aside :is([class*="border-b"], [class*="border-t"]) { border-color: rgba(255, 255, 255, 0.25) !important; }
+  aside nav a { font-weight: 700; }
+  aside :is(a[aria-current="page"], a[class~="bg-primer"]) {
+    background-color: var(--nb-kuning) !important;
+    color: var(--nb-tinta) !important;
+    border: var(--nb-g) solid var(--nb-tinta) !important;
+    box-shadow: var(--nb-b2) !important;
+  }
+  aside :is(a[aria-current="page"], a[class~="bg-primer"]) * { color: var(--nb-tinta) !important; }
+  aside a:not([aria-current="page"]):hover { background-color: rgba(255, 255, 255, 0.14) !important; }
+
+  /* ── Kepala halaman ponsel ───────────────────────────────────────── */
+  header[class*="md:hidden"], div[class*="md:hidden"][class*="sticky"][class*="top-0"] {
+    background-color: var(--nb-krem) !important; border-bottom: var(--nb-g) solid var(--nb-tinta) !important; box-shadow: none !important;
+  }
+
+  /* ── Nav bawah ponsel: pil hitam mengambang, menu aktif kuning ──── */
+  .bayangan-bawah {
+    left: 12px !important; right: 12px !important; bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    border-radius: 18px;
+    background-color: var(--nb-tinta) !important;
+    border: var(--nb-g) solid var(--nb-tinta) !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    --color-gray-500: rgba(255, 255, 255, 0.82); --color-gray-300: #ffffff; --color-gray-400: #ffffff;
+    --color-primer: var(--nb-tinta);
+  }
+  .bayangan-bawah :is(a, button) { color: rgba(255, 255, 255, 0.85); }
+  .bayangan-bawah a[aria-current="page"] { color: #ffffff !important; }
+  .bayangan-bawah a[aria-current="page"] > span:first-child {
+    background-color: var(--nb-kuning) !important; color: var(--nb-tinta) !important;
+    border: var(--nb-g2) solid #ffffff; transform: none !important;
+  }
+
+  /* ruang untuk nav bawah yang kini mengambang */
+  @media (max-width: 767px) { main#konten { padding-bottom: 116px !important; } }
+
+  /* Lembar "Lainnya" di ponsel */
+  [class*="rounded-t-3xl"][class~="bg-kartu"] { border: var(--nb-g) solid var(--nb-tinta) !important; border-bottom: 0 !important; box-shadow: none !important; }
+
+  /* ── Lapisan modal: arang transparan (bukan putih) ──────────────── */
+  [class~="fixed"][class~="inset-0"]:is([class*="bg-black/"]) { background-color: rgba(17, 17, 17, 0.45) !important; }
+
+  /* ── Daily Task: board aktif di sidebar tracker → kuning ─────────── */
+  [class~="bg-primer"][class*="border-l-2"] {
+    background-color: var(--nb-kuning) !important; color: var(--nb-tinta) !important;
+    border: var(--nb-g2) solid var(--nb-tinta) !important; box-shadow: var(--nb-b3);
+  }
+  [class~="bg-primer"][class*="border-l-2"] * { color: var(--nb-tinta) !important; }
+}
