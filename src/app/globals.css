@@ -68,6 +68,13 @@
   --abu-100: oklch(96.7% 0.003 264.542); --abu-200: oklch(92.8% 0.006 264.531); --abu-300: oklch(87.2% 0.01 258.338); --abu-400: oklch(70.7% 0.022 261.325);
   --abu-500: #868ea2; --abu-600: #767f94; --abu-700: oklch(37.3% 0.034 259.733); --abu-800: oklch(27.8% 0.033 256.848); --abu-900: oklch(21% 0.034 264.665);
   --sukses: #4ade80; --peringatan: #fbbf24; --bahaya: #f87171; --info: #8ba7ff;
+  /* Warna status yang digelapkan tema terang → nilai bawaan (dihasilkan dari tailwindcss/theme.css). */
+  --color-amber-100: oklch(96.2% 0.059 95.617); --color-amber-200: oklch(92.4% 0.12 95.746); --color-amber-300: oklch(87.9% 0.169 91.605); --color-amber-400: oklch(82.8% 0.189 84.429); --color-blue-100: oklch(93.2% 0.032 255.585); --color-blue-200: oklch(88.2% 0.059 254.128); --color-blue-300: oklch(80.9% 0.105 251.813); --color-blue-400: oklch(70.7% 0.165 254.624); --color-cyan-300: oklch(86.5% 0.127 207.078); --color-cyan-400: oklch(78.9% 0.154 211.53); --color-emerald-100: oklch(95% 0.052 163.051); --color-emerald-200: oklch(90.5% 0.093 164.15); --color-emerald-300: oklch(84.5% 0.143 164.978); --color-emerald-400: oklch(76.5% 0.177 163.223); --color-green-100: oklch(96.2% 0.044 156.743); --color-green-200: oklch(92.5% 0.084 155.995); --color-green-300: oklch(87.1% 0.15 154.449); --color-green-400: oklch(79.2% 0.209 151.711); --color-orange-300: oklch(83.7% 0.128 66.29); --color-orange-400: oklch(75% 0.183 55.934); --color-purple-100: oklch(94.6% 0.033 307.174); --color-purple-200: oklch(90.2% 0.063 306.703); --color-purple-300: oklch(82.7% 0.119 306.383); --color-purple-400: oklch(71.4% 0.203 305.504); --color-red-100: oklch(93.6% 0.032 17.717); --color-red-200: oklch(88.5% 0.062 18.334); --color-red-300: oklch(80.8% 0.114 19.571); --color-red-400: oklch(70.4% 0.191 22.216); --color-red-500: oklch(63.7% 0.237 25.331); --color-yellow-100: oklch(97.3% 0.071 103.193); --color-yellow-200: oklch(94.5% 0.129 101.54); --color-yellow-300: oklch(90.5% 0.182 98.111); --color-yellow-400: oklch(85.2% 0.199 91.936); --color-yellow-500: oklch(79.5% 0.184 86.047); --color-primer-terang: #2b5cd5;
+  /* Token Tailwind yang merujuk nilai mentah (var(...)) dihitung di :root — dideklarasikan ulang di sini
+     agar subpohon ini benar-benar memakai nilai gelap di atas (dihasilkan dari blok @theme). */
+  --color-latar: var(--permukaan-latar); --color-input: var(--permukaan-input); --color-kartu: var(--permukaan-kartu); --color-kartu-hover: var(--permukaan-kartu-hover); --color-white: var(--putih); --color-black: var(--hitam); --color-tint: var(--tint); --color-tint-redup: var(--tint-redup); --color-gray-100: var(--abu-100); --color-gray-200: var(--abu-200); --color-gray-300: var(--abu-300); --color-gray-400: var(--abu-400); --color-gray-500: var(--abu-500); --color-gray-600: var(--abu-600); --color-gray-700: var(--abu-700); --color-gray-800: var(--abu-800); --color-gray-900: var(--abu-900); --color-teks: var(--putih); --color-teks-redup: var(--abu-400); --color-teks-samar: var(--abu-500); --color-sukses: var(--sukses); --color-peringatan: var(--peringatan); --color-bahaya: var(--bahaya); --color-info: var(--info); --color-garis: color-mix(in oklab, var(--putih) 10%, transparent); --color-garis-kuat: color-mix(in oklab, var(--putih) 20%, transparent);
+  /* Variabel Daily Task tema terang → kosong, sehingga fallback gelap pada var(--x, …) dipakai. */
+  --doc-teks: initial; --doc-kursor: initial; --mp-lapis: initial; --mp-latar: initial; --mp-garis: initial; --mp-bayang: initial; --mp-teks: initial; --mp-redup: initial; --mp-samar: initial; --mp-input: initial; --mp-opsi: initial; --mp-opsi-teks: initial; --mp-sorot: initial; --gulir: initial; --gulir-sorot: initial;
 }
 
 /* ── TEMA TERANG (beta) — dipilih dari Pengaturan/Profil, disimpan di localStorage ── */
@@ -121,8 +128,35 @@ html[data-tema="terang"] {
 html[data-tema="terang"] :is([class~="bg-primer"], [class~="hover:bg-primer"], [class~="focus:bg-primer"], [class~="bg-primer-terang"], [class~="hover:bg-primer-terang"], [class~="bg-magenta"], [class~="hover:bg-magenta"], [class~="bg-red-500"], [class~="hover:bg-red-500"], [class~="bg-red-600"], [class~="hover:bg-red-600"], [class~="bg-green-500"], [class~="hover:bg-green-500"], [class~="bg-green-600"], [class~="hover:bg-green-600"], [class~="bg-green-600/90"], [class~="bg-emerald-500"], [class~="hover:bg-emerald-500"], [class~="bg-emerald-600"], [class~="bg-blue-500"], [class~="hover:bg-blue-500"], [class~="active:bg-blue-500"], [class~="bg-blue-600"], [class~="hover:bg-blue-600"], [class~="bg-purple-500"], [class~="hover:bg-purple-500"], [class~="bg-purple-600"], [class~="bg-amber-500"], [class~="bg-amber-400"], [class~="hover:bg-amber-300"], [class~="bg-yellow-500"], [class~="bg-yellow-400"], [class~="hover:bg-yellow-400"], [class~="bg-orange-400"], [class~="bg-cyan-500"]) {
   --color-white: #ffffff;
 }
+/* Teks pastel (text-blue-200, ikon text-blue-400, …) di atas latar pekat NON-kuning: kembali ke
+   nilai bawaan Tailwind — pemetaan "lebih gelap" di blok tema terang hanya cocok untuk latar terang.
+   Tombol kuning/amber/oranye sengaja tidak termasuk (latarnya sendiri memakai amber/yellow-400),
+   begitu juga varian hover:/focus:/active: (latarnya baru pekat saat disorot). */
+html[data-tema="terang"] :is([class~="bg-primer"], [class~="bg-primer-terang"], [class~="bg-magenta"], [class~="bg-red-500"], [class~="bg-red-600"], [class~="bg-green-500"], [class~="bg-green-600"], [class~="bg-green-600/90"], [class~="bg-emerald-500"], [class~="bg-emerald-600"], [class~="bg-blue-500"], [class~="bg-blue-600"], [class~="bg-purple-500"], [class~="bg-purple-600"], [class~="bg-cyan-500"]) {
+  --color-blue-100: oklch(93.2% 0.032 255.585);   --color-blue-200: oklch(88.2% 0.059 254.128);   --color-blue-300: oklch(80.9% 0.105 251.813);   --color-blue-400: oklch(70.7% 0.165 254.624);
+  --color-green-100: oklch(96.2% 0.044 156.743);  --color-green-200: oklch(92.5% 0.084 155.995);  --color-green-300: oklch(87.1% 0.15 154.449);   --color-green-400: oklch(79.2% 0.209 151.711);
+  --color-red-100: oklch(93.6% 0.032 17.717);     --color-red-200: oklch(88.5% 0.062 18.334);     --color-red-300: oklch(80.8% 0.114 19.571);     --color-red-400: oklch(70.4% 0.191 22.216);
+  --color-purple-100: oklch(94.6% 0.033 307.174); --color-purple-200: oklch(90.2% 0.063 306.703); --color-purple-300: oklch(82.7% 0.119 306.383); --color-purple-400: oklch(71.4% 0.203 305.504);
+  --color-emerald-100: oklch(95% 0.052 163.051);  --color-emerald-200: oklch(90.5% 0.093 164.15);  --color-emerald-300: oklch(84.5% 0.143 164.978); --color-emerald-400: oklch(76.5% 0.177 163.223);
+}
+
 /* Tombol kuning (bg-amber-400 text-black): di tema terang amber-400 dipetakan lebih gelap,
    jadi tulisannya dibiarkan ikut --hitam (putih) agar kontras. */
+/* Daily Task — nilai terang untuk gaya inline yang memakai var(--x, nilai-gelap):
+   tema gelap tidak berubah sedikit pun (fallback = nilai lama). */
+html[data-tema="terang"] {
+  --doc-teks: #1b2130; --doc-kursor: #141a2b;                       /* DocEditor */
+  --mp-lapis: rgba(20, 26, 43, 0.35); --mp-latar: #ffffff; --mp-garis: rgba(20, 26, 43, 0.14);   /* modal Pindahkan grup */
+  --mp-bayang: 0 24px 60px rgba(20, 26, 43, 0.18); --mp-teks: #141a2b; --mp-redup: #4b546a; --mp-samar: #717b93;
+  --mp-input: #f3f5fa; --mp-opsi: rgba(20, 26, 43, 0.04); --mp-opsi-teks: #1b2130; --mp-sorot: rgba(43, 92, 213, 0.14);
+  --gulir: rgba(20, 26, 43, 0.18); --gulir-sorot: rgba(20, 26, 43, 0.32);   /* scrollbar Content Hub */
+}
+html[data-tema="terang"] .dwt-doc { color: var(--doc-teks); }
+html[data-tema="terang"] .dwt-doc a { color: #1d4ed8; }
+html[data-tema="terang"] .dwt-doc:empty:before { color: #717b93; }
+/* Nav bawah ponsel & lembar "Lainnya": bayangan hitam pekat terlalu berat di latar terang. */
+html[data-tema="terang"] .bayangan-bawah { box-shadow: 0 -8px 24px rgba(20, 26, 43, 0.08); }
+
 /* Logo putih (brightness-0 invert) menjadi logo gelap. */
 html[data-tema="terang"] .invert { --tw-invert: invert(0); }
 

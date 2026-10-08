@@ -140,7 +140,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </main>
 
       {/* BOTTOM NAVIGATION MOBILE */}
-      <div className={`${isChatPage ? "hidden" : ""} md:hidden fixed bottom-0 left-0 right-0 bg-latar/90 backdrop-blur-md border-t border-white/10 z-[100] px-2 py-3 pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.5)]`}>
+      <div className={`${isChatPage ? "hidden" : ""} md:hidden fixed bottom-0 left-0 right-0 bg-latar/90 backdrop-blur-md border-t border-white/10 z-[100] px-2 py-3 pb-safe shadow-[0_-10px_20px_rgba(0,0,0,0.5)] bayangan-bawah`}>
         <div className="flex justify-around items-center">
           {navItems.filter((item) => NAV_UTAMA_PONSEL.includes(item.href)).map((item) => {
             const isActive = pathname === item.href;

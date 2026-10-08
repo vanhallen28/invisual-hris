@@ -127,7 +127,7 @@ export default function DocEditor() {
         </div>
 
         <div className="flex-1 overflow-y-auto bg-kartu p-4 sm:p-6">
-          <div ref={ref} contentEditable suppressContentEditableWarning onInput={scheduleSave} style={{ color: '#f4f4f5', caretColor: '#ffffff' }} className="dwt-doc bg-kartu mx-auto max-w-2xl min-h-full rounded-md shadow-lg border border-white/10 p-8 sm:p-12 text-[15px] leading-relaxed" />
+          <div ref={ref} contentEditable suppressContentEditableWarning onInput={scheduleSave} style={{ color: 'var(--doc-teks, #f4f4f5)', caretColor: 'var(--doc-kursor, #ffffff)' }} className="dwt-doc bg-kartu mx-auto max-w-2xl min-h-full rounded-md shadow-lg border border-white/10 p-8 sm:p-12 text-[15px] leading-relaxed" />
         </div>
 
         <div className="border-t border-white/10 bg-kartu-hover shrink-0">

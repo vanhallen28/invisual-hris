@@ -211,7 +211,7 @@ export default function TestProject() {
           terkurung — kanvas jadi sesempit panelnya. Portal melepaskannya.
           Kanvas mengambil seluruh layar, seperti halaman Chat. */}
       {buka && terpasang && createPortal(
-        <div className="kanvas-root fixed inset-0 z-[160] flex flex-col">
+        <div className="kanvas-root tema-gelap-paksa fixed inset-0 z-[160] flex flex-col">
           <style dangerouslySetInnerHTML={{ __html: GAYA_KANVAS }} />
 
           {/* ══ Kepala ══ */}

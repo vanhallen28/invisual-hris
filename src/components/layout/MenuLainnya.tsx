@@ -42,7 +42,7 @@ export default function MenuLainnya({ item, aktif, pathname }: { item: ItemMenu[
             role="dialog"
             aria-modal="true"
             aria-label="Menu lainnya"
-            className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-white/10 bg-kartu px-4 pt-3 shadow-[0_-20px_60px_rgba(0,0,0,0.6)] animate-in slide-in-from-bottom-6 fade-in duration-200"
+            className="absolute inset-x-0 bottom-0 rounded-t-3xl border-t border-white/10 bg-kartu px-4 pt-3 shadow-[0_-20px_60px_rgba(0,0,0,0.6)] bayangan-bawah animate-in slide-in-from-bottom-6 fade-in duration-200"
             style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))" }}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/15" aria-hidden />

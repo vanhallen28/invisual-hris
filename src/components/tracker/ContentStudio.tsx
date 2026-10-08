@@ -502,7 +502,7 @@ export default function ContentStudio() {
   /* ── MAIN TABLE ── */
   const renderMainTable = () => (
     <div className="overflow-x-auto mt-scroll rounded-xl border border-white/10">
-      <style>{`.mt-scroll::-webkit-scrollbar{height:8px;width:8px}.mt-scroll::-webkit-scrollbar-track{background:transparent}.mt-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:9999px}.mt-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.22)}`}</style>
+      <style>{`.mt-scroll::-webkit-scrollbar{height:8px;width:8px}.mt-scroll::-webkit-scrollbar-track{background:transparent}.mt-scroll::-webkit-scrollbar-thumb{background:var(--gulir, rgba(255,255,255,0.12));border-radius:9999px}.mt-scroll::-webkit-scrollbar-thumb:hover{background:var(--gulir-sorot, rgba(255,255,255,0.22))}`}</style>
       <table className="w-full text-xs whitespace-nowrap">
         <thead>
           <tr className="border-b border-white/10 bg-kartu text-left text-gray-500">
@@ -672,7 +672,7 @@ export default function ContentStudio() {
   /* ── PIPELINE ── */
   const renderPipeline = () => (
     <div className="flex gap-3 overflow-x-auto mt-scroll pb-4">
-      <style>{`.mt-scroll::-webkit-scrollbar{height:8px;width:8px}.mt-scroll::-webkit-scrollbar-track{background:transparent}.mt-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:9999px}.mt-scroll::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.22)}`}</style>
+      <style>{`.mt-scroll::-webkit-scrollbar{height:8px;width:8px}.mt-scroll::-webkit-scrollbar-track{background:transparent}.mt-scroll::-webkit-scrollbar-thumb{background:var(--gulir, rgba(255,255,255,0.12));border-radius:9999px}.mt-scroll::-webkit-scrollbar-thumb:hover{background:var(--gulir-sorot, rgba(255,255,255,0.22))}`}</style>
       {CONTENT_STATUS.map((s) => {
         const list = shown.filter((p) => p.status === s.id);
         return (

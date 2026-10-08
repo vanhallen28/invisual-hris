@@ -197,7 +197,7 @@ return (
 
 
     {/* 📱 BOTTOM NAV MOBILE */}
-    <div className={`${isChatPage ? "hidden" : ""} md:hidden fixed bottom-0 left-0 right-0 bg-latar/95 backdrop-blur-xl border-t border-white/5 z-[100] px-3 py-2.5 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.8)]`}>
+    <div className={`${isChatPage ? "hidden" : ""} md:hidden fixed bottom-0 left-0 right-0 bg-latar/95 backdrop-blur-xl border-t border-white/5 z-[100] px-3 py-2.5 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.8)] bayangan-bawah`}>
       <div className="flex justify-between items-center gap-1">
         {navItems.filter((item: any) => (!item.hanyaManajer || isManager) && !(isManager && item.href === "/user/daily-task")).map((item) => {
           const isActive = pathname.startsWith(item.href);

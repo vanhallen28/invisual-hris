@@ -1,5 +1,5 @@
 // src/components/SakelarTema.tsx
-// Sakelar tema Gelap / Terang (beta). Dipasang di Pengaturan (HR) dan Profil (karyawan).
+// Sakelar tema Gelap / Terang. Dipasang di Pengaturan (HR) dan Profil (karyawan).
 "use client";
 
 import { useTema, type Tema } from "@/lib/tema";
@@ -22,7 +22,7 @@ export default function SakelarTema({ className = "" }: { className?: string }) 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-sm font-bold text-white">Tampilan</p>
-          <p className="text-xs text-gray-500 mt-0.5">Tema terang masih <b className="text-amber-300">beta</b> — Daily Task & Chat belum sepenuhnya mengikuti. Tersimpan di perangkat ini.</p>
+          <p className="text-xs text-gray-500 mt-0.5">Berlaku di semua halaman (Kanvas Test Project tetap gelap, seperti editor desain). Tersimpan di perangkat ini.</p>
         </div>
         <div role="radiogroup" aria-label="Tema tampilan" className="inline-flex shrink-0 rounded-xl border border-white/10 bg-input p-1">
           {PILIHAN.map((p) => {

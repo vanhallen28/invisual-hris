@@ -401,23 +401,23 @@ export default function MainTable() {
       </div>
 
       {movePicker && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(0,0,0,0.72)' }} onClick={() => setMovePicker(null)}>
-          <div style={{ width: '100%', maxWidth: '30rem', background: '#181818', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 24px 60px rgba(0,0,0,0.65)', padding: '16px', display: 'flex', flexDirection: 'column', maxHeight: '80vh' }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', margin: '0 0 4px' }}>Pindahkan grup ke…</h3>
-            <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 12px', lineHeight: 1.5 }}>Grup beserta semua item &amp; datanya ikut pindah. Kolom yang belum ada di board tujuan dibuat otomatis.</p>
-            <input autoFocus value={moveSearch} onChange={(e) => setMoveSearch(e.target.value)} placeholder="Cari board / sub-board…" style={{ marginBottom: '8px', width: '100%', boxSizing: 'border-box', background: '#111111', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '9px 12px', fontSize: '14px', color: '#ffffff', outline: 'none' }} />
+        <div style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'var(--mp-lapis, rgba(0,0,0,0.72))' }} onClick={() => setMovePicker(null)}>
+          <div style={{ width: '100%', maxWidth: '30rem', background: 'var(--mp-latar, #181818)', borderRadius: '16px', border: '1px solid var(--mp-garis, rgba(255,255,255,0.12))', boxShadow: 'var(--mp-bayang, 0 24px 60px rgba(0,0,0,0.65))', padding: '16px', display: 'flex', flexDirection: 'column', maxHeight: '80vh' }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--mp-teks, #ffffff)', margin: '0 0 4px' }}>Pindahkan grup ke…</h3>
+            <p style={{ fontSize: '11px', color: 'var(--mp-redup, #9ca3af)', margin: '0 0 12px', lineHeight: 1.5 }}>Grup beserta semua item &amp; datanya ikut pindah. Kolom yang belum ada di board tujuan dibuat otomatis.</p>
+            <input autoFocus value={moveSearch} onChange={(e) => setMoveSearch(e.target.value)} placeholder="Cari board / sub-board…" style={{ marginBottom: '8px', width: '100%', boxSizing: 'border-box', background: 'var(--mp-input, #111111)', border: '1px solid var(--mp-garis, rgba(255,255,255,0.12))', borderRadius: '8px', padding: '9px 12px', fontSize: '14px', color: 'var(--mp-teks, #ffffff)', outline: 'none' }} />
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', paddingRight: '2px' }}>
               {daftarBoardPindah.filter((o) => o.label.toLowerCase().includes(moveSearch.toLowerCase())).map((o) => (
                 <button key={o.id} onClick={() => { moveGroupToBoard(movePicker, o.id); setMovePicker(null); }}
-                  style={{ flex: '0 0 auto', display: 'block', width: '100%', boxSizing: 'border-box', textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, color: '#f1f5f9', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.3, cursor: 'pointer' }}
-                  onMouseEnter={(e) => { const t = e.currentTarget as HTMLButtonElement; t.style.background = 'rgba(43,92,213,0.4)'; t.style.color = '#ffffff'; }}
-                  onMouseLeave={(e) => { const t = e.currentTarget as HTMLButtonElement; t.style.background = 'rgba(255,255,255,0.05)'; t.style.color = '#f1f5f9'; }}>{o.label}</button>
+                  style={{ flex: '0 0 auto', display: 'block', width: '100%', boxSizing: 'border-box', textAlign: 'left', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, color: 'var(--mp-opsi-teks, #f1f5f9)', background: 'var(--mp-opsi, rgba(255,255,255,0.05))', border: '1px solid var(--mp-garis, rgba(255,255,255,0.12))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.3, cursor: 'pointer' }}
+                  onMouseEnter={(e) => { const t = e.currentTarget as HTMLButtonElement; t.style.background = 'var(--mp-sorot, rgba(43,92,213,0.4))'; t.style.color = 'var(--mp-teks, #ffffff)'; }}
+                  onMouseLeave={(e) => { const t = e.currentTarget as HTMLButtonElement; t.style.background = 'var(--mp-opsi, rgba(255,255,255,0.05))'; t.style.color = 'var(--mp-opsi-teks, #f1f5f9)'; }}>{o.label}</button>
               ))}
               {daftarBoardPindah.filter((o) => o.label.toLowerCase().includes(moveSearch.toLowerCase())).length === 0 && (
-                <p style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: '#6b7280' }}>Tak ada board lain.</p>
+                <p style={{ padding: '16px', textAlign: 'center', fontSize: '12px', color: 'var(--mp-samar, #6b7280)' }}>Tak ada board lain.</p>
               )}
             </div>
-            <button onClick={() => setMovePicker(null)} style={{ marginTop: '12px', alignSelf: 'flex-end', borderRadius: '8px', padding: '8px 16px', fontSize: '14px', fontWeight: 700, color: '#9ca3af', background: 'transparent', border: 'none', cursor: 'pointer' }}>Batal</button>
+            <button onClick={() => setMovePicker(null)} style={{ marginTop: '12px', alignSelf: 'flex-end', borderRadius: '8px', padding: '8px 16px', fontSize: '14px', fontWeight: 700, color: 'var(--mp-redup, #9ca3af)', background: 'transparent', border: 'none', cursor: 'pointer' }}>Batal</button>
           </div>
         </div>
       )}
