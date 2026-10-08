@@ -7,11 +7,13 @@
 //       pulang_cepat → hari kerja berikutnya wajib pulang = jamKeluar − 60 menit
 //   • Sah hanya bila clock-out ≥ MENIT_LEMBUR_MIN setelah JAM WAJIB PULANG hari itu
 //     (jamPulangSeharusnya bila telat; selain itu jamKeluar karyawan).
-//   • Berlaku untuk hari kerja berikutnya saja (Jumat → Senin); satu tanda = satu pemakaian.
+//   • Berlaku untuk hari kerja berikutnya saja (Jumat → Senin; tanggal merah ikut dilewati —
+//     lib/hariLibur); satu tanda = satu pemakaian. Lembur boleh di akhir pekan/tanggal merah.
 // Logika terlambat lama (jam masuk + toleransi, hanya mode Kantor & non-fleksibel)
 // TIDAK diubah — kompensasi hanya menggeser batasnya.
 import { jamPulangDariClockIn } from "./keterlambatan";
 import { tambahHari, tanggalDari } from "./rentangTanggal";
+import { hariNonKerja, type PetaLibur } from "./hariLibur";
 
 export const MENIT_LEMBUR_MIN = 60;
 export const MENIT_KOMPENSASI = 60;
@@ -59,16 +61,31 @@ export function jamWajibPulang(att: AbsenRingkas | null | undefined, jamKeluar: 
 export const menitLembur = (waktuKeluar: string, jamWajib: string) => Math.max(0, menitAntara(jamWajib, waktuKeluar));
 
 export const akhirPekan = (iso: string) => { const d = tanggalDari(iso).getDay(); return d === 0 || d === 6; };
-/** Hari kerja berikutnya (lewati Sabtu–Minggu): Jumat → Senin. */
-export function hariKerjaBerikutnya(iso: string): string {
+/** Batas pencarian mundur/maju (hari) — jauh di atas libur Lebaran terpanjang. */
+const BATAS_CARI = 45;
+/**
+ * Hari kerja berikutnya: lewati Sabtu–Minggu dan tanggal merah yang berlaku (peta libur).
+ * Jumat → Senin; Kamis 19 Mar 2026 → Rabu 25 Mar 2026 (Nyepi + Lebaran + cuti bersama).
+ * Tanpa peta → hanya akhir pekan yang dilewati (perilaku lama).
+ */
+export function hariKerjaBerikutnya(iso: string, peta?: PetaLibur | null): string {
   let d = tambahHari(iso, 1);
-  while (akhirPekan(d)) d = tambahHari(d, 1);
+  for (let i = 0; i < BATAS_CARI && hariNonKerja(d, peta); i++) d = tambahHari(d, 1);
   return d;
 }
-/** Tanggal-tanggal lembur yang hari kompensasinya = hariKompensasi (Senin ← Min, Sab, Jum), terdekat dulu. */
-export function hariLemburUntuk(hariKompensasi: string): string[] {
+/**
+ * Tanggal-tanggal lembur yang hari kompensasinya = hariKompensasi, terdekat dulu:
+ * hari kerja sebelumnya + semua hari libur di antaranya (Senin ← Min, Sab, Jum).
+ * hariKompensasi sendiri libur → [] (tidak ada kompensasi di hari libur).
+ */
+export function hariLemburUntuk(hariKompensasi: string, peta?: PetaLibur | null): string[] {
+  if (hariNonKerja(hariKompensasi, peta)) return [];
   const out: string[] = [];
-  for (let i = 1; i <= 3; i++) { const d = tambahHari(hariKompensasi, -i); if (hariKerjaBerikutnya(d) === hariKompensasi) out.push(d); }
+  for (let i = 1; i <= BATAS_CARI; i++) {
+    const d = tambahHari(hariKompensasi, -i);
+    out.push(d);
+    if (!hariNonKerja(d, peta)) break;   // hari kerja sebelumnya = kandidat terakhir
+  }
   return out;
 }
 
@@ -83,9 +100,9 @@ export function lemburSah(t: TandaLembur | null | undefined, att: AbsenRingkas |
  * Belum clock-in → tanda terbaru yang memenuhi. Sudah clock-in → hanya bila absen hari ini
  * memang memakainya (kompensasi_dari = tanggal tanda); clock-in tanpa kompensasi → null.
  */
-export function kompensasiAktif(o: { hariIni: string; tanda: TandaLembur[]; absenLembur: Record<string, AbsenRingkas | null | undefined>; absenHariIni?: AbsenRingkas | null }): KompensasiAktif | null {
+export function kompensasiAktif(o: { hariIni: string; tanda: TandaLembur[]; absenLembur: Record<string, AbsenRingkas | null | undefined>; absenHariIni?: AbsenRingkas | null; peta?: PetaLibur | null }): KompensasiAktif | null {
   const kandidat = (o.tanda || [])
-    .filter((t) => tandaAktif(t) && hariKerjaBerikutnya(t.tanggal) === o.hariIni && lemburSah(t, o.absenLembur[t.tanggal]))
+    .filter((t) => tandaAktif(t) && hariKerjaBerikutnya(t.tanggal, o.peta) === o.hariIni && lemburSah(t, o.absenLembur[t.tanggal]))
     .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
   if (!kandidat.length) return null;
   const a = o.absenHariIni;

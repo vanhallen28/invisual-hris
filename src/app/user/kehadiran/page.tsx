@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { TOLERANSI_TELAT_MENIT, JAM_KERJA_JAM } from "@/lib/keterlambatan";
 import { nilaiMasuk, jamPulangHariIni, labelKompensasi, formatDurasi, MENIT_LEMBUR_MIN, type KompensasiAktif, type TandaLembur } from "@/lib/lembur";
 import { muatKompensasiHariIni, muatTandaHari, catatClockOut } from "@/lib/lemburData";
+import InfoLibur from "@/components/InfoLibur";
 import { ambilAturanJamKerja, teksDurasi } from "@/lib/jamKerja";
 import { jarakMeter, ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
 import { pushNotify } from "@/lib/push";
@@ -483,6 +484,8 @@ export default function UserKehadiranPage() {
           Ajukan Izin / Cuti
         </button>
       </div>
+
+      <InfoLibur className="-mt-2" />
 
       {/* KARTU RINGKASAN — periode gaji berjalan (21→20), dihitung dari data nyata */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mo-stagger" data-ringkasan-periode={`${periodeBerjalan.dari}/${periodeBerjalan.sampai}`}>

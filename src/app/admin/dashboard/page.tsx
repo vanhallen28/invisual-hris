@@ -20,6 +20,7 @@ import AvatarKaryawan from "@/components/AvatarKaryawan";
 import KartuOnline from "@/components/admin/KartuOnline";
 import TandaiLembur from "@/components/admin/TandaiLembur";
 import KartuLembur from "@/components/admin/KartuLembur";
+import InfoLibur from "@/components/InfoLibur";
 import { MENIT_LEMBUR_MIN, type TandaLembur } from "@/lib/lembur";
 import { muatTandaLembur } from "@/lib/lemburData";
 import { teksTanggal } from "@/lib/tanggalTampil";
@@ -535,6 +536,9 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Tanggal merah hari ini / berikutnya (tabel hari_libur; tidak tampil bila kosong) */}
+          <InfoLibur peran="hr" className="relative z-20 -mt-2" />
 
           {/* Aksi cepat — dulu blok "Pusat Aksi Cepat Eksekutif" di paling bawah; kini baris tombol kecil di bawah judul */}
           <div className="flex flex-wrap gap-2 relative z-20" role="group" aria-label="Aksi cepat" data-aksi-cepat>

@@ -3,6 +3,7 @@
 // Kehadiran › detail sel). Menyimpan ke tabel `lembur` lewat lib/lemburData.ts;
 // bila tanggal lampau dan absen hari kompensasinya sudah ada, status hari itu
 // langsung dinilai ulang (Terlambat → Tepat Waktu) dan hasilnya disebut di toast.
+// Boleh di akhir pekan / tanggal merah; kompensasi jatuh di hari kerja berikutnya.
 "use client";
 
 import { useEffect, useState } from "react";
@@ -11,8 +12,11 @@ import { createPortal } from "react-dom";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
 import { isoDari, tambahHari } from "@/lib/rentangTanggal";
-import { akhirPekan, formatDurasi, labelKompensasi, tandaAktif, type Kompensasi, type TandaLembur } from "@/lib/lembur";
+import { teksTanggal } from "@/lib/tanggalTampil";
+import { dariMenit, formatDurasi, hariKerjaBerikutnya, keMenit, labelKompensasi, MENIT_LEMBUR_MIN, tandaAktif, type Kompensasi, type TandaLembur } from "@/lib/lembur";
 import { batalkanLembur, jadwalKaryawan, tandaiLembur } from "@/lib/lemburData";
+import { hariNonKerja, infoLibur, type PetaLibur } from "@/lib/hariLibur";
+import { muatPetaSekitar } from "@/lib/hariLiburData";
 
 type Props = {
   idKaryawan: string;
@@ -36,6 +40,7 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
   const [catatan, setCatatan] = useState(tandaAda?.catatan || "");
   const [jadwal, setJadwal] = useState<{ jamMasuk: string; jamKeluar: string } | null>(null);
   const [sibuk, setSibuk] = useState(false);
+  const [peta, setPeta] = useState<PetaLibur | null>(null);   // tanggal merah ±31 hari (pratinjau hari kompensasi)
   const aktif = tandaAktif(tandaAda);
 
   // Escape menutup; jadwal karyawan dimuat saat jendela dibuka (di dalam async).
@@ -48,6 +53,14 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
     jadwalKaryawan(supabase, idKaryawan).then((j) => { if (!batal) setJadwal({ jamMasuk: j.jamMasuk, jamKeluar: j.jamKeluar }); });
     return () => { batal = true; window.removeEventListener("keydown", onKey, true); };
   }, [buka, idKaryawan]);
+
+  // Tanggal merah di sekitar tanggal terpilih → pratinjau hari kompensasi & catatan hari libur.
+  useEffect(() => {
+    if (!buka || !/^\d{4}-\d{2}-\d{2}$/.test(tgl)) return;
+    let batal = false;
+    muatPetaSekitar(supabase, tgl).then((p) => { if (!batal) setPeta(p); });
+    return () => { batal = true; };
+  }, [buka, tgl]);
 
   const bukaJendela = () => {
     setTgl(tanggal || hariIni);
@@ -62,14 +75,19 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
     e.preventDefault();
     if (!tgl || tgl > hariIni) { toast.gagal("Tanggal lembur tidak boleh di masa depan."); return; }
     if (tgl < tambahHari(hariIni, -HARI_MUNDUR_MAKS)) { toast.gagal(`Tanggal lembur paling lama ${HARI_MUNDUR_MAKS} hari ke belakang.`); return; }
-    if (akhirPekan(tgl)) { toast.gagal("Tanggal lembur jatuh di akhir pekan — pilih hari kerja."); return; }
     setSibuk(true);
     try {
       const r = await tandaiLembur(supabase, { idKaryawan, nama, tanggal: tgl, kompensasi, catatan, oleh: await emailSesi() });
       if (!r.ok) { toast.gagal(r.pesan); return; }
       const label = labelKompensasi(kompensasi, jadwal?.jamMasuk || "09:00", jadwal?.jamKeluar || "18:00");
-      let pesan = `Lembur ${tgl} ditandai untuk ${nama} · hari kerja berikutnya ${label}.`;
-      if (r.hasil.diubah) pesan += ` Absen ${r.hasil.hariKompensasi} dikoreksi: ${r.hasil.statusLama} → ${r.hasil.statusBaru}.`;
+      let pesan = `Lembur ${teksTanggal(tgl)} ditandai untuk ${nama} · hari kerja berikutnya (${teksTanggal(r.hasil.hariKompensasi)}) ${label}.`;
+      if (r.hasil.diubah) {
+        pesan += r.hasil.statusLama !== r.hasil.statusBaru
+          ? ` Absen ${teksTanggal(r.hasil.hariKompensasi, { tahun: false })} dikoreksi: ${r.hasil.statusLama} → ${r.hasil.statusBaru}.`
+          : r.hasil.sah
+            ? ` Kompensasi sudah diterapkan ke absen ${teksTanggal(r.hasil.hariKompensasi, { tahun: false })}.`
+            : ` Kompensasi pada absen ${teksTanggal(r.hasil.hariKompensasi, { tahun: false })} dicabut.`;
+      }
       if (r.hasil.lemburMenit != null && !r.hasil.sah) toast.info(`Clock-out ${tgl} hanya lembur ${formatDurasi(r.hasil.lemburMenit)} (kurang dari 1 jam) — kompensasi tidak berlaku.`);
       if (r.peringatan) toast.info(r.peringatan);
       toast.sukses(pesan);
@@ -117,6 +135,14 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
                 <label className="block text-[11px] font-bold text-gray-400 mb-1 uppercase tracking-wider">Tanggal lembur</label>
                 <input type="date" value={tgl} max={hariIni} min={tambahHari(hariIni, -HARI_MUNDUR_MAKS)} disabled={!!tanggal} onChange={(e) => setTgl(e.target.value)} className="w-full bg-input border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-amber-400 disabled:opacity-70" name="tanggal" />
                 <p className="text-[11px] text-gray-500 mt-1">Boleh tanggal lampau (maks {HARI_MUNDUR_MAKS} hari) — absen hari berikutnya yang terlanjur &quot;Terlambat&quot; akan dikoreksi otomatis.</p>
+                {tgl && peta && (
+                  <p className="text-[11px] text-gray-400 mt-1" data-pratinjau-kompensasi>Kompensasi jatuh pada <b className="text-amber-300">{teksTanggal(hariKerjaBerikutnya(tgl, peta), { tahun: false })}</b>.</p>
+                )}
+                {tgl && hariNonKerja(tgl, peta) && (
+                  <p className="text-[11px] text-amber-200/90 mt-1 rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-2.5 py-1.5" data-catatan-hari-libur>
+                    {infoLibur(tgl, peta)?.nama || "Akhir pekan"}: aturannya sama dengan hari kerja — sah bila clock-out ≥ 1 jam lewat jam pulang{jadwal ? ` (≥ ${dariMenit(keMenit(jadwal.jamKeluar) + MENIT_LEMBUR_MIN)})` : ""}.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-wider">Kompensasi hari kerja berikutnya</label>

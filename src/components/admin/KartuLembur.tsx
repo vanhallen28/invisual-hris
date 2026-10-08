@@ -14,6 +14,7 @@ import { namaPanggilan } from "@/lib/nama";
 import { labelTanggal } from "@/lib/rentangTanggal";
 import { hariLemburUntuk, labelKompensasi, statusTanda, tandaAktif, type AbsenRingkas, type TandaLembur } from "@/lib/lembur";
 import { batalkanLembur, muatTandaLembur, tandaiLembur } from "@/lib/lemburData";
+import { muatPetaSekitar } from "@/lib/hariLiburData";
 
 type Baris = { tanda: TandaLembur; att: AbsenRingkas | null; jamMasuk: string; jamKeluar: string };
 const KELAS_AVATAR = "w-8 h-8 shrink-0 rounded-full bg-white/5 border border-white/10 text-white flex items-center justify-center font-bold text-[11px]";
@@ -27,7 +28,9 @@ export default function KartuLembur({ versi, hariIni, employees, onUbah, bungkus
   useEffect(() => {
     let batal = false;
     (async () => {
-      const hari = [hariIni, ...hariLemburUntuk(hariIni)];
+      const peta = await muatPetaSekitar(supabase, hariIni);
+      if (batal) return;
+      const hari = [hariIni, ...hariLemburUntuk(hariIni, peta)];
       const tanda = await muatTandaLembur(supabase, { dari: hari[hari.length - 1], sampai: hariIni, termasukBatal: true });
       if (batal) return;
       if (!tanda.length) { setBaris([]); return; }

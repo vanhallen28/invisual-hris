@@ -13,12 +13,12 @@ const PISAH = ";";
 // Teks diawali = + - @ dibaca Excel sebagai rumus → diberi awalan ' agar tetap teks.
 const bersih = (t: unknown) => { const s = String(t ?? "").replace(/[;\r\n"]/g, " ").trim(); return /^[=+\-@]/.test(s) ? "'" + s : s; };
 
-const KODE: Record<string, string> = { Hadir: "H", Telat: "T", "Cuti/Sakit": "I", WFH: "W", Alpa: "A", Libur: "L" };
+const KODE: Record<string, string> = { Hadir: "H", Telat: "T", "Cuti/Sakit": "I", WFH: "W", Alpa: "A", Libur: "L", "Libur Nasional": "N" };
 
 export function csvRekapKehadiran(baris: BarisRekap[], tanggal: string[], labelRentang: string, hariIni: string): string {
   const isi: string[] = [
     `Rekap Kehadiran${PISAH}${bersih(labelRentang)}`,
-    `Kode${PISAH}H = Hadir tepat waktu, T = Terlambat, I = Izin/Cuti/Sakit, W = WFH/WFC, A = Alpa, L = Libur (akhir pekan)`,
+    `Kode${PISAH}H = Hadir tepat waktu, T = Terlambat, I = Izin/Cuti/Sakit, W = WFH/WFC, A = Alpa, L = Libur (akhir pekan), N = Libur nasional / cuti bersama / libur kantor`,
     "",
     [
       "No", "ID Karyawan", "Nama", "Divisi",

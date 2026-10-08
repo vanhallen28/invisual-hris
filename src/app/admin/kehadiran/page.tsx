@@ -16,7 +16,9 @@ import AvatarKaryawan from "@/components/AvatarKaryawan";
 import KartuLipat from "@/components/kehadiran/KartuLipat";
 import { hariUntukKartu, labelTanggalPendek, type Sel, type StatusKehadiran, type IdKartu } from "@/lib/kehadiranKartu";
 import TandaiLembur from "@/components/admin/TandaiLembur";
-import { akhirPekan, formatDurasi, MENIT_LEMBUR_MIN, tandaAktif, type TandaLembur } from "@/lib/lembur";
+import { formatDurasi, MENIT_LEMBUR_MIN, tandaAktif, type TandaLembur } from "@/lib/lembur";
+import { infoLibur, liburPada, LABEL_JENIS, type PetaLibur } from "@/lib/hariLibur";
+import { muatPetaLibur } from "@/lib/hariLiburData";
 import { muatTandaLembur } from "@/lib/lemburData";
 import { teksTanggal } from "@/lib/tanggalTampil";
 
@@ -93,6 +95,8 @@ export default function AdminKehadiranPage() {
   const [detailSel, setDetailSel] = useState<{ baris: any; sel: Sel } | null>(null);
   // Tanda lembur dalam rentang (kunci `${idKaryawan}|${tanggal}`, termasuk yang dibatalkan) — untuk jendela detail sel.
   const [lemburPeta, setLemburPeta] = useState<Record<string, TandaLembur>>({});
+  // Tanggal merah dalam rentang (tabel hari_libur; kosong bila hari-libur.sql belum dijalankan).
+  const [petaLibur, setPetaLibur] = useState<PetaLibur>(() => new Map());
   const [cariNama, setCariNama] = useState("");
   // Baris yang sedang melebar di tiga kartu anomali (satu per kartu). Nilai = idKaryawan,
   // atau kunci baris absensi untuk Lupa Clock-Out.
@@ -107,16 +111,19 @@ export default function AdminKehadiranPage() {
     try {
       const periodeStartISO = rentang.dari;
       const periodeEndISO = rentang.sampai;
-      const [empRes, absensiSemua, izinSemua, tandaLembur] = await Promise.all([
+      const [empRes, absensiSemua, izinSemua, tandaLembur, libur] = await Promise.all([
         supabase.from("employees").select("*").order("nama", { ascending: true }),
         ambilSemuaBaris(() => supabase.from("attendance").select("*").gte("tanggal", periodeStartISO).lte("tanggal", periodeEndISO)),
         // Izin Terlambat bukan ketidakhadiran → tak perlu dimuat di sini.
         ambilSemuaBaris(() => supabase.from("approvals").select("*").eq("status", "Disetujui").neq("jenis", "Izin Terlambat")),
         // Tanda lembur (tabel `lembur`; kosong bila lembur.sql belum dijalankan — tidak pernah melempar).
         muatTandaLembur(supabase, { dari: periodeStartISO, sampai: periodeEndISO, termasukBatal: true }),
+        // Tanggal merah (tidak pernah melempar; tabel belum ada → peta kosong = hanya akhir pekan).
+        muatPetaLibur(supabase, periodeStartISO, periodeEndISO),
       ]);
       if (nomor !== nomorMuat.current) return; // sudah ada permintaan yang lebih baru
       setLemburPeta(Object.fromEntries(tandaLembur.map((t) => [`${t.idKaryawan}|${t.tanggal}`, t])));
+      setPetaLibur(libur);
       // Owner dikecualikan dari statistik operasional
       setEmployees(excludeOwners((empRes.data || []).filter((e: any) => e.isAktif !== false)));
       setAttendance(absensiSemua);
@@ -166,13 +173,16 @@ export default function AdminKehadiranPage() {
         const iso = isoOf(dateObj);
         const dow = dateObj.getDay();
 
-        if (joined && iso < joined) { sel.push({ iso, status: "-" }); continue; }               // belum bergabung
+        const libur = infoLibur(iso, petaLibur);   // baris hari_libur (termasuk cuti bersama disetel Masuk)
+        if (joined && iso < joined) { sel.push({ iso, status: "-", libur }); continue; }       // belum bergabung
         const att = attIndex[`${emp.idKaryawan}|${iso}`];
-        if (att) { sel.push({ iso, status: terlambat(att, fleks) ? "Telat" : "Hadir", att }); continue; }
+        if (att) { sel.push({ iso, status: terlambat(att, fleks) ? "Telat" : "Hadir", att, libur }); continue; }
+        // Tanggal merah yang berlaku didahulukan dari izin: cuti tidak "terpakai" di hari libur nasional.
+        if (liburPada(iso, petaLibur)) { sel.push({ iso, status: "Libur Nasional", libur }); continue; }
         const leave = empLeaves.find((l) => iso >= l.range.start && iso <= l.range.end);
-        if (leave) { sel.push({ iso, status: kindOf(leave.jenis), leave }); continue; }
-        if (dow === 0 || dow === 6) { sel.push({ iso, status: "Libur" }); continue; }            // akhir pekan
-        sel.push({ iso, status: iso < todayISO ? "Alpa" : "-" });                                // hari depan dibiarkan kosong
+        if (leave) { sel.push({ iso, status: kindOf(leave.jenis), leave, libur }); continue; }
+        if (dow === 0 || dow === 6) { sel.push({ iso, status: "Libur", libur }); continue; }  // akhir pekan
+        sel.push({ iso, status: iso < todayISO ? "Alpa" : "-", libur });                        // hari depan dibiarkan kosong
       }
 
       const hitung = { hadir: 0, telat: 0, izin: 0, alpa: 0 };
@@ -188,7 +198,7 @@ export default function AdminKehadiranPage() {
         sel, dataHarian: sel.map((x) => x.status), hitung,
       };
     });
-  }, [employees, attendance, leaves, periodeHari, todayISO]);
+  }, [employees, attendance, leaves, periodeHari, todayISO, petaLibur]);
 
   // idKaryawan → hari absen (untuk rincian tanggal di kartu anomali). Dibangun dari baris
   // `attendance` dengan fungsi terlambat() yang SAMA dengan seringTelat/palingDisiplin,
@@ -297,11 +307,12 @@ export default function AdminKehadiranPage() {
       case "Cuti/Sakit": return "bg-purple-500 hover:bg-purple-400 border-purple-600";
       case "WFH": return "bg-blue-500 hover:bg-blue-400 border-blue-600";
       case "Libur": return "bg-white/5 border-white/10";
+      case "Libur Nasional": return "bg-red-500/15 border-red-400/60 border-dashed";
       default: return "bg-white/[0.02] border-white/5";
     }
   };
   const labelStatus = (st: StatusKehadiran) =>
-    st === "Hadir" ? "Hadir tepat waktu" : st === "Telat" ? "Terlambat" : st === "Cuti/Sakit" ? "Cuti / Izin / Sakit" : st === "WFH" ? "WFH / WFC" : st === "Alpa" ? "Alpa" : st === "Libur" ? "Libur (akhir pekan)" : "Tidak ada data";
+    st === "Hadir" ? "Hadir tepat waktu" : st === "Telat" ? "Terlambat" : st === "Cuti/Sakit" ? "Cuti / Izin / Sakit" : st === "WFH" ? "WFH / WFC" : st === "Alpa" ? "Alpa" : st === "Libur" ? "Libur (akhir pekan)" : st === "Libur Nasional" ? "Tanggal merah" : "Tidak ada data";
   const lupaKeluar = (x: Sel) => !!x.att && !x.att.waktuKeluar && x.iso < todayISO;
 
   // Satu baris rincian per hari (dipakai jendela rincian kartu)
@@ -518,6 +529,7 @@ export default function AdminKehadiranPage() {
               <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-purple-500"></div><span className="text-[11px] text-gray-400 font-bold uppercase">Cuti/Sakit</span></div>
               <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-500"></div><span className="text-[11px] text-gray-400 font-bold uppercase">Alpa</span></div>
               <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-white/5 border border-white/10"></div><span className="text-[11px] text-gray-400 font-bold uppercase">Libur</span></div>
+              <div className="flex items-center gap-1.5" data-legenda="tanggal-merah"><div className="w-3 h-3 rounded bg-red-500/15 border border-dashed border-red-400/60"></div><span className="text-[11px] text-gray-400 font-bold uppercase">Tanggal merah</span></div>
               <div className="flex items-center gap-1.5"><div className="relative w-3 h-3 rounded bg-green-500"><span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-white ring-1 ring-black/60"></span></div><span className="text-[11px] text-gray-400 font-bold uppercase">Lupa clock-out</span></div>
             </div>
           </div>
@@ -532,10 +544,12 @@ export default function AdminKehadiranPage() {
                   const iso = isoOf(dt);
                   const akhirPekan = dt.getDay() === 0 || dt.getDay() === 6;
                   const hariIni = iso === todayISO;
+                  const merah = liburPada(iso, petaLibur);
+                  const info = infoLibur(iso, petaLibur);
                   return (
-                    <th key={i} title={tglPanjang(iso)} className={`px-1 py-2 font-semibold text-center border-l border-white/5 ${akhirPekan ? "bg-white/[0.02]" : ""} ${hariIni ? "bg-primer-terang/15" : ""}`}>
-                      <span className={`block text-[10px] ${akhirPekan ? "text-gray-600" : "text-gray-500"}`}>{HARI_HURUF[dt.getDay()]}</span>
-                      <span className={`block text-[11px] ${hariIni ? "text-tint font-black" : "text-gray-500"}`}>{dt.getDate()}</span>
+                    <th key={i} title={`${tglPanjang(iso)}${info ? ` — ${info.nama}${info.libur ? "" : " (masuk kerja)"}` : ""}`} data-tanggal-merah={merah ? iso : undefined} className={`px-1 py-2 font-semibold text-center border-l border-white/5 ${akhirPekan || merah ? "bg-white/[0.02]" : ""} ${merah ? "bg-red-500/[0.07]" : ""} ${hariIni ? "bg-primer-terang/15" : ""}`}>
+                      <span className={`block text-[10px] ${merah ? "text-red-400" : akhirPekan ? "text-gray-600" : "text-gray-500"}`}>{HARI_HURUF[dt.getDay()]}</span>
+                      <span className={`block text-[11px] ${hariIni ? "text-tint font-black" : merah ? "text-red-400 font-bold" : "text-gray-500"}`}>{dt.getDate()}</span>
                     </th>
                   );
                 })}
@@ -572,7 +586,7 @@ export default function AdminKehadiranPage() {
                         <button
                           type="button"
                           onClick={() => setDetailSel({ baris: emp, sel: x })}
-                          title={`${tglPanjang(x.iso)} — ${labelStatus(x.status)}${x.att ? ` · masuk ${x.att.waktuMasuk || "-"}` : ""}${lupaKeluar(x) ? " · lupa clock-out" : ""}`}
+                          title={`${tglPanjang(x.iso)} — ${x.status === "Libur Nasional" && x.libur ? x.libur.nama : labelStatus(x.status)}${x.att ? ` · masuk ${x.att.waktuMasuk || "-"}` : ""}${x.att && x.libur?.libur ? ` · ${x.libur.nama}` : ""}${lupaKeluar(x) ? " · lupa clock-out" : ""}`}
                           className={`relative block w-6 h-6 md:w-7 md:h-7 mx-auto rounded border opacity-90 hover:opacity-100 hover:scale-110 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primer-terang ${getColorByStatus(x.status)}`}
                         >
                           {lupaKeluar(x) && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-white ring-1 ring-black/60"></span>}
@@ -676,6 +690,11 @@ export default function AdminKehadiranPage() {
                   <span className={`w-4 h-4 rounded border ${getColorByStatus(x.status)}`}></span>
                   <span className="text-sm font-bold text-white">{labelStatus(x.status)}</span>
                 </div>
+                {x.libur && (
+                  <p data-detail-libur className={`-mt-1 mb-3 text-[12px] ${x.libur.libur ? "text-red-300" : "text-gray-400"}`}>
+                    {LABEL_JENIS[x.libur.jenis as keyof typeof LABEL_JENIS] || "Hari libur"}: {x.libur.nama}{x.libur.libur ? "" : " — disetel masuk kerja"}
+                  </p>
+                )}
                 {att ? (
                   <div>
                     {baris1("Jam masuk", att.waktuMasuk || "-")}
@@ -693,7 +712,7 @@ export default function AdminKehadiranPage() {
                       <p className="text-[11px] text-gray-500 mb-2">Foto absen</p>
                       <FotoAbsenPasangan att={att} hariIni={todayISO} />
                     </div>
-                    {x.iso <= todayISO && !akhirPekan(x.iso) && (
+                    {x.iso <= todayISO && (
                       <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between gap-3">
                         <p className="text-[11px] text-gray-500">Kompensasi lembur untuk hari kerja berikutnya</p>
                         <TandaiLembur idKaryawan={String(baris.id)} nama={baris.nama} tanggal={x.iso} tandaAda={lemburPeta[`${baris.id}|${x.iso}`] || null} onSelesai={() => { setDetailSel(null); fetchData(); }} />
@@ -711,6 +730,7 @@ export default function AdminKehadiranPage() {
                   <p className="text-[12px] text-gray-400 leading-relaxed">
                     {x.status === "Alpa" ? "Tidak ada catatan absen dan tidak ada izin yang disetujui untuk hari kerja ini."
                       : x.status === "Libur" ? "Akhir pekan — tidak dihitung hari kerja."
+                      : x.status === "Libur Nasional" ? "Tanggal merah — tidak dihitung hari kerja dan tidak dihitung alpa."
                       : x.iso > todayISO ? "Hari ini belum terjadi."
                       : x.iso === todayISO ? "Belum ada absen hari ini."
                       : "Belum bergabung pada tanggal ini."}

@@ -5,6 +5,7 @@
 // • Pengajuan "Menunggu" bisa langsung disetujui / ditolak dari sini
 //   (efek sama dengan tombol di Dashboard: status, notifikasi, audit log)
 // • Saring per status (klik legenda) & per jenis
+// • Tanggal merah (tabel hari_libur): angka merah + nama hari besar + daftar libur bulan ini
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "@/lib/supabase";
@@ -12,6 +13,8 @@ import { rapikanNama } from "@/lib/nama";
 import { useToast } from "@/components/Toast";
 import { putuskanPengajuan } from "@/lib/keputusanIzin";
 import AvatarKaryawan from "@/components/AvatarKaryawan";
+import { infoLibur, liburDalamRentang, LABEL_JENIS, type PetaLibur } from "@/lib/hariLibur";
+import { muatPetaLibur } from "@/lib/hariLiburData";
 
 const BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const HARI = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
@@ -89,6 +92,15 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
   const [hariDipilih, setHariDipilih] = useState<string | null>(null);
   const [rincianId, setRincianId] = useState<any>(null);
   const [memproses, setMemproses] = useState<any>(null);
+  // Tanggal merah bulan tampil (kosong bila hari-libur.sql belum dijalankan).
+  const [petaLibur, setPetaLibur] = useState<PetaLibur>(() => new Map());
+  useEffect(() => {
+    let batal = false;
+    const dari = `${ym.y}-${pad(ym.m + 1)}-01`;
+    const sampai = `${ym.y}-${pad(ym.m + 1)}-${pad(new Date(ym.y, ym.m + 1, 0).getDate())}`;
+    muatPetaLibur(supabase, dari, sampai).then((p) => { if (!batal) setPetaLibur(p); });
+    return () => { batal = true; };
+  }, [ym]);
 
   const muat = useCallback(async () => {
     setGalat("");
@@ -233,20 +245,25 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
               const list = leavesOn(d);
               const isToday = day === todayISO;
               const akhirPekan = i % 7 === 0 || i % 7 === 6;
+              const libur = infoLibur(day, petaLibur);
+              const merah = !!libur?.libur;
               return (
                 <div
                   key={i}
                   role="button"
                   tabIndex={0}
-                  aria-label={`${tglPanjang(day)} — ${list.length} cuti/izin`}
+                  data-tanggal-merah={merah ? day : undefined}
+                  title={libur ? `${libur.nama}${merah ? "" : " — masuk kerja"}` : undefined}
+                  aria-label={`${tglPanjang(day)}${libur ? ` — ${libur.nama}${merah ? "" : " (masuk kerja)"}` : ""} — ${list.length} cuti/izin`}
                   onClick={() => setHariDipilih(day)}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setHariDipilih(day); } }}
-                  className={`rounded-lg border p-1 md:p-1.5 min-h-[52px] md:min-h-[84px] overflow-hidden cursor-pointer transition-colors hover:border-primer-terang/60 focus:outline-none focus:ring-2 focus:ring-primer-terang ${isToday ? "border-primer bg-primer/5" : akhirPekan ? "border-white/5 bg-white/[0.015]" : "border-white/5 bg-kartu"}`}
+                  className={`rounded-lg border p-1 md:p-1.5 min-h-[52px] md:min-h-[84px] overflow-hidden cursor-pointer transition-colors hover:border-primer-terang/60 focus:outline-none focus:ring-2 focus:ring-primer-terang ${isToday ? "border-primer bg-primer/5" : merah ? "border-red-500/25 bg-red-500/[0.06]" : akhirPekan ? "border-white/5 bg-white/[0.015]" : "border-white/5 bg-kartu"}`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[11px] md:text-xs font-bold ${isToday ? "text-tint-redup" : akhirPekan ? "text-gray-600" : "text-gray-400"}`}>{d}</span>
+                    <span className={`text-[11px] md:text-xs font-bold ${isToday ? "text-tint-redup" : merah ? "text-red-400" : akhirPekan ? "text-gray-600" : "text-gray-400"}`}>{d}</span>
                     {list.length > 0 && <span className="md:hidden text-[10px] font-bold text-tint-redup">{list.length}</span>}
                   </div>
+                  {libur && <p className={`hidden md:block text-[10px] leading-tight font-semibold mb-1 line-clamp-2 ${merah ? "text-red-300" : "text-gray-500"}`}>{libur.nama}{merah ? "" : " · masuk"}</p>}
                   <div className="space-y-0.5 hidden md:block">
                     {list.slice(0, 3).map((l, j) => {
                       const sc = statusColor(l.status);
@@ -285,7 +302,28 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
               </button>
             ))}
             <span className="text-gray-600">· klik untuk menyaring</span>
+            <span className="flex items-center gap-1.5 ml-auto"><span className="w-2.5 h-2.5 rounded bg-red-500/20 border border-red-400/60" />Tanggal merah</span>
           </div>
+
+          {/* Hari libur bulan tampil (libur nasional, cuti bersama, libur kantor) */}
+          {(() => {
+            const dari = `${ym.y}-${pad(ym.m + 1)}-01`;
+            const sampai = `${ym.y}-${pad(ym.m + 1)}-${pad(new Date(ym.y, ym.m + 1, 0).getDate())}`;
+            const daftar = liburDalamRentang(petaLibur, dari, sampai);
+            if (!daftar.length) return null;
+            return (
+              <div className="mt-4" data-daftar-libur>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Hari libur {BULAN[ym.m]}</p>
+                <ul className="flex flex-wrap gap-1.5">
+                  {daftar.map((x) => (
+                    <li key={x.tanggal} className={`text-[11px] px-2 py-1 rounded-lg border ${x.libur ? "border-red-500/30 bg-red-500/10 text-red-200" : "border-white/10 bg-white/[0.03] text-gray-400"}`} title={LABEL_JENIS[x.jenis]}>
+                      <span className="font-bold">{Number(x.tanggal.slice(8, 10))} {BULAN[ym.m].slice(0, 3)}</span> · {x.nama}{x.libur ? "" : " (masuk kerja)"}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
 
           <div className="mt-5 border-t border-white/5 pt-4">
             <button
@@ -351,6 +389,7 @@ export default function LeaveCalendar({ onBerubah }: { onBerubah?: () => void } 
             <div className="p-4 border-b border-white/5 bg-kartu-hover flex justify-between items-start gap-3">
               <div className="min-w-0">
                 <p className="font-bold text-white text-sm">{tglPanjang(hariDipilih)}</p>
+                {(() => { const l = infoLibur(hariDipilih, petaLibur); return l ? <p className={`text-[11px] font-semibold ${l.libur ? "text-red-300" : "text-gray-400"}`}>{LABEL_JENIS[l.jenis]}: {l.nama}{l.libur ? "" : " — masuk kerja"}</p> : null; })()}
                 <p className="text-[11px] text-gray-500">{daftarHari.length} cuti/izin{jenisDipilih !== "semua" || !tampilStatus.Disetujui || !tampilStatus.Menunggu ? " (sesuai saringan)" : ""}</p>
               </div>
               <button onClick={() => setHariDipilih(null)} className="sentuh text-gray-500 hover:text-white p-1 bg-white/5 rounded-lg shrink-0" title="Tutup"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>

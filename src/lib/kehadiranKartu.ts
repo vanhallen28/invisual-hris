@@ -4,8 +4,9 @@
 // Lupa Clock-Out, Paling Disiplin): keadaan lipat per perangkat & penyaring
 // tanggal untuk baris yang melebar. Tidak menyentuh perhitungan kartu.
 
-export type StatusKehadiran = "Hadir" | "Telat" | "Alpa" | "Cuti/Sakit" | "WFH" | "Libur" | "-";
-export type Sel = { iso: string; status: StatusKehadiran; att?: any; leave?: any };
+export type StatusKehadiran = "Hadir" | "Telat" | "Alpa" | "Cuti/Sakit" | "WFH" | "Libur" | "Libur Nasional" | "-";
+/** `libur`: baris hari_libur pada tanggal itu (tanggal merah, atau cuti bersama yang disetel Masuk). */
+export type Sel = { iso: string; status: StatusKehadiran; att?: any; leave?: any; libur?: { nama: string; jenis: string; libur: boolean } | null };
 export type IdKartu = "telat" | "lupa" | "disiplin";
 
 export const KUNCI_LIPAT = "invisual_kehadiran_lipat";
