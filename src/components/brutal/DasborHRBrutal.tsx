@@ -289,13 +289,7 @@ export default function DasborHRBrutal(p: PropsDasborHRBrutal) {
             </div>
           )}
         </section>
-        </div>
-      </div>
-
-      <div className="nb-grid-bawah">
-        {/* Lembur hari ini (hanya tampil bila ada tanda) */}
-        <KartuLembur versi={p.versiLembur} hariIni={p.todayISO} employees={employees} onUbah={p.onLemburBerubah}
-          bungkus={(isi) => <section className="nb-kartu nb-isi nb-lebar">{isi}</section>} />
+        {/* Sedang Online & Aksi cepat di bawah Pengajuan (dulu di baris bawah) — mengisi ruang kosong kolom kanan */}
         <section className="nb-kartu nb-isi"><KartuOnline employees={employees} /></section>
         <section className="nb-kartu" aria-labelledby="nb-judul-aksi">
           <div className="nb-kartu-kepala"><h2 id="nb-judul-aksi">Aksi cepat</h2></div>
@@ -307,6 +301,13 @@ export default function DasborHRBrutal(p: PropsDasborHRBrutal) {
             <button type="button" className="nb-tombol" onClick={p.aksi.backup}><Database aria-hidden /> Backup DB</button>
           </div>
         </section>
+        </div>
+      </div>
+
+      <div className="nb-grid-bawah">
+        {/* Lembur hari ini (hanya tampil bila ada tanda) */}
+        <KartuLembur versi={p.versiLembur} hariIni={p.todayISO} employees={employees} onUbah={p.onLemburBerubah}
+          bungkus={(isi) => <section className="nb-kartu nb-isi nb-lebar">{isi}</section>} />
       </div>
     </div>
   );

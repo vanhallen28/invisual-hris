@@ -455,6 +455,7 @@ html[data-tema="terang"] {
   .nb-grid-utama { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 22px; align-items: start; }
   .nb-grid-bawah { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start; }
   .nb-grid-bawah > .nb-lebar { grid-column: 1 / -1; }
+  .nb-grid-bawah:empty { display: none; }   /* tanpa kartu Lembur → tanpa ruang kosong */
   @media (max-width: 1100px) { .nb-grid-utama, .nb-grid-bawah { grid-template-columns: minmax(0, 1fr); } }
 
   .nb-saring { display: inline-flex; gap: 6px; flex-wrap: wrap; }
