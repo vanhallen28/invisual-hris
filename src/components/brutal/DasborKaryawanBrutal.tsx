@@ -19,7 +19,7 @@ import LoncengNB from "@/components/brutal/LoncengNB";
 import { teksTanggal } from "@/lib/tanggalTampil";
 import { periodeGaji, labelRentang } from "@/lib/rentangTanggal";
 import { ringkasKehadiran } from "@/lib/ringkasanKehadiran";
-import { labelKompensasi, formatDurasi, MENIT_LEMBUR_MIN, type KompensasiAktif, type TandaLembur } from "@/lib/lembur";
+import { labelKompensasi, formatDurasi, MENIT_LEMBUR_MIN, menitWajib, menitKompensasi, teksMenit, type KompensasiAktif, type TandaLembur } from "@/lib/lembur";
 import type { BarisAbsen, BarisKaryawan, BarisPengajuan, BarisTugas } from "@/components/brutal/tipe";
 import { keteranganRemote, modeBawaan, type ModeKerja, type StatusRemote } from "@/lib/kerjaRemote";
 
@@ -264,10 +264,10 @@ export default function DasborKaryawanBrutal({ videoRef, canvasRef, ...p }: Prop
             </div>
           )}
           {p.tandaHariIni && (
-            <p className="nb-catatan" data-chip-lembur><Moon aria-hidden /><span>Ditandai lembur hari ini — hari kerja berikutnya {labelKompensasi(p.tandaHariIni.kompensasi, p.jamMasuk, p.jamKeluar)} (berlaku bila clock-out ≥ 1 jam setelah jam pulang).</span></p>
+            <p className="nb-catatan" data-chip-lembur><Moon aria-hidden /><span>Ditandai lembur hari ini — hari kerja berikutnya {labelKompensasi(p.tandaHariIni.kompensasi, p.jamMasuk, p.jamKeluar, menitKompensasi(p.tandaHariIni))} (berlaku bila clock-out ≥ {teksMenit(menitWajib(p.tandaHariIni))} setelah jam pulang).</span></p>
           )}
           {p.kompensasiHariIni && (
-            <p className="nb-catatan" data-chip-kompensasi><CircleCheck aria-hidden /><span>Kompensasi lembur {teksTanggal(p.kompensasiHariIni.dari, { tahun: false })}: {labelKompensasi(p.kompensasiHariIni.tanda.kompensasi, p.jamMasuk, p.jamKeluar)}{p.kompensasiHariIni.terpakai ? " · terpakai" : ""}.</span></p>
+            <p className="nb-catatan" data-chip-kompensasi><CircleCheck aria-hidden /><span>Kompensasi lembur {teksTanggal(p.kompensasiHariIni.dari, { tahun: false })}: {labelKompensasi(p.kompensasiHariIni.tanda.kompensasi, p.jamMasuk, p.jamKeluar, menitKompensasi(p.kompensasiHariIni.tanda))}{p.kompensasiHariIni.terpakai ? " · terpakai" : ""}.</span></p>
           )}
         </section>
 

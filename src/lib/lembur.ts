@@ -3,10 +3,13 @@
 // absen karyawan (Kehadiran & Dasbor), Dasbor admin, dan Kehadiran admin.
 //
 //   • HR/manajer menandai lembur (tabel `lembur`) + memilih kompensasi:
-//       masuk_siang  → hari kerja berikutnya boleh masuk sampai jamMasuk + 60 menit
-//       pulang_cepat → hari kerja berikutnya wajib pulang = jamKeluar − 60 menit
-//   • Sah hanya bila clock-out ≥ MENIT_LEMBUR_MIN setelah JAM WAJIB PULANG hari itu
+//       masuk_siang  → hari kerja berikutnya boleh masuk sampai jamMasuk + menit kompensasi
+//       pulang_cepat → hari kerja berikutnya wajib pulang = jamKeluar − menit kompensasi
+//   • Sah hanya bila clock-out ≥ menit lembur wajib setelah JAM WAJIB PULANG hari itu
 //     (jamPulangSeharusnya bila telat; selain itu jamKeluar karyawan).
+//   • Menit lembur wajib & menit kompensasi bisa diatur per tanda oleh HR/manajer
+//     (kolom lembur.menit_wajib / menit_kompensasi, lembur-custom.sql). Kosong = 60 menit
+//     (MENIT_LEMBUR_MIN / MENIT_KOMPENSASI) — sama persis dengan aturan sebelumnya.
 //   • Berlaku untuk hari kerja berikutnya saja (Jumat → Senin; tanggal merah ikut dilewati —
 //     lib/hariLibur); satu tanda = satu pemakaian. Lembur boleh di akhir pekan/tanggal merah.
 // Logika terlambat lama (jam masuk + toleransi, hanya mode Kantor & non-fleksibel)
@@ -23,7 +26,24 @@ export type TandaLembur = {
   id?: string; idKaryawan: string; nama?: string | null; tanggal: string; kompensasi: Kompensasi;
   catatan?: string | null; ditandai_oleh?: string | null; ditandai_pada?: string | null;
   dibatalkan_pada?: string | null; dibatalkan_oleh?: string | null;
+  /** Lama lembur wajib (menit) agar sah; kosong = MENIT_LEMBUR_MIN. */
+  menit_wajib?: number | null;
+  /** Besar kompensasi (menit); kosong = MENIT_KOMPENSASI. */
+  menit_kompensasi?: number | null;
 };
+
+/** Batas pilihan jam lembur custom (menit). */
+export const BATAS_MENIT_WAJIB = { min: 15, max: 720 } as const;
+export const BATAS_MENIT_KOMPENSASI = { min: 15, max: 480 } as const;
+const menitDalam = (x: unknown, bawaan: number, b: { min: number; max: number }) => {
+  const n = Math.round(Number(x));
+  return x != null && x !== "" && Number.isFinite(n) && n >= b.min && n <= b.max ? n : bawaan;
+};
+/** Lama lembur wajib sebuah tanda (menit). */
+export const menitWajib = (t?: Pick<TandaLembur, "menit_wajib"> | null) => menitDalam(t?.menit_wajib, MENIT_LEMBUR_MIN, BATAS_MENIT_WAJIB);
+/** Besar kompensasi sebuah tanda (menit). */
+export const menitKompensasi = (t?: Pick<TandaLembur, "menit_kompensasi"> | null) => menitDalam(t?.menit_kompensasi, MENIT_KOMPENSASI, BATAS_MENIT_KOMPENSASI);
+const mkValid = (m?: number | null) => menitDalam(m, MENIT_KOMPENSASI, BATAS_MENIT_KOMPENSASI);
 export type AbsenRingkas = {
   id?: any; waktuMasuk?: string | null; waktuKeluar?: string | null; jamPulangSeharusnya?: string | null;
   lembur_menit?: number | null; kompensasi_lembur?: string | null; kompensasi_dari?: string | null;
@@ -90,9 +110,9 @@ export function hariLemburUntuk(hariKompensasi: string, peta?: PetaLibur | null)
 }
 
 export const tandaAktif = (t: TandaLembur | null | undefined) => !!t && !t.dibatalkan_pada;
-/** Sah = tanda aktif dan lembur hari itu ≥ MENIT_LEMBUR_MIN. */
+/** Sah = tanda aktif dan lembur hari itu ≥ lama lembur wajib tanda itu (bawaan 60 menit). */
 export function lemburSah(t: TandaLembur | null | undefined, att: AbsenRingkas | null | undefined): boolean {
-  return tandaAktif(t) && Number(att?.lembur_menit ?? 0) >= MENIT_LEMBUR_MIN;
+  return tandaAktif(t) && Number(att?.lembur_menit ?? 0) >= menitWajib(t);
 }
 
 /**
@@ -114,8 +134,8 @@ export function kompensasiAktif(o: { hariIni: string; tanda: TandaLembur[]; abse
 }
 
 /** Penilaian clock-in — aturan lama + pergeseran batas bila masuk_siang. */
-export function nilaiMasuk(o: { waktuMasuk: string; jamMasuk: string; toleransi: number; fleksibel: boolean; modeKerja: string; kompensasi?: Kompensasi | null }) {
-  const batas = keMenit(o.jamMasuk || "09:00") + (Number(o.toleransi) || 0) + (o.kompensasi === "masuk_siang" ? MENIT_KOMPENSASI : 0);
+export function nilaiMasuk(o: { waktuMasuk: string; jamMasuk: string; toleransi: number; fleksibel: boolean; modeKerja: string; kompensasi?: Kompensasi | null; menitKompensasi?: number | null }) {
+  const batas = keMenit(o.jamMasuk || "09:00") + (Number(o.toleransi) || 0) + (o.kompensasi === "masuk_siang" ? mkValid(o.menitKompensasi) : 0);
   const telat = !o.fleksibel && o.modeKerja === "Kantor" && keMenit(o.waktuMasuk) > batas;
   return { status: (telat ? "Terlambat" : "Tepat Waktu") as "Tepat Waktu" | "Terlambat", telat, batasMasuk: dariMenit(batas) };
 }
@@ -127,19 +147,27 @@ export function nilaiMasuk(o: { waktuMasuk: string; jamMasuk: string; toleransi:
  * Tidak lewat batas & pulang_cepat → jamKeluar − 60. Fleksibel → null.
  * (`telat` dipertahankan untuk kompatibilitas pemanggil; tidak dipakai.)
  */
-export function jamPulangHariIni(o: { waktuMasuk: string; jamMasuk: string; jamKeluar: string; toleransi: number; durasiJam: number; fleksibel: boolean; telat?: boolean; kompensasi?: Kompensasi | null }): string | null {
+export function jamPulangHariIni(o: { waktuMasuk: string; jamMasuk: string; jamKeluar: string; toleransi: number; durasiJam: number; fleksibel: boolean; telat?: boolean; kompensasi?: Kompensasi | null; menitKompensasi?: number | null }): string | null {
   if (o.fleksibel) return null;
-  const toleransiEfektif = (Number(o.toleransi) || 0) + (o.kompensasi === "masuk_siang" ? MENIT_KOMPENSASI : 0);
+  const mk = mkValid(o.menitKompensasi);
+  const toleransiEfektif = (Number(o.toleransi) || 0) + (o.kompensasi === "masuk_siang" ? mk : 0);
   const lewatBatas = keMenit(o.waktuMasuk) > keMenit(o.jamMasuk || "09:00") + toleransiEfektif;
   if (lewatBatas) return jamPulangDariClockIn(o.waktuMasuk, o.jamMasuk, o.jamKeluar, toleransiEfektif, o.durasiJam);
-  if (o.kompensasi === "pulang_cepat") return dariMenit(keMenit(o.jamKeluar || "18:00") - MENIT_KOMPENSASI);
+  if (o.kompensasi === "pulang_cepat") return dariMenit(keMenit(o.jamKeluar || "18:00") - mk);
   return jamValid(o.jamKeluar) || "18:00";
 }
 
-export function labelKompensasi(k: Kompensasi, jamMasuk: string, jamKeluar: string): string {
+export function labelKompensasi(k: Kompensasi, jamMasuk: string, jamKeluar: string, menit?: number | null): string {
+  const mk = mkValid(menit);
   return k === "masuk_siang"
-    ? `boleh masuk sampai ${dariMenit(keMenit(jamMasuk || "09:00") + MENIT_KOMPENSASI)}`
-    : `boleh pulang ${dariMenit(keMenit(jamKeluar || "18:00") - MENIT_KOMPENSASI)}`;
+    ? `boleh masuk sampai ${dariMenit(keMenit(jamMasuk || "09:00") + mk)}`
+    : `boleh pulang ${dariMenit(keMenit(jamKeluar || "18:00") - mk)}`;
+}
+/** "1 jam", "2 jam 30 menit", "45 menit" — untuk kalimat syarat lembur. */
+export function teksMenit(menit: number): string {
+  const m = Math.max(0, Math.round(Number(menit) || 0)); const j = Math.floor(m / 60), s = m % 60;
+  if (!j) return `${s} menit`;
+  return s ? `${j} jam ${s} menit` : `${j} jam`;
 }
 export function formatDurasi(menit: number): string {
   const m = Math.max(0, Math.round(Number(menit) || 0)); const j = Math.floor(m / 60), s = m % 60;
@@ -151,6 +179,7 @@ export function statusTanda(t: TandaLembur, att: AbsenRingkas | null | undefined
   if (!tandaAktif(t)) return { kode: "batal", teks: "Dibatalkan" };
   if (!att?.waktuKeluar) return t.tanggal < hariIni ? { kode: "lupa", teks: att?.waktuMasuk ? "Tidak clock-out — kompensasi tidak berlaku" : "Tidak ada absen — kompensasi tidak berlaku" } : { kode: "belum", teks: att?.waktuMasuk ? "Belum clock-out" : "Belum absen" };
   const m = Number(att.lembur_menit ?? 0);
-  if (m >= MENIT_LEMBUR_MIN) return { kode: "sah", teks: `Lembur ${formatDurasi(m)} · sah` };
-  return { kode: "kurang", teks: `Pulang ${att.waktuKeluar} — lembur ${formatDurasi(m)}, kurang dari 1 jam, kompensasi tidak berlaku` };
+  const w = menitWajib(t);
+  if (m >= w) return { kode: "sah", teks: `Lembur ${formatDurasi(m)} · sah` };
+  return { kode: "kurang", teks: `Pulang ${att.waktuKeluar} — lembur ${formatDurasi(m)}, kurang dari ${teksMenit(w)}, kompensasi tidak berlaku` };
 }

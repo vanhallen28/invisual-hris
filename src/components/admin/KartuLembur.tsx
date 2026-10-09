@@ -12,7 +12,7 @@ import { useToast } from "@/components/Toast";
 import AvatarKaryawan from "@/components/AvatarKaryawan";
 import { namaPanggilan } from "@/lib/nama";
 import { labelTanggal } from "@/lib/rentangTanggal";
-import { hariLemburUntuk, labelKompensasi, statusTanda, tandaAktif, type AbsenRingkas, type TandaLembur } from "@/lib/lembur";
+import { hariLemburUntuk, labelKompensasi, menitKompensasi, statusTanda, tandaAktif, type AbsenRingkas, type TandaLembur } from "@/lib/lembur";
 import { batalkanLembur, muatTandaLembur, tandaiLembur } from "@/lib/lemburData";
 import { muatPetaSekitar } from "@/lib/hariLiburData";
 
@@ -92,7 +92,7 @@ export default function KartuLembur({ versi, hariIni, employees, onUbah, bungkus
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <AvatarKaryawan id={b.tanda.idKaryawan} nama={b.tanda.nama} className={KELAS_AVATAR} />
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-white truncate" title={b.tanda.nama || ""}>{namaPanggilan(b.tanda.idKaryawan, employees, b.tanda.nama)} <span className="text-[11px] text-gray-500 font-normal">· {b.tanda.tanggal === hariIni ? "hari ini" : labelTanggal(b.tanda.tanggal, false)} · {labelKompensasi(b.tanda.kompensasi, b.jamMasuk, b.jamKeluar)}</span></p>
+                  <p className="text-sm font-bold text-white truncate" title={b.tanda.nama || ""}>{namaPanggilan(b.tanda.idKaryawan, employees, b.tanda.nama)} <span className="text-[11px] text-gray-500 font-normal">· {b.tanda.tanggal === hariIni ? "hari ini" : labelTanggal(b.tanda.tanggal, false)} · {labelKompensasi(b.tanda.kompensasi, b.jamMasuk, b.jamKeluar, menitKompensasi(b.tanda))}</span></p>
                   <p className={`text-[11px] ${WARNA[st.kode] || "text-gray-400"}`}>{st.teks}{b.tanda.catatan ? <span className="text-gray-500"> · {b.tanda.catatan}</span> : null}</p>
                 </div>
               </div>

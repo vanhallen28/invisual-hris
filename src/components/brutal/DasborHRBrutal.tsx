@@ -19,9 +19,10 @@ import AvatarNB from "@/components/brutal/AvatarNB";
 import { namaPanggilan } from "@/lib/nama";
 import { teksTanggal } from "@/lib/tanggalTampil";
 import { periodeGaji, labelRentang } from "@/lib/rentangTanggal";
-import { MENIT_LEMBUR_MIN, type TandaLembur } from "@/lib/lembur";
+import { menitWajib, teksMenit, type TandaLembur } from "@/lib/lembur";
 import type { BarisAbsen, BarisKaryawan, BarisPengajuan } from "@/components/brutal/tipe";
 import CariKaryawanNB from "@/components/brutal/CariKaryawanNB";
+import KalenderLiburNB from "@/components/brutal/KalenderLiburNB";
 import LoncengNB from "@/components/brutal/LoncengNB";
 import GrafikKehadiranNB from "@/components/brutal/GrafikKehadiranNB";
 import KartuDailyTaskNB from "@/components/brutal/KartuDailyTaskNB";
@@ -127,7 +128,7 @@ export default function DasborHRBrutal(p: PropsDasborHRBrutal) {
       {/* KEPALA: judul + tanggal + periode gaji */}
       <div className="nb-kepala">
         <h1>Dasbor</h1>
-        <span className="nb-chip-tanggal">{tanggalChip}</span>
+        <KalenderLiburNB todayISO={p.todayISO} label={tanggalChip} />
         <span className="nb-meta">
           <span className="nb-periode">Periode gaji {labelRentang(periode)}</span>
           <button type="button" className="nb-tautan" onClick={() => p.bukaRincian("total")}>Total karyawan {strip(employees.length)} →</button>
@@ -228,7 +229,7 @@ export default function DasborHRBrutal(p: PropsDasborHRBrutal) {
                         : telat ? <span className="nb-pil nb-pink">Terlambat {menitTelat(a)} mnt</span>
                         : <span className="nb-pil nb-hijau">{a.status === "Terlambat" ? "Terlambat (fleksibel)" : "Tepat waktu"}</span>}
                       {a.kompensasi_lembur && <span className="nb-tag nb-hijau" title={`Kompensasi lembur ${a.kompensasi_dari || ""}`} data-lencana="kompensasi">kompensasi</span>}
-                      {a.waktuKeluar && Number(a.lembur_menit) >= MENIT_LEMBUR_MIN && p.tandaLemburHariIni[id] && <span className="nb-tag nb-kuning" title="Ditandai lembur & clock-out ≥ 1 jam setelah jam wajib pulang" data-lencana="lembur">lembur</span>}
+                      {a.waktuKeluar && p.tandaLemburHariIni[id] && Number(a.lembur_menit) >= menitWajib(p.tandaLemburHariIni[id]) && <span className="nb-tag nb-kuning" title={`Ditandai lembur & clock-out ≥ ${teksMenit(menitWajib(p.tandaLemburHariIni[id]))} setelah jam wajib pulang`} data-lencana="lembur">lembur</span>}
                     </span>
                     <span className="nb-sel-aksi" role="cell">
                       <TandaiLembur kecil idKaryawan={id} nama={a.nama || ""} tanggal={p.todayISO} tandaAda={p.tandaLemburHariIni[id] || null} onSelesai={p.onLemburBerubah} />

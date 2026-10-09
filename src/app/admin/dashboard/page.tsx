@@ -21,7 +21,7 @@ import KartuOnline from "@/components/admin/KartuOnline";
 import TandaiLembur from "@/components/admin/TandaiLembur";
 import KartuLembur from "@/components/admin/KartuLembur";
 import InfoLibur from "@/components/InfoLibur";
-import { MENIT_LEMBUR_MIN, type TandaLembur } from "@/lib/lembur";
+import { menitWajib, teksMenit, type TandaLembur } from "@/lib/lembur";
 import { muatTandaLembur } from "@/lib/lemburData";
 import { teksTanggal } from "@/lib/tanggalTampil";
 import { useTema } from "@/lib/tema";
@@ -817,8 +817,8 @@ export default function AdminDashboardPage() {
                             {!pulang && absen.kompensasi_lembur && (
                               <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide bg-green-500/10 text-green-300 px-1.5 py-0.5 rounded border border-green-500/30" title={`Kompensasi lembur ${absen.kompensasi_dari || ""}`} data-lencana="kompensasi">kompensasi</span>
                             )}
-                            {pulang && Number(absen.lembur_menit) >= MENIT_LEMBUR_MIN && tandaLemburHariIni[String(absen.idKaryawan ?? "")] && (
-                              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide bg-amber-500/10 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30" title="Ditandai lembur & clock-out ≥ 1 jam setelah jam wajib pulang" data-lencana="lembur">lembur</span>
+                            {pulang && tandaLemburHariIni[String(absen.idKaryawan ?? "")] && Number(absen.lembur_menit) >= menitWajib(tandaLemburHariIni[String(absen.idKaryawan ?? "")]) && (
+                              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide bg-amber-500/10 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30" title={`Ditandai lembur & clock-out ≥ ${teksMenit(menitWajib(tandaLemburHariIni[String(absen.idKaryawan ?? "")]))} setelah jam wajib pulang`} data-lencana="lembur">lembur</span>
                             )}
                             <button
                               type="button"

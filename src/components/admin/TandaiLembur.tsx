@@ -13,7 +13,10 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/Toast";
 import { isoDari, tambahHari } from "@/lib/rentangTanggal";
 import { teksTanggal } from "@/lib/tanggalTampil";
-import { dariMenit, formatDurasi, hariKerjaBerikutnya, keMenit, labelKompensasi, MENIT_LEMBUR_MIN, tandaAktif, type Kompensasi, type TandaLembur } from "@/lib/lembur";
+import {
+  BATAS_MENIT_KOMPENSASI, BATAS_MENIT_WAJIB, dariMenit, formatDurasi, hariKerjaBerikutnya, keMenit, labelKompensasi,
+  MENIT_KOMPENSASI, MENIT_LEMBUR_MIN, menitKompensasi, menitWajib, tandaAktif, teksMenit, type Kompensasi, type TandaLembur,
+} from "@/lib/lembur";
 import { batalkanLembur, jadwalKaryawan, tandaiLembur } from "@/lib/lemburData";
 import { hariNonKerja, infoLibur, type PetaLibur } from "@/lib/hariLibur";
 import { muatPetaSekitar } from "@/lib/hariLiburData";
@@ -30,6 +33,42 @@ type Props = {
 };
 
 const HARI_MUNDUR_MAKS = 60;
+/** Pilihan cepat jam lembur (menit); selain ini lewat "Custom…". */
+const PILIHAN_MENIT = [30, 60, 90, 120, 180, 240];
+
+/** Satu pilihan menit: daftar cepat + "Custom…" (isian menit). Nilai efektif = null bila isian tidak sah. */
+function useMenit(bawaan: number, batas: { min: number; max: number }) {
+  const [custom, setCustom] = useState(false);
+  const [menit, setMenit] = useState(bawaan);
+  const [teks, setTeks] = useState(String(bawaan));
+  const n = custom ? Number(teks) : menit;
+  const nilai = Number.isInteger(n) && n >= batas.min && n <= batas.max ? n : null;
+  const atur = (m: number) => { const c = !PILIHAN_MENIT.includes(m); setCustom(c); setMenit(c ? bawaan : m); setTeks(String(m)); };
+  const pilih = (v: string) => {
+    if (v === "custom") { setCustom(true); setTeks(String(nilai ?? menit)); }
+    else { setCustom(false); setMenit(Number(v)); }
+  };
+  return { custom, menit, teks, setTeks, nilai, atur, pilih, batas };
+}
+
+function PilihMenit({ id, label, m, bawaan }: { id: string; label: string; m: ReturnType<typeof useMenit>; bawaan: number }) {
+  return (
+    <div>
+      <label htmlFor={id} className="block text-[11px] font-bold text-gray-400 mb-1 uppercase tracking-wider">{label}</label>
+      <select id={id} value={m.custom ? "custom" : String(m.menit)} onChange={(e) => m.pilih(e.target.value)} className="w-full bg-input border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400" name={id}>
+        {PILIHAN_MENIT.map((x) => <option key={x} value={x}>{teksMenit(x)}{x === bawaan ? " (bawaan)" : ""}</option>)}
+        <option value="custom">Custom…</option>
+      </select>
+      {m.custom && (
+        <div className="mt-1.5 flex items-center gap-2">
+          <input type="number" inputMode="numeric" min={m.batas.min} max={m.batas.max} step={5} value={m.teks} onChange={(e) => m.setTeks(e.target.value)}
+            className={`w-24 bg-input border rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-amber-400 ${m.nilai == null ? "border-red-500/60" : "border-white/10"}`} aria-label={`${label} (menit)`} name={`${id}-custom`} />
+          <span className="text-[11px] text-gray-400">menit{m.nilai == null ? ` (${m.batas.min}–${m.batas.max})` : m.nilai >= 60 ? ` = ${teksMenit(m.nilai)}` : ""}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSelesai, kecil = false }: Props) {
   const toast = useToast();
@@ -41,6 +80,10 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
   const [jadwal, setJadwal] = useState<{ jamMasuk: string; jamKeluar: string } | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [peta, setPeta] = useState<PetaLibur | null>(null);   // tanggal merah ±31 hari (pratinjau hari kompensasi)
+  const wajib = useMenit(MENIT_LEMBUR_MIN, BATAS_MENIT_WAJIB);            // lama lembur minimal agar sah
+  const besar = useMenit(MENIT_KOMPENSASI, BATAS_MENIT_KOMPENSASI);       // besar kompensasi hari berikutnya
+  const mw = wajib.nilai ?? MENIT_LEMBUR_MIN;
+  const mk = besar.nilai ?? MENIT_KOMPENSASI;
   const aktif = tandaAktif(tandaAda);
 
   // Escape menutup; jadwal karyawan dimuat saat jendela dibuka (di dalam async).
@@ -66,6 +109,8 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
     setTgl(tanggal || hariIni);
     setKompensasi(tandaAda?.kompensasi || "masuk_siang");
     setCatatan(tandaAda?.catatan || "");
+    wajib.atur(menitWajib(tandaAda));
+    besar.atur(menitKompensasi(tandaAda));
     setBuka(true);
   };
 
@@ -75,11 +120,13 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
     e.preventDefault();
     if (!tgl || tgl > hariIni) { toast.gagal("Tanggal lembur tidak boleh di masa depan."); return; }
     if (tgl < tambahHari(hariIni, -HARI_MUNDUR_MAKS)) { toast.gagal(`Tanggal lembur paling lama ${HARI_MUNDUR_MAKS} hari ke belakang.`); return; }
+    if (wajib.nilai == null) { toast.gagal(`Lama lembur minimal harus ${BATAS_MENIT_WAJIB.min}–${BATAS_MENIT_WAJIB.max} menit.`); return; }
+    if (besar.nilai == null) { toast.gagal(`Besar kompensasi harus ${BATAS_MENIT_KOMPENSASI.min}–${BATAS_MENIT_KOMPENSASI.max} menit.`); return; }
     setSibuk(true);
     try {
-      const r = await tandaiLembur(supabase, { idKaryawan, nama, tanggal: tgl, kompensasi, catatan, oleh: await emailSesi() });
+      const r = await tandaiLembur(supabase, { idKaryawan, nama, tanggal: tgl, kompensasi, catatan, oleh: await emailSesi(), menitWajib: wajib.nilai, menitKompensasi: besar.nilai });
       if (!r.ok) { toast.gagal(r.pesan); return; }
-      const label = labelKompensasi(kompensasi, jadwal?.jamMasuk || "09:00", jadwal?.jamKeluar || "18:00");
+      const label = labelKompensasi(kompensasi, jadwal?.jamMasuk || "09:00", jadwal?.jamKeluar || "18:00", mk);
       let pesan = `Lembur ${teksTanggal(tgl)} ditandai untuk ${nama} · hari kerja berikutnya (${teksTanggal(r.hasil.hariKompensasi)}) ${label}.`;
       if (r.hasil.diubah) {
         pesan += r.hasil.statusLama !== r.hasil.statusBaru
@@ -88,7 +135,7 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
             ? ` Kompensasi sudah diterapkan ke absen ${teksTanggal(r.hasil.hariKompensasi, { tahun: false })}.`
             : ` Kompensasi pada absen ${teksTanggal(r.hasil.hariKompensasi, { tahun: false })} dicabut.`;
       }
-      if (r.hasil.lemburMenit != null && !r.hasil.sah) toast.info(`Clock-out ${tgl} hanya lembur ${formatDurasi(r.hasil.lemburMenit)} (kurang dari 1 jam) — kompensasi tidak berlaku.`);
+      if (r.hasil.lemburMenit != null && !r.hasil.sah) toast.info(`Clock-out ${tgl} hanya lembur ${formatDurasi(r.hasil.lemburMenit)} (kurang dari ${teksMenit(mw)}) — kompensasi tidak berlaku.`);
       if (r.peringatan) toast.info(r.peringatan);
       toast.sukses(pesan);
       setBuka(false);
@@ -122,11 +169,11 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
       </button>
       {buka && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onMouseDown={(e) => { if (e.target === e.currentTarget && !sibuk) setBuka(false); }} role="dialog" aria-modal="true" data-jendela-lembur>
-          <div className="bg-kartu border border-white/10 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-kartu border border-white/10 rounded-2xl shadow-2xl w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain animate-in zoom-in-95 duration-200">
             <div className="p-5 border-b border-white/5 bg-kartu-hover flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-bold text-white">Tandai lembur</h2>
-                <p className="text-xs text-gray-400 mt-0.5"><span className="text-tint font-bold">{nama}</span> · hari kerja berikutnya mendapat kompensasi bila clock-out ≥ 1 jam setelah jam pulang.</p>
+                <p className="text-xs text-gray-400 mt-0.5"><span className="text-tint font-bold">{nama}</span> · hari kerja berikutnya mendapat kompensasi bila clock-out ≥ {teksMenit(mw)} setelah jam pulang.</p>
               </div>
               <button type="button" onClick={() => setBuka(false)} className="text-gray-500 hover:text-white text-xl leading-none px-2" aria-label="Tutup">×</button>
             </div>
@@ -140,7 +187,7 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
                 )}
                 {tgl && hariNonKerja(tgl, peta) && (
                   <p className="text-[11px] text-amber-200/90 mt-1 rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-2.5 py-1.5" data-catatan-hari-libur>
-                    {infoLibur(tgl, peta)?.nama || "Akhir pekan"}: aturannya sama dengan hari kerja — sah bila clock-out ≥ 1 jam lewat jam pulang{jadwal ? ` (≥ ${dariMenit(keMenit(jadwal.jamKeluar) + MENIT_LEMBUR_MIN)})` : ""}.
+                    {infoLibur(tgl, peta)?.nama || "Akhir pekan"}: aturannya sama dengan hari kerja — sah bila clock-out ≥ {teksMenit(mw)} lewat jam pulang{jadwal ? ` (≥ ${dariMenit(keMenit(jadwal.jamKeluar) + mw)})` : ""}.
                   </p>
                 )}
               </div>
@@ -152,11 +199,18 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
                       <input type="radio" name="kompensasi" value={k} checked={kompensasi === k} onChange={() => setKompensasi(k)} className="mt-0.5 accent-amber-400" />
                       <span className="text-xs">
                         <span className="block font-bold text-white">{k === "masuk_siang" ? "Masuk siang" : "Pulang cepat"}</span>
-                        <span className="text-gray-400">{jadwal ? labelKompensasi(k, jadwal.jamMasuk, jadwal.jamKeluar) : k === "masuk_siang" ? "boleh masuk 1 jam lebih siang" : "boleh pulang 1 jam lebih awal"}</span>
+                        <span className="text-gray-400">{jadwal ? labelKompensasi(k, jadwal.jamMasuk, jadwal.jamKeluar, mk) : k === "masuk_siang" ? `boleh masuk ${teksMenit(mk)} lebih siang` : `boleh pulang ${teksMenit(mk)} lebih awal`}</span>
                       </span>
                     </label>
                   ))}
                 </div>
+              </div>
+              <div data-jam-lembur-custom>
+                <div className="grid grid-cols-2 gap-2">
+                  <PilihMenit id="menit-wajib" label="Lama lembur minimal" m={wajib} bawaan={MENIT_LEMBUR_MIN} />
+                  <PilihMenit id="menit-kompensasi" label="Besar kompensasi" m={besar} bawaan={MENIT_KOMPENSASI} />
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">Diatur HR/manajer per tanda lembur. Bawaan: minimal 1 jam lewat jam pulang, kompensasi 1 jam.</p>
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-gray-400 mb-1 uppercase tracking-wider">Catatan (opsional)</label>
@@ -164,7 +218,7 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
               </div>
               {tandaAda && (
                 <p className="text-[11px] text-gray-400 rounded-lg bg-black/20 border border-white/10 px-3 py-2">
-                  {aktif ? <>Sudah ditandai oleh <b className="text-gray-200">{tandaAda.ditandai_oleh || "-"}</b> ({tandaAda.kompensasi === "pulang_cepat" ? "pulang cepat" : "masuk siang"}). Simpan untuk mengubah, atau batalkan.</> : <>Tanda sebelumnya dibatalkan. Simpan untuk menandai lagi.</>}
+                  {aktif ? <>Sudah ditandai oleh <b className="text-gray-200">{tandaAda.ditandai_oleh || "-"}</b> ({tandaAda.kompensasi === "pulang_cepat" ? "pulang cepat" : "masuk siang"}{tandaAda.menit_wajib != null || tandaAda.menit_kompensasi != null ? ` · minimal ${teksMenit(menitWajib(tandaAda))}, kompensasi ${teksMenit(menitKompensasi(tandaAda))}` : ""}). Simpan untuk mengubah, atau batalkan.</> : <>Tanda sebelumnya dibatalkan. Simpan untuk menandai lagi.</>}
                 </p>
               )}
               <div className="pt-4 flex gap-3 border-t border-white/5 mt-2">

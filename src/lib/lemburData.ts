@@ -13,13 +13,17 @@ import type { PetaLibur } from "./hariLibur";
 import { gabungMuat } from "./gabungMuat";
 import {
   hariKerjaBerikutnya, hariLemburUntuk, jamPulangHariIni, jamWajibPulang, kompensasiAktif, labelKompensasi, lemburSah,
-  menitLembur, nilaiMasuk, tandaAktif, type AbsenRingkas, type Kompensasi, type KompensasiAktif, type TandaLembur,
+  menitLembur, nilaiMasuk, tandaAktif, menitWajib, menitKompensasi, teksMenit, MENIT_LEMBUR_MIN, MENIT_KOMPENSASI,
+  BATAS_MENIT_WAJIB, BATAS_MENIT_KOMPENSASI, type AbsenRingkas, type Kompensasi, type KompensasiAktif, type TandaLembur,
 } from "./lembur";
 
 type SB = any;
 export type HasilNilaiUlang = { hariKompensasi: string; sah: boolean; lemburMenit: number | null; statusLama: string | null; statusBaru: string | null; diubah: boolean };
 
 const KOLOM = "id, idKaryawan, nama, tanggal, kompensasi, catatan, ditandai_oleh, ditandai_pada, dibatalkan_pada, dibatalkan_oleh";
+/** + kolom menit custom (lembur-custom.sql). Bila belum dijalankan → kembali ke KOLOM (bawaan 60/60). */
+const KOLOM_CUSTOM = `${KOLOM}, menit_wajib, menit_kompensasi`;
+let kolomCustomAda = true;   // false setelah sekali terdeteksi belum ada → tidak mencoba ulang tiap muat
 const rapikanTanda = (t: any): TandaLembur => ({ ...t, tanggal: String(t.tanggal).slice(0, 10) });
 
 /** Catat ke audit_log (aktor = sesi yang login); gagal mencatat tidak menggagalkan aksi. */
@@ -33,10 +37,14 @@ async function catatAudit(sb: SB, action: string, target?: string, detail?: stri
 export async function muatTandaLembur(sb: SB, o: { idKaryawan?: string; dari: string; sampai: string; termasukBatal?: boolean }): Promise<TandaLembur[]> {
   const ambil = async (): Promise<TandaLembur[]> => {
     try {
-      let q = sb.from("lembur").select(KOLOM).gte("tanggal", o.dari).lte("tanggal", o.sampai);
-      if (o.idKaryawan) q = q.eq("idKaryawan", o.idKaryawan);
-      if (!o.termasukBatal) q = q.is("dibatalkan_pada", null);
-      const { data, error } = await q.order("tanggal", { ascending: false });
+      const minta = (kolom: string) => {
+        let q = sb.from("lembur").select(kolom).gte("tanggal", o.dari).lte("tanggal", o.sampai);
+        if (o.idKaryawan) q = q.eq("idKaryawan", o.idKaryawan);
+        if (!o.termasukBatal) q = q.is("dibatalkan_pada", null);
+        return q.order("tanggal", { ascending: false });
+      };
+      let { data, error } = await minta(kolomCustomAda ? KOLOM_CUSTOM : KOLOM);
+      if (error && kolomCustomAda && kolomBelumAda(error)) { kolomCustomAda = false; ({ data, error } = await minta(KOLOM)); }
       if (error) return [];
       return ((data || []) as any[]).map(rapikanTanda);
     } catch { return []; }
@@ -146,20 +154,21 @@ export async function nilaiUlangHariKompensasi(sb: SB, tanda: TandaLembur, petaL
 
   let kompensasi: Kompensasi | null = sah ? tanda.kompensasi : null;
   let dariBaru: string | null = kompensasi ? tanda.tanggal : null;
+  let mk: number | null = kompensasi ? menitKompensasi(tanda) : null;
   // Tidak ada yang diterapkan (tanda tidak sah) dan tidak ada yang perlu dipulihkan (hari itu
   // belum memakai tanda ini) → jangan sentuh absen sama sekali (keputusan HR lain tetap utuh).
   if (!kompensasi && !dariLama) return hasil;
   if (!kompensasi) {
     // Tanda ini dicabut tetapi tanda sah lain (mis. Jumat & Sabtu → Senin yang sama) masih ada → pakai itu.
     const alt = await tandaSahLain(sb, tanda, hariK, peta);
-    if (alt) { kompensasi = alt.kompensasi; dariBaru = alt.tanggal; }
+    if (alt) { kompensasi = alt.kompensasi; dariBaru = alt.tanggal; mk = menitKompensasi(alt); }
   }
-  const nilai = nilaiMasuk({ waktuMasuk: aK.waktuMasuk, jamMasuk: jadwal.jamMasuk, toleransi: jadwal.toleransi, fleksibel: jadwal.fleksibel, modeKerja: aK.mode_kerja || "Kantor", kompensasi });
+  const nilai = nilaiMasuk({ waktuMasuk: aK.waktuMasuk, jamMasuk: jadwal.jamMasuk, toleransi: jadwal.toleransi, fleksibel: jadwal.fleksibel, modeKerja: aK.mode_kerja || "Kantor", kompensasi, menitKompensasi: mk });
   const baru: Record<string, any> = { status: nilai.status, kompensasi_lembur: kompensasi, kompensasi_dari: dariBaru };
   // jamPulangSeharusnya hanya disentuh bila kompensasi memang memengaruhinya: saat diterapkan,
   // saat memulihkan pulang_cepat, atau saat status berubah (telat ↔ tepat mengubah jam wajib pulang).
   if (kompensasi || aK.kompensasi_lembur === "pulang_cepat" || (aK.status || null) !== nilai.status) {
-    baru.jamPulangSeharusnya = jamPulangHariIni({ waktuMasuk: aK.waktuMasuk, jamMasuk: jadwal.jamMasuk, jamKeluar: jadwal.jamKeluar, toleransi: jadwal.toleransi, durasiJam: jadwal.durasiJam, fleksibel: jadwal.fleksibel, telat: nilai.telat, kompensasi });
+    baru.jamPulangSeharusnya = jamPulangHariIni({ waktuMasuk: aK.waktuMasuk, jamMasuk: jadwal.jamMasuk, jamKeluar: jadwal.jamKeluar, toleransi: jadwal.toleransi, durasiJam: jadwal.durasiJam, fleksibel: jadwal.fleksibel, telat: nilai.telat, kompensasi, menitKompensasi: mk });
   }
   hasil.statusLama = aK.status || null;
   hasil.statusBaru = baru.status;
@@ -209,15 +218,36 @@ async function tandaSahLain(sb: SB, tanda: TandaLembur, hariK: string, peta: Pet
 }
 
 /** HR/manajer menandai lembur (tanggal hari ini atau lampau) + memilih kompensasi. */
-export async function tandaiLembur(sb: SB, p: { idKaryawan: string; nama?: string | null; tanggal: string; kompensasi: Kompensasi; catatan?: string; oleh: string }) {
+export async function tandaiLembur(sb: SB, p: {
+  idKaryawan: string; nama?: string | null; tanggal: string; kompensasi: Kompensasi; catatan?: string; oleh: string;
+  /** Lama lembur minimal (menit) agar sah; kosong/null = bawaan 60. */
+  menitWajib?: number | null;
+  /** Besar kompensasi (menit); kosong/null = bawaan 60. */
+  menitKompensasi?: number | null;
+}) {
   try {
-    const baris = {
+    // Nilai bawaan disimpan sebagai null (bukan 60) agar tanda lama & baru dibaca sama.
+    const custom = (v: number | null | undefined, bawaan: number, b: { min: number; max: number }) => {
+      if (v == null || !Number.isFinite(Number(v))) return null;
+      const n = Math.round(Number(v));
+      return n === bawaan || n < b.min || n > b.max ? null : n;
+    };
+    const mw = custom(p.menitWajib, MENIT_LEMBUR_MIN, BATAS_MENIT_WAJIB);
+    const mkc = custom(p.menitKompensasi, MENIT_KOMPENSASI, BATAS_MENIT_KOMPENSASI);
+    const dasar = {
       idKaryawan: p.idKaryawan, nama: p.nama || null, tanggal: p.tanggal, kompensasi: p.kompensasi,
       catatan: String(p.catatan || "").trim() || null, ditandai_oleh: p.oleh, ditandai_pada: new Date().toISOString(),
       dibatalkan_pada: null, dibatalkan_oleh: null,
     };
-    const { data, error } = await sb.from("lembur").upsert(baris, { onConflict: "idKaryawan,tanggal" }).select(KOLOM).single();
+    let { data, error } = await sb.from("lembur").upsert({ ...dasar, menit_wajib: mw, menit_kompensasi: mkc }, { onConflict: "idKaryawan,tanggal" }).select(KOLOM_CUSTOM).single();
+    if (error && kolomBelumAda(error)) {
+      kolomCustomAda = false;
+      // lembur-custom.sql belum dijalankan: tanda bawaan tetap bisa disimpan; nilai custom tidak.
+      if (mw != null || mkc != null) return { ok: false as const, pesan: "Jam lembur custom belum aktif — jalankan lembur-custom.sql di Supabase dulu (atau pakai bawaan 1 jam)." };
+      ({ data, error } = await sb.from("lembur").upsert(dasar, { onConflict: "idKaryawan,tanggal" }).select(KOLOM).single());
+    }
     if (error) return { ok: false as const, pesan: error.message || "Gagal menandai lembur." };
+    if (data && typeof data === "object" && "menit_wajib" in data) kolomCustomAda = true;
     const tanda = rapikanTanda(data);
     const peta = await muatPetaSekitar(sb, tanda.tanggal);
     // Tanda SUDAH tersimpan; penilaian ulang absen hari kompensasi boleh gagal (mis. hak tulis
@@ -231,11 +261,11 @@ export async function tandaiLembur(sb: SB, p: { idKaryawan: string; nama?: strin
       pushNotify(sb, {
         memberIds: [jadwal.user_id],
         title: `Ditandai lembur ${p.tanggal}`,
-        body: `Hari kerja berikutnya ${labelKompensasi(p.kompensasi, jadwal.jamMasuk, jadwal.jamKeluar)} — berlaku bila clock-out ≥ 1 jam setelah jam pulang.`,
+        body: `Hari kerja berikutnya ${labelKompensasi(p.kompensasi, jadwal.jamMasuk, jadwal.jamKeluar, menitKompensasi(tanda))} — berlaku bila clock-out ≥ ${teksMenit(menitWajib(tanda))} setelah jam pulang.`,
         url: "/user/kehadiran", tag: "lembur",
       });
     }
-    await catatAudit(sb, "Tandai Lembur", `${p.nama || p.idKaryawan} · ${p.tanggal}`, `${p.kompensasi}${hasil.diubah ? ` · ${hasil.hariKompensasi}: ${hasil.statusLama} → ${hasil.statusBaru}` : ""}${peringatan ? " · nilai ulang gagal" : ""}`);
+    await catatAudit(sb, "Tandai Lembur", `${p.nama || p.idKaryawan} · ${p.tanggal}`, `${p.kompensasi}${mw != null || mkc != null ? ` · custom ${teksMenit(menitWajib(tanda))}/${teksMenit(menitKompensasi(tanda))}` : ""}${hasil.diubah ? ` · ${hasil.hariKompensasi}: ${hasil.statusLama} → ${hasil.statusBaru}` : ""}${peringatan ? " · nilai ulang gagal" : ""}`);
     return { ok: true as const, tanda, hasil, peringatan };
   } catch (e: any) {
     return { ok: false as const, pesan: e?.message || "Gagal menandai lembur." };
