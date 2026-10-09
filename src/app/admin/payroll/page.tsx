@@ -28,7 +28,7 @@ import {
   ringkasanPeriode, peringatanFinal, ringkasanEmail, namaBerkasSlip, angkaAman,
   type PeriodeBaris, type SlipBaris, type SlipTampil,
 } from "@/lib/payroll/hitung";
-import { unduhSlipPdf } from "@/lib/payroll/slipPdf";
+import { unduhSlipPdf } from "@/lib/payroll/unduhSlip"; // jsPDF dimuat saat tombol ditekan
 import {
   muatPeriode, muatSlip, simpanSlip, buatPeriode, sinkronPeriode, finalkanPeriode, bukaKunciPeriode, kirimSlip, kirimSemua,
   type ProgresKirim,

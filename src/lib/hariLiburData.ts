@@ -3,6 +3,11 @@
 // Bila hari-libur.sql belum dijalankan / gagal → [] (aplikasi berperilaku seperti
 // sebelumnya: hanya Sabtu–Minggu yang libur).
 import { buatPetaLibur, rapikanLibur, rentangSekitar, type HariLibur, type JenisLibur, type PetaLibur } from "./hariLibur";
+import { gabungMuat, lupakanMuat } from "./gabungMuat";
+
+// Daftar hari libur jarang berubah dan dibaca beberapa komponen sekaligus (pita, lembur,
+// heatmap, grafik) → permintaan identik digabung & disimpan 60 dtk; dilupakan setelah HR mengubahnya.
+const UMUR_LIBUR_MS = 60 * 1000;
 
 type SB = any;
 const KOLOM = "tanggal, nama, jenis, libur, diubah_oleh, diubah_pada";
@@ -14,10 +19,14 @@ export const tabelLiburBelumAda = (err: any) => {
 };
 
 export async function muatHariLibur(sb: SB, dari: string, sampai: string): Promise<HariLibur[]> {
-  try {
+  const ambil = async (): Promise<HariLibur[]> => {
     const { data, error } = await sb.from("hari_libur").select(KOLOM).gte("tanggal", dari).lte("tanggal", sampai).order("tanggal", { ascending: true });
-    if (error) return [];
+    if (error) throw error;   // galat tidak disimpan: dicoba lagi pada pemanggilan berikutnya
     return ((data || []) as any[]).map(rapikanLibur).filter(Boolean) as HariLibur[];
+  };
+  try {
+    const baris = await (sb && typeof sb === "object" ? gabungMuat(sb, `hari_libur:${dari}:${sampai}`, ambil, UMUR_LIBUR_MS) : ambil());
+    return baris.slice();
   } catch { return []; }
 }
 
@@ -53,6 +62,7 @@ export async function setelLibur(sb: SB, x: HariLibur, libur: boolean): Promise<
   const { data, error } = await sb.from("hari_libur").update({ libur, diubah_oleh: await oleh(sb), diubah_pada: new Date().toISOString() }).eq("tanggal", x.tanggal).select("tanggal");
   if (error) return { ok: false, pesan: error.message };
   if (!data || !data.length) return { ok: false, pesan: "Tidak tersimpan — hanya HR/manajer yang bisa mengubah." };
+  lupakanMuat(sb, "hari_libur:");
   await catatAudit(sb, "Ubah Hari Libur", `${x.tanggal} · ${x.nama}`, libur ? "Libur" : "Masuk kerja");
   return { ok: true };
 }
@@ -65,6 +75,7 @@ export async function tambahLibur(sb: SB, p: { tanggal: string; nama: string; je
   const { data, error } = await sb.from("hari_libur").insert([{ tanggal: p.tanggal, nama, jenis: p.jenis, libur: true, diubah_oleh: await oleh(sb) }]).select("tanggal");
   if (error) return { ok: false, pesan: String(error.code) === "23505" ? "Tanggal itu sudah ada di daftar." : error.message };
   if (!data || !data.length) return { ok: false, pesan: "Tidak tersimpan — hanya HR/manajer yang bisa menambah." };
+  lupakanMuat(sb, "hari_libur:");
   await catatAudit(sb, "Tambah Hari Libur", `${p.tanggal} · ${nama}`, p.jenis);
   return { ok: true };
 }
@@ -73,6 +84,7 @@ export async function hapusLibur(sb: SB, x: HariLibur): Promise<Hasil> {
   const { data, error } = await sb.from("hari_libur").delete().eq("tanggal", x.tanggal).select("tanggal");
   if (error) return { ok: false, pesan: error.message };
   if (!data || !data.length) return { ok: false, pesan: "Tidak terhapus — hanya HR/manajer yang bisa menghapus." };
+  lupakanMuat(sb, "hari_libur:");
   await catatAudit(sb, "Hapus Hari Libur", `${x.tanggal} · ${x.nama}`, x.jenis);
   return { ok: true };
 }

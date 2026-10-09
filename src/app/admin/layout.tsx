@@ -10,7 +10,9 @@ import MenuLainnya from "@/components/layout/MenuLainnya";
 import { useJebakFokus } from "@/lib/fokus";
 import { ambilPeran } from "@/lib/keuangan/klien";
 import { useTema } from "@/lib/tema";
-import KartuAkunNB from "@/components/brutal/KartuAkunNB";
+import dynamic from "next/dynamic";
+// Kartu akun Neo-Brutal hanya diunduh bila tema itu aktif.
+const KartuAkunNB = dynamic(() => import("@/components/brutal/KartuAkunNB"), { ssr: false });
 
 // Pengelompokan menu sidebar (desktop). Urutan di dalam grup mengikuti navItems.
 const GRUP_SIDEBAR: { judul: string; href: string[] }[] = [

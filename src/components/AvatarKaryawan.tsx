@@ -11,6 +11,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { supabase } from "@/lib/supabase";
+import { urlThumbnail } from "@/lib/thumbnail";
 
 type Peta = {
   id: Record<string, string>;        // idKaryawan → URL avatar
@@ -86,15 +87,19 @@ export default function AvatarKaryawan({ id, nama, className = "" }: {
 }) {
   const url = useUrlAvatar(id, nama);
   const [urlGagal, setUrlGagal] = useState("");
+  // Tampilan memakai thumbnail Cloudinary (lib/thumbnail.ts); bila gagal → URL asli → inisial.
+  const [thumbGagal, setThumbGagal] = useState("");
   if (url && urlGagal !== url) {
+    const kecil = urlThumbnail(url);
+    const pakaiAsli = thumbGagal === url || kecil === url;
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={url}
+        src={pakaiAsli ? url : kecil}
         alt={nama || "avatar"}
         loading="lazy"
         decoding="async"
-        onError={() => setUrlGagal(url)}
+        onError={() => (pakaiAsli ? setUrlGagal(url) : setThumbGagal(url))}
         className={`${className} object-cover`}
       />
     );

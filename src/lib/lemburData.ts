@@ -10,6 +10,7 @@ import { ambilAturanJamKerja } from "./jamKerja";
 import { pushNotify } from "@/lib/push";
 import { muatPetaSekitar } from "./hariLiburData";
 import type { PetaLibur } from "./hariLibur";
+import { gabungMuat } from "./gabungMuat";
 import {
   hariKerjaBerikutnya, hariLemburUntuk, jamPulangHariIni, jamWajibPulang, kompensasiAktif, labelKompensasi, lemburSah,
   menitLembur, nilaiMasuk, tandaAktif, type AbsenRingkas, type Kompensasi, type KompensasiAktif, type TandaLembur,
@@ -30,14 +31,21 @@ async function catatAudit(sb: SB, action: string, target?: string, detail?: stri
 }
 
 export async function muatTandaLembur(sb: SB, o: { idKaryawan?: string; dari: string; sampai: string; termasukBatal?: boolean }): Promise<TandaLembur[]> {
-  try {
-    let q = sb.from("lembur").select(KOLOM).gte("tanggal", o.dari).lte("tanggal", o.sampai);
-    if (o.idKaryawan) q = q.eq("idKaryawan", o.idKaryawan);
-    if (!o.termasukBatal) q = q.is("dibatalkan_pada", null);
-    const { data, error } = await q.order("tanggal", { ascending: false });
-    if (error) return [];
-    return ((data || []) as any[]).map(rapikanTanda);
-  } catch { return []; }
+  const ambil = async (): Promise<TandaLembur[]> => {
+    try {
+      let q = sb.from("lembur").select(KOLOM).gte("tanggal", o.dari).lte("tanggal", o.sampai);
+      if (o.idKaryawan) q = q.eq("idKaryawan", o.idKaryawan);
+      if (!o.termasukBatal) q = q.is("dibatalkan_pada", null);
+      const { data, error } = await q.order("tanggal", { ascending: false });
+      if (error) return [];
+      return ((data || []) as any[]).map(rapikanTanda);
+    } catch { return []; }
+  };
+  // Permintaan identik yang BERSAMAAN digabung (Dasbor HR & KartuLembur); tanpa simpanan —
+  // setelah menandai/membatalkan lembur, pemuatan berikutnya selalu mengambil data baru.
+  const kunci = `lembur:${o.idKaryawan ?? "*"}:${o.dari}:${o.sampai}:${o.termasukBatal ? 1 : 0}`;
+  const baris = await (sb && typeof sb === "object" ? gabungMuat(sb, kunci, ambil, 0) : ambil());
+  return baris.map((t) => ({ ...t }));
 }
 
 /** Tanda lembur AKTIF seorang karyawan pada satu tanggal (null bila tidak ada / dibatalkan). */

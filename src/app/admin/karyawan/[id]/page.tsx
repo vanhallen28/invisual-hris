@@ -11,7 +11,7 @@ import { useToast } from "@/components/Toast";
 import { teksTanggal } from "@/lib/tanggalTampil";
 import SlipModal from "@/components/payroll/SlipModal";
 import { formatRupiah, gajiPokokMaster, keSlipTampil, namaBerkasSlip } from "@/lib/payroll/hitung";
-import { unduhSlipPdf } from "@/lib/payroll/slipPdf";
+import { unduhSlipPdf } from "@/lib/payroll/unduhSlip"; // jsPDF dimuat saat tombol ditekan
 import { muatRiwayatSlipSaya, type RiwayatSlip } from "@/lib/payroll/klien";
 
 const jamPendekSlip = (iso?: string | null) => {

@@ -10,7 +10,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import PayslipDocument from "@/components/PayslipDocument";
 import { namaBerkasSlip, type SlipTampil } from "@/lib/payroll/hitung";
-import { unduhSlipPdf } from "@/lib/payroll/slipPdf";
+import { unduhSlipPdf } from "@/lib/payroll/unduhSlip"; // jsPDF dimuat saat tombol ditekan
 
 const CSS_CETAK = `
 @media print {

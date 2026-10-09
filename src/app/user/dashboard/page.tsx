@@ -17,7 +17,12 @@ import LoadingLogo from "@/components/LoadingLogo";
 import { useToast } from "@/components/Toast";
 import { teksTanggal } from "@/lib/tanggalTampil";
 import { useTema } from "@/lib/tema";
-import DasborKaryawanBrutal from "@/components/brutal/DasborKaryawanBrutal";
+import dynamic from "next/dynamic";
+// Susunan Neo-Brutal hanya diunduh bila tema itu aktif (pengguna tema gelap tidak mengunduhnya).
+const DasborKaryawanBrutal = dynamic(() => import("@/components/brutal/DasborKaryawanBrutal"), {
+  ssr: false,
+  loading: () => <div className="flex h-[80vh] flex-col items-center justify-center gap-3 text-gray-400"><LoadingLogo size={72} text="Menyiapkan Ruang Kerja..." /></div>,
+});
 
 // Gaya sel bento + cahaya biru yang mengikuti kursor.
 // Murni tampilan: tanpa state, tanpa efek samping.

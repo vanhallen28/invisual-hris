@@ -25,7 +25,13 @@ import { MENIT_LEMBUR_MIN, type TandaLembur } from "@/lib/lembur";
 import { muatTandaLembur } from "@/lib/lemburData";
 import { teksTanggal } from "@/lib/tanggalTampil";
 import { useTema } from "@/lib/tema";
-import DasborHRBrutal from "@/components/brutal/DasborHRBrutal";
+import dynamic from "next/dynamic";
+import LoadingLogo from "@/components/LoadingLogo";
+// Susunan Neo-Brutal hanya diunduh bila tema itu aktif (pengguna tema gelap tidak mengunduhnya).
+const DasborHRBrutal = dynamic(() => import("@/components/brutal/DasborHRBrutal"), {
+  ssr: false,
+  loading: () => <div className="flex min-h-[60vh] items-center justify-center"><LoadingLogo size={56} text="Menyiapkan dasbor" /></div>,
+});
 
 // Cek apakah HARI INI termasuk dalam periode izin/cuti.
 // Kolom `tanggal` berupa string: "2025-07-16", "2025-07-16 s/d 2025-07-20",
