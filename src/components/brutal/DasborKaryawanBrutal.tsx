@@ -10,6 +10,7 @@
 "use client";
 
 import { useEffect, useState, type RefObject } from "react";
+import Link from "next/link";
 import { Camera, MapPin, Moon, CircleCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import InfoLibur from "@/components/InfoLibur";
@@ -17,6 +18,7 @@ import LoadingLogo from "@/components/LoadingLogo";
 import AvatarNB from "@/components/brutal/AvatarNB";
 import LoncengNB from "@/components/brutal/LoncengNB";
 import { teksTanggal } from "@/lib/tanggalTampil";
+import { batasTanggalPengajuan } from "@/lib/rentangPengajuan";
 import { periodeGaji, labelRentang } from "@/lib/rentangTanggal";
 import { ringkasKehadiran } from "@/lib/ringkasanKehadiran";
 import { labelKompensasi, formatDurasi, MENIT_LEMBUR_MIN, menitWajib, menitKompensasi, teksMenit, type KompensasiAktif, type TandaLembur } from "@/lib/lembur";
@@ -52,6 +54,8 @@ export type PropsDasborKaryawanBrutal = {
   kompensasiHariIni: KompensasiAktif | null;
   myTasks: BarisTugas[];
   recentAttendances: BarisAbsen[];
+  /** Batas lembur sah per tanggal riwayat (jam lembur custom); tanpa entri = 1 jam. */
+  batasLemburRiwayat?: Record<string, number>;
   recentLeaves: BarisPengajuan[];
 };
 
@@ -106,7 +110,8 @@ export default function DasborKaryawanBrutal({ videoRef, canvasRef, ...p }: Prop
       try {
         const [abs, req] = await Promise.all([
           supabase.from("attendance").select("tanggal, waktuMasuk, status").eq("idKaryawan", safeId).gte("tanggal", periode.dari).lte("tanggal", periode.sampai),
-          supabase.from("approvals").select("jenis, tanggal, status").eq("idKaryawan", safeId),
+          supabase.from("approvals").select("jenis, tanggal, status").eq("idKaryawan", safeId)
+            .gte("tanggal", batasTanggalPengajuan(periode.dari, periode.sampai).dari).lt("tanggal", batasTanggalPengajuan(periode.dari, periode.sampai).sebelum),
         ]);
         if (hidup) setRingkas(ringkasKehadiran(abs.data || [], req.data || [], periode));
       } catch { /* ringkasan bersifat tambahan */ }
@@ -284,7 +289,7 @@ export default function DasborKaryawanBrutal({ videoRef, canvasRef, ...p }: Prop
           <section className="nb-bagian" aria-labelledby="nb-judul-tugas">
             <div className="nb-bagian-kepala">
               <h2 id="nb-judul-tugas">Tugas saya</h2>
-              <a href="/user/daily-task" className="nb-tautan">Lihat semua</a>
+              <Link href="/user/daily-task" className="nb-tautan">Lihat semua</Link>
             </div>
             {p.myTasks.length === 0 ? (
               <p className="nb-baris" style={{ margin: 0, fontSize: 13 }}>Belum ada tugas untuk Anda. Brief baru akan muncul di sini.</p>
@@ -304,7 +309,7 @@ export default function DasborKaryawanBrutal({ videoRef, canvasRef, ...p }: Prop
             <section className="nb-bagian" aria-labelledby="nb-judul-riwayat">
               <div className="nb-bagian-kepala">
                 <h2 id="nb-judul-riwayat">Riwayat absen</h2>
-                <a href="/user/kehadiran" className="nb-tautan">Absen →</a>
+                <Link href="/user/kehadiran" className="nb-tautan">Absen →</Link>
               </div>
               {p.recentAttendances.length === 0 ? (
                 <p className="nb-baris" style={{ margin: 0, fontSize: 13 }}>Belum ada riwayat — absen pertama Anda akan tercatat di sini.</p>
@@ -320,7 +325,7 @@ export default function DasborKaryawanBrutal({ videoRef, canvasRef, ...p }: Prop
                       {!att.waktuKeluar && String(att.tanggal ?? "") < p.todayISO
                         ? <span className="nb-tag nb-jingga">Lupa absen pulang</span>
                         : <span className={`nb-tag ${att.status === "Terlambat" ? "nb-pink" : "nb-hijau"}`}>{att.status}</span>}
-                      {Number(att.lembur_menit) >= MENIT_LEMBUR_MIN && <span className="nb-tag nb-kuning" title="Lembur tercatat">Lembur {formatDurasi(Number(att.lembur_menit))}</span>}
+                      {Number(att.lembur_menit) >= (p.batasLemburRiwayat?.[String(att.tanggal ?? "").slice(0, 10)] ?? MENIT_LEMBUR_MIN) && <span className="nb-tag nb-kuning" title="Lembur tercatat">Lembur {formatDurasi(Number(att.lembur_menit))}</span>}
                       {att.kompensasi_lembur && <span className="nb-tag nb-hijau" title={`Kompensasi lembur ${att.kompensasi_dari || ""}`}>Kompensasi</span>}
                     </div>
                   </div>
@@ -332,7 +337,7 @@ export default function DasborKaryawanBrutal({ videoRef, canvasRef, ...p }: Prop
             <section className="nb-bagian" aria-labelledby="nb-judul-pengajuan-saya">
               <div className="nb-bagian-kepala">
                 <h2 id="nb-judul-pengajuan-saya">Pengajuan</h2>
-                <a href="/user/kehadiran" className="nb-tautan">Ajukan →</a>
+                <Link href="/user/kehadiran" className="nb-tautan">Ajukan →</Link>
               </div>
               {p.recentLeaves.length === 0 ? (
                 <p className="nb-baris" style={{ margin: 0, fontSize: 13 }}>Belum ada pengajuan.</p>

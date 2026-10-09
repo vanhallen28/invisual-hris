@@ -22,6 +22,7 @@ import { supabase } from "@/lib/supabase";
 import { excludeOwners } from "@/lib/owners";
 import LoadingLogo from "@/components/LoadingLogo";
 import KartuOnline from "@/components/admin/KartuOnline";
+import { batasTanggalPengajuan } from "@/lib/rentangPengajuan";
 
 function coversToday(tanggalStr: string, todayISO: string) {
   if (!tanggalStr) return false;
@@ -78,7 +79,8 @@ export default function DashboardTimPage() {
         const { data: empData } = await supabase.from("employees").select("*");
         const { data: approvedData } = await supabase
           .from("approvals").select("*")
-          .in("status", ["Disetujui", "Menunggu"]).neq("jenis", "Izin Terlambat");
+          .in("status", ["Disetujui", "Menunggu"]).neq("jenis", "Izin Terlambat")
+          .gte("tanggal", batasTanggalPengajuan(todayISO).dari).lt("tanggal", batasTanggalPengajuan(todayISO).sebelum);   // lib/rentangPengajuan
         const { data: attendanceData } = await supabase
           .from("attendance").select("*")
           .eq("tanggal", todayISO).order("waktuMasuk", { ascending: false });

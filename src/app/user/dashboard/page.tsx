@@ -2,11 +2,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { Camera, Moon, CircleCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { TOLERANSI_TELAT_MENIT, JAM_KERJA_JAM } from "@/lib/keterlambatan";
 import { nilaiMasuk, jamPulangHariIni, labelKompensasi, formatDurasi, MENIT_LEMBUR_MIN, menitWajib, menitKompensasi, teksMenit, type KompensasiAktif, type TandaLembur } from "@/lib/lembur";
-import { muatKompensasiHariIni, muatTandaHari, catatClockOut } from "@/lib/lemburData";
+import { muatKompensasiHariIni, muatTandaHari, muatTandaLembur, catatClockOut } from "@/lib/lemburData";
 import InfoLibur from "@/components/InfoLibur";
 import { ambilAturanJamKerja, teksDurasi } from "@/lib/jamKerja";
 import { jarakMeter, ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
@@ -73,6 +74,8 @@ export default function UserDashboardPage() {
   // Kompensasi lembur (lib/lembur.ts): tanda lembur HARI INI & kompensasi yang berlaku hari ini dari lembur sebelumnya.
   const [kompensasiHariIni, setKompensasiHariIni] = useState<KompensasiAktif | null>(null);
   const [tandaHariIni, setTandaHariIni] = useState<TandaLembur | null>(null);
+  // Batas "lembur sah" per tanggal riwayat (jam lembur custom per tanda; tanpa tanda = 1 jam).
+  const [batasLemburRiwayat, setBatasLemburRiwayat] = useState<Record<string, number>>({});
   const [blokirPulangTelat, setBlokirPulangTelat] = useState(false);
   const [geofenceAktif, setGeofenceAktif] = useState(true); // DIPAKSA aktif: enforcement lokasi tak bisa dimatikan
   const [kantorLat, setKantorLat] = useState(KANTOR_DEFAULT.lat);
@@ -179,6 +182,11 @@ export default function UserDashboardPage() {
 
       const { data: absData } = await supabase.from("attendance").select("*").eq("idKaryawan", safeId).order("tanggal", { ascending: false }).limit(5);
       if (absData) setRecentAttendances(absData);
+      if (absData?.length) {
+        const tgl = absData.map((a: any) => String(a.tanggal).slice(0, 10)).sort();
+        const tanda = await muatTandaLembur(supabase, { idKaryawan: safeId, dari: tgl[0]!, sampai: tgl[tgl.length - 1]! });
+        setBatasLemburRiwayat(Object.fromEntries(tanda.map((t) => [t.tanggal, menitWajib(t)])));
+      }
 
       const { data: cutiData } = await supabase.from("approvals").select("*").eq("idKaryawan", safeId).order("id", { ascending: false }).limit(3);
       if (cutiData) setRecentLeaves(cutiData);
@@ -435,7 +443,7 @@ export default function UserDashboardPage() {
       <div className="flex flex-wrap justify-between items-end gap-3 mb-1 md:mb-2">
         <div className="min-w-0">
           <h1 className="font-display text-xl md:text-2xl font-bold text-white tracking-tight truncate">Halo, {String(currentUser?.nama || "").split(" ")[0] || "Karyawan"}</h1>
-          <p className="text-xs md:text-sm text-gray-400 mt-0.5">Absen cepat di sini. Riwayat lengkap & pengajuan izin ada di <a href="/user/kehadiran" className="text-tint hover:text-white font-semibold">Absen →</a></p>
+          <p className="text-xs md:text-sm text-gray-400 mt-0.5">Absen cepat di sini. Riwayat lengkap & pengajuan izin ada di <Link href="/user/kehadiran" className="text-tint hover:text-white font-semibold">Absen →</Link></p>
         </div>
         <div className="bg-kartu border border-white/5 px-4 py-2.5 rounded-xl flex items-center gap-3 shadow-lg shrink-0">
           <span className="w-2 h-2 bg-magenta rounded-full animate-pulse"></span>
@@ -627,7 +635,7 @@ export default function UserDashboardPage() {
           <div onMouseMove={bentoMove} onMouseLeave={bentoLeave} style={bentoGlow} className={`${bentoCls} col-span-2 lg:col-start-3 lg:row-start-2 p-4 md:p-5 flex flex-col`}>
             <h3 className="text-[11px] md:text-sm font-bold text-gray-400 mb-3 md:mb-4 uppercase tracking-wider flex justify-between items-center gap-2">
               <span>Tugas Saya</span>
-              <a href="/user/daily-task" className="text-[10px] md:text-[11px] font-bold text-tint hover:text-white bg-primer/15 hover:bg-primer border border-primer/30 px-2.5 py-1 rounded-lg transition-colors normal-case tracking-normal">Buka Daily Task</a>
+              <Link href="/user/daily-task" className="text-[10px] md:text-[11px] font-bold text-tint hover:text-white bg-primer/15 hover:bg-primer border border-primer/30 px-2.5 py-1 rounded-lg transition-colors normal-case tracking-normal">Buka Daily Task</Link>
             </h3>
             <div className="flex-1 space-y-2.5 md:space-y-3 overflow-y-auto max-h-40 custom-scrollbar pr-1">
               {myTasks.length === 0 ? (
@@ -673,7 +681,7 @@ export default function UserDashboardPage() {
                           {att.status}
                         </span>
                       )}
-                      {Number(att.lembur_menit) >= MENIT_LEMBUR_MIN && <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase bg-amber-500/10 text-amber-300" title="Lembur tercatat">Lembur {formatDurasi(att.lembur_menit)}</span>}
+                      {Number(att.lembur_menit) >= (batasLemburRiwayat[String(att.tanggal).slice(0, 10)] ?? MENIT_LEMBUR_MIN) && <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase bg-amber-500/10 text-amber-300" title="Lembur tercatat">Lembur {formatDurasi(att.lembur_menit)}</span>}
                       {att.kompensasi_lembur && <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase bg-green-500/10 text-green-300" title={`Kompensasi lembur ${att.kompensasi_dari || ""}`}>Kompensasi</span>}
                     </div>
                   </div>
@@ -690,7 +698,7 @@ export default function UserDashboardPage() {
               {recentLeaves.length === 0 ? (
                 <div className="text-center py-4">
                   <p className="text-xs text-gray-500">Belum ada pengajuan.</p>
-                  <a href="/user/kehadiran" className="inline-block mt-2 text-xs font-bold text-tint hover:text-white bg-primer/15 hover:bg-primer border border-primer/30 px-3 py-1.5 rounded-lg transition-colors">Ajukan izin / cuti</a>
+                  <Link href="/user/kehadiran" className="inline-block mt-2 text-xs font-bold text-tint hover:text-white bg-primer/15 hover:bg-primer border border-primer/30 px-3 py-1.5 rounded-lg transition-colors">Ajukan izin / cuti</Link>
                 </div>
               ) : (
                 recentLeaves.map((leave, idx) => (
@@ -746,6 +754,7 @@ export default function UserDashboardPage() {
           kompensasiHariIni={kompensasiHariIni}
           myTasks={myTasks}
           recentAttendances={recentAttendances}
+          batasLemburRiwayat={batasLemburRiwayat}
           recentLeaves={recentLeaves}
         />
       )}

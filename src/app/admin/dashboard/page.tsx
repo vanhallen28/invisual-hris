@@ -22,6 +22,7 @@ import TandaiLembur from "@/components/admin/TandaiLembur";
 import KartuLembur from "@/components/admin/KartuLembur";
 import InfoLibur from "@/components/InfoLibur";
 import { menitWajib, teksMenit, type TandaLembur } from "@/lib/lembur";
+import { batasTanggalPengajuan } from "@/lib/rentangPengajuan";
 import { muatTandaLembur } from "@/lib/lemburData";
 import { teksTanggal } from "@/lib/tanggalTampil";
 import { useTema } from "@/lib/tema";
@@ -211,7 +212,9 @@ export default function AdminDashboardPage() {
     try {
       const { data: empData } = await supabase.from("employees").select("*");
       const { data: pendingData } = await supabase.from("approvals").select("*").eq("status", "Menunggu").order("id", { ascending: false });
-      const { data: approvedData } = await supabase.from("approvals").select("*").in("status", ["Disetujui", "Menunggu"]).neq("jenis", "Izin Terlambat");
+      // Hanya pengajuan yang mungkin mencakup hari ini (mulai ≤ hari ini, ≤ 180 hari lalu) — lib/rentangPengajuan.
+      const bp = batasTanggalPengajuan(todayISO);
+      const { data: approvedData } = await supabase.from("approvals").select("*").in("status", ["Disetujui", "Menunggu"]).neq("jenis", "Izin Terlambat").gte("tanggal", bp.dari).lt("tanggal", bp.sebelum);
       const { data: attendanceData } = await supabase.from("attendance").select("*").eq("tanggal", todayISO).order("waktuMasuk", { ascending: false });
 
       const uniqueAttendances: any[] = unikPerKaryawan(attendanceData);

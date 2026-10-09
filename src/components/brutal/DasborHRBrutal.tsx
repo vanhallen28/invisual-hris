@@ -8,9 +8,8 @@
 // jadi logikanya tetap satu sumber dengan tema gelap.
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Camera, Download, Mail, MessageCircle, Wallet, Database } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import TandaiLembur from "@/components/admin/TandaiLembur";
 import KartuLembur from "@/components/admin/KartuLembur";
 import KartuOnline from "@/components/admin/KartuOnline";
@@ -25,9 +24,6 @@ import CariKaryawanNB from "@/components/brutal/CariKaryawanNB";
 import KalenderLiburNB from "@/components/brutal/KalenderLiburNB";
 import LoncengNB from "@/components/brutal/LoncengNB";
 import GrafikKehadiranNB from "@/components/brutal/GrafikKehadiranNB";
-import KartuDailyTaskNB from "@/components/brutal/KartuDailyTaskNB";
-import { muatRingkasDailyTask } from "@/lib/tracker/ringkasDasborData";
-import type { RingkasDailyTask } from "@/lib/tracker/ringkasDasbor";
 
 type Keputusan = "normal" | "sesuai_telat";
 
@@ -105,13 +101,8 @@ export default function DasborHRBrutal(p: PropsDasborHRBrutal) {
 
   const periode = periodeGaji(p.todayISO);
 
-  // Ringkasan Daily Task (kartu ungu + lonceng). undefined = memuat, null = gagal.
-  const [daily, setDaily] = useState<RingkasDailyTask | null | undefined>(undefined);
-  useEffect(() => {
-    let hidup = true;
-    muatRingkasDailyTask(supabase, p.todayISO).then((r) => { if (hidup) setDaily(r); });
-    return () => { hidup = false; };
-  }, [p.todayISO]);
+  // Data Daily Task sengaja TIDAK dimuat di Dasbor (keputusan pemilik, 9 Okt 2026) —
+  // ringkasan brief ada di menu Daily Task sendiri.
   const tanggalChip = (() => {
     const [y, m, d] = p.todayISO.split("-").map(Number);
     return new Date(y!, (m || 1) - 1, d || 1).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
@@ -138,7 +129,6 @@ export default function DasborHRBrutal(p: PropsDasborHRBrutal) {
           <LoncengNB butir={[
             { kunci: "pengajuan", label: "Pengajuan menunggu keputusan", jumlah: isLoading ? 0 : p.pendingApprovals.length, warna: "nb-pink", onClick: () => document.getElementById("nb-judul-pengajuan")?.scrollIntoView({ behavior: "smooth", block: "start" }) },
             { kunci: "anomali", label: "Data & keterlambatan perlu ditinjau", jumlah: isLoading ? 0 : p.anomali.total, warna: "nb-kuning", onClick: () => p.bukaRincian("anomali") },
-            { kunci: "acc", label: "Brief menunggu ACC (Daily Task)", jumlah: daily?.menunggu || 0, warna: "nb-ungu", href: "/admin/daily-task" },
           ]} />
         </div>
       </div>
@@ -299,7 +289,6 @@ export default function DasborHRBrutal(p: PropsDasborHRBrutal) {
             </div>
           )}
         </section>
-        <KartuDailyTaskNB ringkas={daily} />
         </div>
       </div>
 
