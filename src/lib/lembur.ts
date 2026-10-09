@@ -12,6 +12,9 @@
 //     (MENIT_LEMBUR_MIN / MENIT_KOMPENSASI) — sama persis dengan aturan sebelumnya.
 //   • Berlaku untuk hari kerja berikutnya saja (Jumat → Senin; tanggal merah ikut dilewati —
 //     lib/hariLibur); satu tanda = satu pemakaian. Lembur boleh di akhir pekan/tanggal merah.
+//   • HARI kompensasi bisa dipilih HR/manajer per tanda (kolom lembur.tanggal_kompensasi,
+//     lembur-kompensasi-acc.sql): hari kerja setelah tanggal lembur, maks HARI_KOMPENSASI_MAKS
+//     hari. Kosong = hari kerja berikutnya (aturan lama). Hanya berlaku di tanggal itu.
 // Logika terlambat lama (jam masuk + toleransi, hanya mode Kantor & non-fleksibel)
 // TIDAK diubah — kompensasi hanya menggeser batasnya.
 import { jamPulangDariClockIn } from "./keterlambatan";
@@ -30,6 +33,8 @@ export type TandaLembur = {
   menit_wajib?: number | null;
   /** Besar kompensasi (menit); kosong = MENIT_KOMPENSASI. */
   menit_kompensasi?: number | null;
+  /** Hari kompensasi pilihan HR (YYYY-MM-DD); kosong = hari kerja berikutnya. */
+  tanggal_kompensasi?: string | null;
 };
 
 /** Batas pilihan jam lembur custom (menit). */
@@ -109,6 +114,33 @@ export function hariLemburUntuk(hariKompensasi: string, peta?: PetaLibur | null)
   return out;
 }
 
+/** Hari kompensasi custom paling jauh (hari setelah tanggal lembur). */
+export const HARI_KOMPENSASI_MAKS = 30;
+const ISO = /^\d{4}-\d{2}-\d{2}$/;
+/** Tanggal kompensasi custom yang sah untuk tanda ini (null = tidak ada / di luar batas → bawaan). */
+export function tanggalKompensasiCustom(t: Pick<TandaLembur, "tanggal" | "tanggal_kompensasi"> | null | undefined): string | null {
+  const k = String(t?.tanggal_kompensasi ?? "").slice(0, 10);
+  if (!t || !ISO.test(k)) return null;
+  return k > t.tanggal && k <= tambahHari(t.tanggal, HARI_KOMPENSASI_MAKS) ? k : null;
+}
+/** Hari kompensasi sebuah tanda: pilihan HR bila ada, selain itu hari kerja berikutnya. */
+export function hariKompensasiTanda(t: Pick<TandaLembur, "tanggal" | "tanggal_kompensasi">, peta?: PetaLibur | null): string {
+  return tanggalKompensasiCustom(t) ?? hariKerjaBerikutnya(t.tanggal, peta);
+}
+/** "hari kerja berikutnya" atau "kompensasi Sen, 12 Okt:" (fmt = pemformat tanggal tampilan). */
+export function frasaHariKompensasi(t: Pick<TandaLembur, "tanggal" | "tanggal_kompensasi">, fmt: (iso: string) => string): string {
+  const k = tanggalKompensasiCustom(t);
+  return k ? `kompensasi ${fmt(k)}:` : "hari kerja berikutnya";
+}
+/** Validasi pilihan hari kompensasi (pesan galat, atau null bila boleh). */
+export function cekTanggalKompensasi(tanggalLembur: string, pilihan: string, peta?: PetaLibur | null): string | null {
+  if (!ISO.test(pilihan)) return "Tanggal kompensasi belum diisi.";
+  if (pilihan <= tanggalLembur) return "Hari kompensasi harus setelah tanggal lembur.";
+  if (pilihan > tambahHari(tanggalLembur, HARI_KOMPENSASI_MAKS)) return `Hari kompensasi paling lambat ${HARI_KOMPENSASI_MAKS} hari setelah tanggal lembur.`;
+  if (hariNonKerja(pilihan, peta)) return "Hari kompensasi harus hari kerja (bukan akhir pekan / tanggal merah).";
+  return null;
+}
+
 export const tandaAktif = (t: TandaLembur | null | undefined) => !!t && !t.dibatalkan_pada;
 /** Sah = tanda aktif dan lembur hari itu ≥ lama lembur wajib tanda itu (bawaan 60 menit). */
 export function lemburSah(t: TandaLembur | null | undefined, att: AbsenRingkas | null | undefined): boolean {
@@ -116,13 +148,14 @@ export function lemburSah(t: TandaLembur | null | undefined, att: AbsenRingkas |
 }
 
 /**
- * Kompensasi yang berlaku untuk `hariIni`: tanda sah yang hari kerja berikutnya = hariIni.
+ * Kompensasi yang berlaku untuk `hariIni`: tanda sah yang hari kompensasinya = hariIni
+ * (pilihan HR, atau hari kerja berikutnya bila tidak dipilih).
  * Belum clock-in → tanda terbaru yang memenuhi. Sudah clock-in → hanya bila absen hari ini
  * memang memakainya (kompensasi_dari = tanggal tanda); clock-in tanpa kompensasi → null.
  */
 export function kompensasiAktif(o: { hariIni: string; tanda: TandaLembur[]; absenLembur: Record<string, AbsenRingkas | null | undefined>; absenHariIni?: AbsenRingkas | null; peta?: PetaLibur | null }): KompensasiAktif | null {
   const kandidat = (o.tanda || [])
-    .filter((t) => tandaAktif(t) && hariKerjaBerikutnya(t.tanggal, o.peta) === o.hariIni && lemburSah(t, o.absenLembur[t.tanggal]))
+    .filter((t) => tandaAktif(t) && hariKompensasiTanda(t, o.peta) === o.hariIni && lemburSah(t, o.absenLembur[t.tanggal]))
     .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
   if (!kandidat.length) return null;
   const a = o.absenHariIni;

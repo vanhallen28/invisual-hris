@@ -21,9 +21,11 @@ import KartuOnline from "@/components/admin/KartuOnline";
 import TandaiLembur from "@/components/admin/TandaiLembur";
 import KartuLembur from "@/components/admin/KartuLembur";
 import InfoLibur from "@/components/InfoLibur";
-import { menitWajib, teksMenit, type TandaLembur } from "@/lib/lembur";
+import { dariMenit, keMenit, menitKompensasi, menitWajib, teksMenit, type TandaLembur } from "@/lib/lembur";
+import { simpanKeputusanPengajuan } from "@/lib/izinTerlambat";
 import { batasTanggalPengajuan } from "@/lib/rentangPengajuan";
-import { muatTandaLembur } from "@/lib/lemburData";
+import KalenderLiburGelap from "@/components/KalenderLiburGelap";
+import { muatTandaHari, muatTandaLembur } from "@/lib/lemburData";
 import { teksTanggal } from "@/lib/tanggalTampil";
 import { useTema } from "@/lib/tema";
 import dynamic from "next/dynamic";
@@ -306,25 +308,35 @@ export default function AdminDashboardPage() {
 
   const handleApprovalAction = async (id: string, action: "Disetujui" | "Ditolak", keputusan?: "normal" | "sesuai_telat") => {
     try {
-      const { error } = await supabase.from("approvals").update({ status: action, ...(keputusan ? { keputusanPulang: keputusan } : {}) }).eq("id", id);
+      const reqAwal: any = pendingApprovals.find((r: any) => r.id === id);
+      // ACC normal Izin Terlambat ditandai acc_tepat_waktu (lib/izinTerlambat) — keputusan lain seperti dulu.
+      const { error } = await simpanKeputusanPengajuan(supabase, { id, status: action, keputusan, jenis: reqAwal?.jenis });
       if (error) throw error;
       // Izin Terlambat disetujui → sesuaikan jam wajib pulang di absen hari itu.
       if (action === "Disetujui" && keputusan) {
         const req: any = pendingApprovals.find((r: any) => r.id === id);
         if (req?.idKaryawan) {
           const tgl = String(req.tanggal || "").slice(0, 10);
-          const { data: att } = await supabase.from("attendance").select("id, waktuMasuk").eq("idKaryawan", req.idKaryawan).eq("tanggal", tgl).maybeSingle();
+          const { data: att } = await supabase.from("attendance").select("id, waktuMasuk, status, kompensasi_lembur, kompensasi_dari").eq("idKaryawan", req.idKaryawan).eq("tanggal", tgl).maybeSingle();
           if (att?.id) {
             let jps = "18:00";
             if (keputusan === "normal") {
               const { data: emp } = await supabase.from("employees").select("jamKeluar").eq("idKaryawan", req.idKaryawan).maybeSingle();
               jps = emp?.jamKeluar || "18:00";
+              // Hari itu memakai kompensasi lembur "pulang cepat" → pulang normal dikurangi kompensasinya.
+              if (att.kompensasi_lembur === "pulang_cepat" && att.kompensasi_dari) {
+                const t = await muatTandaHari(supabase, req.idKaryawan, String(att.kompensasi_dari).slice(0, 10));
+                if (t) jps = dariMenit(keMenit(jps) - menitKompensasi(t));
+              }
             } else {
               // Durasi kerja diatur HR di Pengaturan (bawaan 9 jam).
               const aturanJK = await ambilAturanJamKerja(supabase);
               jps = tambahJamKe(att.waktuMasuk || "09:00", aturanJK.durasiJam || JAM_KERJA_JAM);
             }
-            await supabase.from("attendance").update({ jamPulangSeharusnya: jps }).eq("id", att.id);
+            // ACC normal Izin Terlambat = keterlambatan dimaafkan → absen hari itu dihitung Tepat Waktu
+            // di semua tempat (lib/izinTerlambat). ACC +jam tetap Terlambat.
+            const jadiTepat = keputusan === "normal" && req.jenis === "Izin Terlambat" && att.status === "Terlambat";
+            await supabase.from("attendance").update({ jamPulangSeharusnya: jps, ...(jadiTepat ? { status: "Tepat Waktu" } : {}) }).eq("id", att.id);
           }
         }
       }
@@ -544,7 +556,8 @@ export default function AdminDashboardPage() {
             <div className="hidden sm:flex flex-col items-end gap-2">
               <RightHeaderControls />
               <div className="text-right hidden sm:block">
-                <p className="text-[11px] font-black text-tint tracking-wider uppercase mt-1">Hari Ini • {todayDate}</p>
+                {/* Tanggal bisa diklik → kalender tanggal merah (tampilan saat diam tidak berubah) */}
+                <KalenderLiburGelap todayISO={todayISO} label={`Hari Ini • ${todayDate}`} className="text-[11px] font-black text-tint tracking-wider uppercase mt-1" />
               </div>
             </div>
           </div>

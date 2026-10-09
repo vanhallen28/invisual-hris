@@ -16,7 +16,7 @@ import AvatarKaryawan from "@/components/AvatarKaryawan";
 import KartuLipat from "@/components/kehadiran/KartuLipat";
 import { hariUntukKartu, labelTanggalPendek, type Sel, type StatusKehadiran, type IdKartu } from "@/lib/kehadiranKartu";
 import TandaiLembur from "@/components/admin/TandaiLembur";
-import { formatDurasi, MENIT_LEMBUR_MIN, menitKompensasi, menitWajib, tandaAktif, teksMenit, type TandaLembur } from "@/lib/lembur";
+import { formatDurasi, MENIT_LEMBUR_MIN, menitKompensasi, menitWajib, tandaAktif, tanggalKompensasiCustom, teksMenit, type TandaLembur } from "@/lib/lembur";
 import { infoLibur, liburPada, LABEL_JENIS, type PetaLibur } from "@/lib/hariLibur";
 import { muatPetaLibur } from "@/lib/hariLiburData";
 import { muatTandaLembur } from "@/lib/lemburData";
@@ -707,14 +707,14 @@ export default function AdminKehadiranPage() {
                     {att.anomali_disetujui === true && baris1("Keterlambatan", "Sudah disetujui admin", "text-green-400")}
                     {att.lembur_menit != null && att.waktuKeluar && (() => { const tL = lemburPeta[`${baris.id}|${x.iso}`]; const batas = tL && tandaAktif(tL) ? menitWajib(tL) : MENIT_LEMBUR_MIN; const sah = Number(att.lembur_menit) >= batas; return baris1("Lembur", `${formatDurasi(Number(att.lembur_menit))}${sah ? " · sah" : ""}`, sah ? "text-amber-300" : undefined); })()}
                     {att.kompensasi_lembur && baris1("Kompensasi lembur", `${att.kompensasi_lembur === "pulang_cepat" ? "Pulang cepat" : "Masuk siang"} (dari lembur ${att.kompensasi_dari || "-"})`, "text-green-400")}
-                    {(() => { const t = lemburPeta[`${baris.id}|${x.iso}`]; return t ? baris1("Tanda lembur", tandaAktif(t) ? `${t.kompensasi === "pulang_cepat" ? "Pulang cepat" : "Masuk siang"}${t.menit_wajib != null || t.menit_kompensasi != null ? ` (min ${teksMenit(menitWajib(t))}, kompensasi ${teksMenit(menitKompensasi(t))})` : ""} · oleh ${t.ditandai_oleh || "-"}` : "Dibatalkan", tandaAktif(t) ? "text-amber-300" : "text-gray-500") : null; })()}
+                    {(() => { const t = lemburPeta[`${baris.id}|${x.iso}`]; return t ? baris1("Tanda lembur", tandaAktif(t) ? `${t.kompensasi === "pulang_cepat" ? "Pulang cepat" : "Masuk siang"}${t.menit_wajib != null || t.menit_kompensasi != null ? ` (min ${teksMenit(menitWajib(t))}, kompensasi ${teksMenit(menitKompensasi(t))})` : ""}${tanggalKompensasiCustom(t) ? ` · kompensasi ${tanggalKompensasiCustom(t)}` : ""} · oleh ${t.ditandai_oleh || "-"}` : "Dibatalkan", tandaAktif(t) ? "text-amber-300" : "text-gray-500") : null; })()}
                     <div className="mt-3 pt-3 border-t border-white/5">
                       <p className="text-[11px] text-gray-500 mb-2">Foto absen</p>
                       <FotoAbsenPasangan att={att} hariIni={todayISO} />
                     </div>
                     {x.iso <= todayISO && (
                       <div className="mt-3 pt-3 border-t border-white/5 flex items-center justify-between gap-3">
-                        <p className="text-[11px] text-gray-500">Kompensasi lembur untuk hari kerja berikutnya</p>
+                        <p className="text-[11px] text-gray-500">Kompensasi lembur: hari kerja berikutnya atau tanggal pilihan</p>
                         <TandaiLembur idKaryawan={String(baris.id)} nama={baris.nama} tanggal={x.iso} tandaAda={lemburPeta[`${baris.id}|${x.iso}`] || null} onSelesai={() => { setDetailSel(null); fetchData(); }} />
                       </div>
                     )}

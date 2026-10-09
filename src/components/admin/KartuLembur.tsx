@@ -12,8 +12,9 @@ import { useToast } from "@/components/Toast";
 import AvatarKaryawan from "@/components/AvatarKaryawan";
 import { namaPanggilan } from "@/lib/nama";
 import { labelTanggal } from "@/lib/rentangTanggal";
-import { hariLemburUntuk, labelKompensasi, menitKompensasi, statusTanda, tandaAktif, type AbsenRingkas, type TandaLembur } from "@/lib/lembur";
-import { batalkanLembur, muatTandaLembur, tandaiLembur } from "@/lib/lemburData";
+import { hariLemburUntuk, labelKompensasi, menitKompensasi, menitWajib, statusTanda, tandaAktif, tanggalKompensasiCustom, type AbsenRingkas, type TandaLembur } from "@/lib/lembur";
+import { batalkanLembur, muatTandaKompensasiPada, muatTandaLembur, tandaiLembur } from "@/lib/lemburData";
+import { teksTanggal } from "@/lib/tanggalTampil";
 import { muatPetaSekitar } from "@/lib/hariLiburData";
 
 type Baris = { tanda: TandaLembur; att: AbsenRingkas | null; jamMasuk: string; jamKeluar: string };
@@ -31,7 +32,14 @@ export default function KartuLembur({ versi, hariIni, employees, onUbah, bungkus
       const peta = await muatPetaSekitar(supabase, hariIni);
       if (batal) return;
       const hari = [hariIni, ...hariLemburUntuk(hariIni, peta)];
-      const tanda = await muatTandaLembur(supabase, { dari: hari[hari.length - 1], sampai: hariIni, termasukBatal: true });
+      // + tanda lebih lama yang hari kompensasinya DIPILIH HR = hari ini.
+      const [rentang, pilihan] = await Promise.all([
+        muatTandaLembur(supabase, { dari: hari[hari.length - 1], sampai: hariIni, termasukBatal: true }),
+        muatTandaKompensasiPada(supabase, { hari: hariIni, termasukBatal: true }),
+      ]);
+      const unik = new Map<string, TandaLembur>();
+      [...rentang, ...pilihan].forEach((t) => unik.set(`${t.idKaryawan}|${t.tanggal}`, t));
+      const tanda = Array.from(unik.values()).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
       if (batal) return;
       if (!tanda.length) { setBaris([]); return; }
       const ids = Array.from(new Set(tanda.map((t) => t.idKaryawan)));
@@ -69,7 +77,7 @@ export default function KartuLembur({ versi, hariIni, employees, onUbah, bungkus
   const tandaiLagi = async (b: Baris) => {
     setSibuk(b.tanda.id || "");
     try {
-      const r = await tandaiLembur(supabase, { idKaryawan: b.tanda.idKaryawan, nama: b.tanda.nama, tanggal: b.tanda.tanggal, kompensasi: b.tanda.kompensasi, catatan: b.tanda.catatan || "", oleh: await emailSesi() });
+      const r = await tandaiLembur(supabase, { idKaryawan: b.tanda.idKaryawan, nama: b.tanda.nama, tanggal: b.tanda.tanggal, kompensasi: b.tanda.kompensasi, catatan: b.tanda.catatan || "", oleh: await emailSesi(), menitWajib: b.tanda.menit_wajib != null ? menitWajib(b.tanda) : null, menitKompensasi: b.tanda.menit_kompensasi != null ? menitKompensasi(b.tanda) : null, tanggalKompensasi: tanggalKompensasiCustom(b.tanda) });
       if (!r.ok) { toast.gagal(r.pesan); return; }
       toast.sukses(`Lembur ${b.tanda.tanggal} ditandai lagi${r.hasil.diubah ? ` · absen ${r.hasil.hariKompensasi}: ${r.hasil.statusLama} → ${r.hasil.statusBaru}` : ""}.`);
       if (r.peringatan) toast.info(r.peringatan);
@@ -81,7 +89,7 @@ export default function KartuLembur({ versi, hariIni, employees, onUbah, bungkus
     <div data-kartu-lembur>
       <div className="flex justify-between items-center gap-3 mb-4 border-b border-white/5 pb-4">
         <h3 className="text-base font-bold text-white flex items-center gap-2"><Moon className="w-4 h-4 text-amber-300" aria-hidden />Lembur</h3>
-        <span className="text-[11px] text-gray-500">{baris.length} tanda · hari ini & hari kerja sebelumnya</span>
+        <span className="text-[11px] text-gray-500">{baris.length} tanda · hari ini & hari kerja sebelumnya{baris.some((b) => b.tanda.tanggal < hariIni && tanggalKompensasiCustom(b.tanda) === hariIni) ? " · kompensasi hari ini" : ""}</span>
       </div>
       <div className="space-y-2">
         {baris.map((b) => {
@@ -92,7 +100,7 @@ export default function KartuLembur({ versi, hariIni, employees, onUbah, bungkus
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <AvatarKaryawan id={b.tanda.idKaryawan} nama={b.tanda.nama} className={KELAS_AVATAR} />
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-white truncate" title={b.tanda.nama || ""}>{namaPanggilan(b.tanda.idKaryawan, employees, b.tanda.nama)} <span className="text-[11px] text-gray-500 font-normal">· {b.tanda.tanggal === hariIni ? "hari ini" : labelTanggal(b.tanda.tanggal, false)} · {labelKompensasi(b.tanda.kompensasi, b.jamMasuk, b.jamKeluar, menitKompensasi(b.tanda))}</span></p>
+                  <p className="text-sm font-bold text-white truncate" title={b.tanda.nama || ""}>{namaPanggilan(b.tanda.idKaryawan, employees, b.tanda.nama)} <span className="text-[11px] text-gray-500 font-normal">· {b.tanda.tanggal === hariIni ? "hari ini" : labelTanggal(b.tanda.tanggal, false)} · {labelKompensasi(b.tanda.kompensasi, b.jamMasuk, b.jamKeluar, menitKompensasi(b.tanda))}{tanggalKompensasiCustom(b.tanda) ? <span data-hari-kompensasi-kartu> · kompensasi {tanggalKompensasiCustom(b.tanda) === hariIni ? "hari ini" : teksTanggal(tanggalKompensasiCustom(b.tanda)!, { tahun: false })}</span> : null}</span></p>
                   <p className={`text-[11px] ${WARNA[st.kode] || "text-gray-400"}`}>{st.teks}{b.tanda.catatan ? <span className="text-gray-500"> · {b.tanda.catatan}</span> : null}</p>
                 </div>
               </div>

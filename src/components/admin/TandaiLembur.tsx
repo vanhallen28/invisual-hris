@@ -14,7 +14,8 @@ import { useToast } from "@/components/Toast";
 import { isoDari, tambahHari } from "@/lib/rentangTanggal";
 import { teksTanggal } from "@/lib/tanggalTampil";
 import {
-  BATAS_MENIT_KOMPENSASI, BATAS_MENIT_WAJIB, dariMenit, formatDurasi, hariKerjaBerikutnya, keMenit, labelKompensasi,
+  BATAS_MENIT_KOMPENSASI, BATAS_MENIT_WAJIB, cekTanggalKompensasi, dariMenit, formatDurasi, HARI_KOMPENSASI_MAKS, hariKerjaBerikutnya, keMenit, labelKompensasi,
+  tanggalKompensasiCustom,
   MENIT_KOMPENSASI, MENIT_LEMBUR_MIN, menitKompensasi, menitWajib, tandaAktif, teksMenit, type Kompensasi, type TandaLembur,
 } from "@/lib/lembur";
 import { batalkanLembur, jadwalKaryawan, tandaiLembur } from "@/lib/lemburData";
@@ -82,6 +83,9 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
   const [peta, setPeta] = useState<PetaLibur | null>(null);   // tanggal merah ±31 hari (pratinjau hari kompensasi)
   const wajib = useMenit(MENIT_LEMBUR_MIN, BATAS_MENIT_WAJIB);            // lama lembur minimal agar sah
   const besar = useMenit(MENIT_KOMPENSASI, BATAS_MENIT_KOMPENSASI);       // besar kompensasi hari berikutnya
+  // Hari kompensasi: bawaan = hari kerja berikutnya; "pilih" = tanggal pilihan HR (lib/lembur cekTanggalKompensasi).
+  const [hariPilih, setHariPilih] = useState<"bawaan" | "pilih">("bawaan");
+  const [tglKomp, setTglKomp] = useState("");
   const mw = wajib.nilai ?? MENIT_LEMBUR_MIN;
   const mk = besar.nilai ?? MENIT_KOMPENSASI;
   const aktif = tandaAktif(tandaAda);
@@ -111,6 +115,9 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
     setCatatan(tandaAda?.catatan || "");
     wajib.atur(menitWajib(tandaAda));
     besar.atur(menitKompensasi(tandaAda));
+    const tkAda = tanggalKompensasiCustom(tandaAda);
+    setHariPilih(tkAda ? "pilih" : "bawaan");
+    setTglKomp(tkAda || "");
     setBuka(true);
   };
 
@@ -122,12 +129,13 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
     if (tgl < tambahHari(hariIni, -HARI_MUNDUR_MAKS)) { toast.gagal(`Tanggal lembur paling lama ${HARI_MUNDUR_MAKS} hari ke belakang.`); return; }
     if (wajib.nilai == null) { toast.gagal(`Lama lembur minimal harus ${BATAS_MENIT_WAJIB.min}–${BATAS_MENIT_WAJIB.max} menit.`); return; }
     if (besar.nilai == null) { toast.gagal(`Besar kompensasi harus ${BATAS_MENIT_KOMPENSASI.min}–${BATAS_MENIT_KOMPENSASI.max} menit.`); return; }
+    if (hariPilih === "pilih") { const salah = cekTanggalKompensasi(tgl, tglKomp, peta); if (salah) { toast.gagal(salah); return; } }
     setSibuk(true);
     try {
-      const r = await tandaiLembur(supabase, { idKaryawan, nama, tanggal: tgl, kompensasi, catatan, oleh: await emailSesi(), menitWajib: wajib.nilai, menitKompensasi: besar.nilai });
+      const r = await tandaiLembur(supabase, { idKaryawan, nama, tanggal: tgl, kompensasi, catatan, oleh: await emailSesi(), menitWajib: wajib.nilai, menitKompensasi: besar.nilai, tanggalKompensasi: hariPilih === "pilih" ? tglKomp : null });
       if (!r.ok) { toast.gagal(r.pesan); return; }
       const label = labelKompensasi(kompensasi, jadwal?.jamMasuk || "09:00", jadwal?.jamKeluar || "18:00", mk);
-      let pesan = `Lembur ${teksTanggal(tgl)} ditandai untuk ${nama} · hari kerja berikutnya (${teksTanggal(r.hasil.hariKompensasi)}) ${label}.`;
+      let pesan = `Lembur ${teksTanggal(tgl)} ditandai untuk ${nama} · ${tanggalKompensasiCustom(r.tanda) ? "hari kompensasi" : "hari kerja berikutnya"} (${teksTanggal(r.hasil.hariKompensasi)}) ${label}.`;
       if (r.hasil.diubah) {
         pesan += r.hasil.statusLama !== r.hasil.statusBaru
           ? ` Absen ${teksTanggal(r.hasil.hariKompensasi, { tahun: false })} dikoreksi: ${r.hasil.statusLama} → ${r.hasil.statusBaru}.`
@@ -173,7 +181,7 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
             <div className="p-5 border-b border-white/5 bg-kartu-hover flex justify-between items-center">
               <div>
                 <h2 className="text-lg font-bold text-white">Tandai lembur</h2>
-                <p className="text-xs text-gray-400 mt-0.5"><span className="text-tint font-bold">{nama}</span> · hari kerja berikutnya mendapat kompensasi bila clock-out ≥ {teksMenit(mw)} setelah jam pulang.</p>
+                <p className="text-xs text-gray-400 mt-0.5"><span className="text-tint font-bold">{nama}</span> · kompensasi berlaku bila clock-out ≥ {teksMenit(mw)} setelah jam pulang.</p>
               </div>
               <button type="button" onClick={() => setBuka(false)} className="text-gray-500 hover:text-white text-xl leading-none px-2" aria-label="Tutup">×</button>
             </div>
@@ -183,7 +191,7 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
                 <input type="date" value={tgl} max={hariIni} min={tambahHari(hariIni, -HARI_MUNDUR_MAKS)} disabled={!!tanggal} onChange={(e) => setTgl(e.target.value)} className="w-full bg-input border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-amber-400 disabled:opacity-70" name="tanggal" />
                 <p className="text-[11px] text-gray-500 mt-1">Boleh tanggal lampau (maks {HARI_MUNDUR_MAKS} hari) — absen hari berikutnya yang terlanjur &quot;Terlambat&quot; akan dikoreksi otomatis.</p>
                 {tgl && peta && (
-                  <p className="text-[11px] text-gray-400 mt-1" data-pratinjau-kompensasi>Kompensasi jatuh pada <b className="text-amber-300">{teksTanggal(hariKerjaBerikutnya(tgl, peta), { tahun: false })}</b>.</p>
+                  <p className="text-[11px] text-gray-400 mt-1" data-pratinjau-kompensasi>Kompensasi jatuh pada <b className="text-amber-300">{teksTanggal(hariPilih === "pilih" && /^\d{4}-\d{2}-\d{2}$/.test(tglKomp) ? tglKomp : hariKerjaBerikutnya(tgl, peta), { tahun: false })}</b>.</p>
                 )}
                 {tgl && hariNonKerja(tgl, peta) && (
                   <p className="text-[11px] text-amber-200/90 mt-1 rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-2.5 py-1.5" data-catatan-hari-libur>
@@ -192,7 +200,7 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
                 )}
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-wider">Kompensasi hari kerja berikutnya</label>
+                <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase tracking-wider">Bentuk kompensasi</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {(["masuk_siang", "pulang_cepat"] as Kompensasi[]).map((k) => (
                     <label key={k} className={`flex items-start gap-2 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${kompensasi === k ? "border-amber-400/60 bg-amber-500/10" : "border-white/10 hover:border-white/20"}`}>
@@ -204,6 +212,25 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
                     </label>
                   ))}
                 </div>
+              </div>
+              <div data-hari-kompensasi>
+                <label htmlFor="hari-kompensasi" className="block text-[11px] font-bold text-gray-400 mb-1 uppercase tracking-wider">Hari kompensasi</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <select id="hari-kompensasi" name="hari-kompensasi" value={hariPilih} onChange={(e) => { const v = e.target.value as "bawaan" | "pilih"; setHariPilih(v); if (v === "pilih" && !tglKomp && peta && tgl) setTglKomp(hariKerjaBerikutnya(tgl, peta)); }} className="w-full bg-input border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400">
+                    <option value="bawaan">Hari kerja berikutnya</option>
+                    <option value="pilih">Pilih tanggal…</option>
+                  </select>
+                  {hariPilih === "pilih" ? (
+                    <input type="date" value={tglKomp} min={tgl ? tambahHari(tgl, 1) : undefined} max={tgl ? tambahHari(tgl, HARI_KOMPENSASI_MAKS) : undefined} onChange={(e) => setTglKomp(e.target.value)}
+                      className={`w-full bg-input border rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-amber-400 ${tglKomp && tgl && cekTanggalKompensasi(tgl, tglKomp, peta) ? "border-red-500/60" : "border-white/10"}`} name="tanggal-kompensasi" aria-label="Tanggal kompensasi" />
+                  ) : (
+                    <span className="flex items-center text-xs text-gray-400 px-1">{tgl && peta ? teksTanggal(hariKerjaBerikutnya(tgl, peta), { tahun: false }) : "…"}</span>
+                  )}
+                </div>
+                {hariPilih === "pilih" && tglKomp && tgl && cekTanggalKompensasi(tgl, tglKomp, peta) && (
+                  <p className="text-[11px] text-red-300 mt-1" data-galat-hari-kompensasi>{cekTanggalKompensasi(tgl, tglKomp, peta)}</p>
+                )}
+                <p className="text-[11px] text-gray-500 mt-1">Hari kerja setelah tanggal lembur, paling lambat {HARI_KOMPENSASI_MAKS} hari. Kompensasi hanya berlaku di hari itu.</p>
               </div>
               <div data-jam-lembur-custom>
                 <div className="grid grid-cols-2 gap-2">
@@ -218,7 +245,7 @@ export default function TandaiLembur({ idKaryawan, nama, tanggal, tandaAda, onSe
               </div>
               {tandaAda && (
                 <p className="text-[11px] text-gray-400 rounded-lg bg-black/20 border border-white/10 px-3 py-2">
-                  {aktif ? <>Sudah ditandai oleh <b className="text-gray-200">{tandaAda.ditandai_oleh || "-"}</b> ({tandaAda.kompensasi === "pulang_cepat" ? "pulang cepat" : "masuk siang"}{tandaAda.menit_wajib != null || tandaAda.menit_kompensasi != null ? ` · minimal ${teksMenit(menitWajib(tandaAda))}, kompensasi ${teksMenit(menitKompensasi(tandaAda))}` : ""}). Simpan untuk mengubah, atau batalkan.</> : <>Tanda sebelumnya dibatalkan. Simpan untuk menandai lagi.</>}
+                  {aktif ? <>Sudah ditandai oleh <b className="text-gray-200">{tandaAda.ditandai_oleh || "-"}</b> ({tandaAda.kompensasi === "pulang_cepat" ? "pulang cepat" : "masuk siang"}{tandaAda.menit_wajib != null || tandaAda.menit_kompensasi != null ? ` · minimal ${teksMenit(menitWajib(tandaAda))}, kompensasi ${teksMenit(menitKompensasi(tandaAda))}` : ""}{tanggalKompensasiCustom(tandaAda) ? ` · hari kompensasi ${teksTanggal(tanggalKompensasiCustom(tandaAda)!, { tahun: false })}` : ""}). Simpan untuk mengubah, atau batalkan.</> : <>Tanda sebelumnya dibatalkan. Simpan untuk menandai lagi.</>}
                 </p>
               )}
               <div className="pt-4 flex gap-3 border-t border-white/5 mt-2">

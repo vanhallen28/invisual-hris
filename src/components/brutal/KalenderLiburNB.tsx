@@ -5,47 +5,13 @@
 // Pengaturan › Kalender Kerja › Hari Libur & Cuti Bersama.
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { muatHariLibur } from "@/lib/hariLiburData";
-import { LABEL_JENIS, type HariLibur } from "@/lib/hariLibur";
-import { BULAN_ID, gridBulan, tanggalDari } from "@/lib/rentangTanggal";
-
-const HARI = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+import { LABEL_JENIS } from "@/lib/hariLibur";
+import { BULAN_ID, tanggalDari } from "@/lib/rentangTanggal";
+import { HARI_KALENDER as HARI, useKalenderLibur } from "@/components/useKalenderLibur";
 
 export default function KalenderLiburNB({ todayISO, label }: { todayISO: string; label: string }) {
-  const [buka, setBuka] = useState(false);
-  const t0 = tanggalDari(todayISO);
-  const [bulan, setBulan] = useState({ y: t0.getFullYear(), m: t0.getMonth() });
-  const [libur, setLibur] = useState<Record<string, HariLibur[]>>({});   // kunci "y-m" → daftar tanggal libur
-  const panel = useRef<HTMLDivElement>(null);
-  const tombol = useRef<HTMLButtonElement>(null);
-
-  const kunci = `${bulan.y}-${bulan.m}`;
-  const sel = gridBulan(bulan.y, bulan.m);
-  // Dimuat per bulan saat kalender terbuka; hasil disimpan per kunci bulan (belum ada = memuat).
-  // muatHariLibur sendiri disimpan 60 dtk (gabungMuat) → bolak-balik bulan tidak memukul server.
-  useEffect(() => {
-    if (!buka || libur[kunci] !== undefined) return;
-    const k = kunci;
-    muatHariLibur(supabase, sel[0]!.iso, sel[sel.length - 1]!.iso).then((d) => setLibur((l) => ({ ...l, [k]: d })));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buka, kunci]);
-
-  useEffect(() => {
-    if (!buka) return;
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { setBuka(false); tombol.current?.focus(); } };
-    document.addEventListener("keydown", esc);
-    panel.current?.focus();
-    return () => document.removeEventListener("keydown", esc);
-  }, [buka]);
-
-  const daftar = libur[kunci];
-  const peta = new Map((daftar || []).map((x) => [x.tanggal, x]));
-  const merahBulanIni = (daftar || []).filter((x) => x.libur && tanggalDari(x.tanggal).getMonth() === bulan.m);
-  const masukBulanIni = (daftar || []).filter((x) => !x.libur && tanggalDari(x.tanggal).getMonth() === bulan.m);
-  const geser = (n: number) => setBulan((b) => { const d = new Date(b.y, b.m + n, 1); return { y: d.getFullYear(), m: d.getMonth() }; });
+  const { buka, setBuka, bulan, sel, daftar, peta, merahBulanIni, masukBulanIni, geser, panel, tombol } = useKalenderLibur(todayISO);
 
   return (
     <>
