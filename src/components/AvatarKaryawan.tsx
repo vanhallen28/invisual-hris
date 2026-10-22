@@ -11,6 +11,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { supabase } from "@/lib/supabase";
+import { bacaKaryawanPublik } from "@/lib/karyawanPublik";
 import { urlThumbnail } from "@/lib/thumbnail";
 
 type Peta = {
@@ -38,7 +39,7 @@ function muat(): Promise<void> {
   if (waktuGagal && kini - waktuGagal < JEDA_GAGAL_MS) return Promise.resolve();
   sedangMuat = (async () => {
     try {
-      const { data, error } = await supabase.from("employees").select("idKaryawan, nama, avatarUrl");
+      const { data, error } = await bacaKaryawanPublik(supabase, (q: any) => q.select("idKaryawan, nama, avatarUrl"));   // lib/karyawanPublik
       if (error || !data) { waktuGagal = Date.now(); return; }
       const baru: Peta = { id: {}, dikenal: {}, nama: {} };
       (data as any[]).forEach((e) => {

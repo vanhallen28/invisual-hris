@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { bacaKaryawanPublik } from "@/lib/karyawanPublik";
 import { Search, X, CheckSquare, Megaphone, LayoutGrid, User, CornerDownLeft } from "lucide-react";
 
 /**
@@ -116,8 +117,8 @@ export default function GlobalSearch() {
       }
 
       // — Karyawan —
-      const { data: kar } = await supabase
-        .from("employees").select("id, nama, jabatan, divisi").ilike("nama", pola).limit(6);
+      const { data: kar } = await bacaKaryawanPublik(supabase, (q: any) =>   // lib/karyawanPublik
+        q.select("id, nama, jabatan, divisi").ilike("nama", pola).limit(6));
       for (const k of kar || []) {
         kumpulan.push({
           id: String(k.id), jenis: "karyawan", judul: k.nama || "Tanpa nama",

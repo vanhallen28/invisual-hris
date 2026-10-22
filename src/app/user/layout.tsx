@@ -61,10 +61,16 @@ useEffect(() => {
 
 
   // 🔐 Wajib ganti password default sebelum memakai portal
+  //    + sesi Supabase habis (tinggal sisa localStorage) → ke login. Sejak keamanan-tahap2.sql data
+  //      hanya terbaca dengan sesi yang sah; tanpa ini halaman akan tampil kosong. Galat jaringan → abaikan.
   useEffect(() => {
     let alive = true;
-    supabase.auth.getUser().then(({ data }) => {
+    supabase.auth.getUser().then(({ data, error }) => {
       if (!alive) return;
+      if (!data?.user) {
+        if (!error || (error?.name !== "AuthRetryableFetchError" && /session|jwt|token|auth/i.test(String(error?.message || error?.name || "")))) window.location.replace("/login");
+        return;
+      }
       if (data?.user?.user_metadata?.must_change_password === true) {
         window.location.href = "/ganti-password";
       }

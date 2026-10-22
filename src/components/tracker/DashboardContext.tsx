@@ -13,6 +13,7 @@ import { muatViews, dbSimpanViews, dbUbahView, dbHapusView, dbUrutViews, pasangV
 import { sudahTercermin } from '@/lib/tracker/gema';
 import { bacaBuka, simpanBuka, terapkanBuka } from '@/lib/tracker/sidebarBuka';
 import { hapusSesiLokal } from '@/lib/sesiLokal';
+import { bacaKaryawanPublik } from '@/lib/karyawanPublik';
 
 const LABEL_COLORS = ['bg-[#e2445c]', 'bg-primer-terang', 'bg-[#fdab3d]', 'bg-[#00c875]', 'bg-[#a25ddc]', 'bg-[#ff5ac4]', 'bg-[#9d99ff]', 'bg-emerald-500', 'bg-rose-400'];
 const HEX_COLORS = ['#e2445c', '#579bfc', '#fdab3d', '#00c875', '#a25ddc', '#ff5ac4', '#9d99ff'];
@@ -49,7 +50,7 @@ const ensureViews = (map: any, seedHidden: string[] = []) => {
 // Cocokkan members.id = employees.user_id (keduanya = auth uid), fallback via email.
 async function mergeAvatars(supabase: any, members: any[]) {
   try {
-    const { data } = await supabase.from('employees').select('user_id, email, avatarUrl, panggilan');
+    const { data } = await bacaKaryawanPublik(supabase, (q: any) => q.select('user_id, email, avatarUrl, panggilan'));   // lib/karyawanPublik
     const byUser: any = {}, byEmail: any = {};
     (data || []).forEach((e: any) => {
       const isi = { avatarUrl: e.avatarUrl || null, panggilan: e.panggilan || null };

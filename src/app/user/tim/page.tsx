@@ -23,6 +23,7 @@ import { excludeOwners } from "@/lib/owners";
 import LoadingLogo from "@/components/LoadingLogo";
 import KartuOnline from "@/components/admin/KartuOnline";
 import { batasTanggalPengajuan } from "@/lib/rentangPengajuan";
+import { bacaKaryawanPublik } from "@/lib/karyawanPublik";
 
 function coversToday(tanggalStr: string, todayISO: string) {
   if (!tanggalStr) return false;
@@ -76,7 +77,7 @@ export default function DashboardTimPage() {
     (async () => {
       setLoading(true);
       try {
-        const { data: empData } = await supabase.from("employees").select("*");
+        const { data: empData } = await bacaKaryawanPublik(supabase, (q: any) => q.select("*"));   // data umum saja (lib/karyawanPublik)
         const { data: approvedData } = await supabase
           .from("approvals").select("*")
           .in("status", ["Disetujui", "Menunggu"]).neq("jenis", "Izin Terlambat")

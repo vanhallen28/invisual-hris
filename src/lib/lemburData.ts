@@ -7,6 +7,7 @@
 //   catatClockOut                   : karyawan — simpan waktuKeluar + lembur_menit sekaligus.
 //   muatKompensasiHariIni           : karyawan — kompensasi yang berlaku untuk hari ini.
 import { ambilAturanJamKerja } from "./jamKerja";
+import { bacaKaryawanPublik } from "./karyawanPublik";
 import { pushNotify } from "@/lib/push";
 import { muatPetaSekitar } from "./hariLiburData";
 import type { PetaLibur } from "./hariLibur";
@@ -151,7 +152,7 @@ export async function catatClockOut(sb: SB, att: AbsenRingkas & { id: any }, wak
 export async function jadwalKaryawan(sb: SB, idKaryawan: string) {
   const aturan = await ambilAturanJamKerja(sb);
   let e: any = null;
-  try { const r = await sb.from("employees").select("jamMasuk, jamKeluar, toleransiTelat, fleksibel, user_id").eq("idKaryawan", idKaryawan).maybeSingle(); e = r?.data || null; } catch { e = null; }
+  try { const r = await bacaKaryawanPublik(sb, (q: any) => q.select("jamMasuk, jamKeluar, toleransiTelat, fleksibel, user_id").eq("idKaryawan", idKaryawan).maybeSingle()); e = r?.data || null; } catch { e = null; }   // lib/karyawanPublik: manajer membaca jadwal karyawan lain
   return {
     jamMasuk: e?.jamMasuk || aturan.jamMasuk,
     jamKeluar: e?.jamKeluar || aturan.jamPulang,
