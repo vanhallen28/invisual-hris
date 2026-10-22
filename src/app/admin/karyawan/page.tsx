@@ -6,6 +6,7 @@ import { Clock } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import PerformancePanel from "@/components/PerformancePanel";
 import { logAudit } from "@/lib/audit";
+import { headerAuth } from "@/lib/authHeader";
 import Avatar from "@/components/Avatar";
 import { unggahMediaPublik } from "@/lib/media";
 import { useToast } from "@/components/Toast";
@@ -171,7 +172,7 @@ export default function AdminKaryawanPage() {
 
   const openEditModal = (emp: any) => {
     setIsEditMode(true);
-    fetch(`/api/employees?idKaryawan=${encodeURIComponent(emp.idKaryawan)}`)
+    headerAuth(false).then((h) => fetch(`/api/employees?idKaryawan=${encodeURIComponent(emp.idKaryawan)}`, { headers: h }))
       .then((r) => r.json())
       .then((d) => { if (d && !d.error) setFormData((prev) => ({ ...prev, boardAccess: Array.isArray(d.boardAccess) ? d.boardAccess : [], contentHub: d.contentHub !== false, corporateAccess: d.corporateAccess === true, accBrief: d.accBrief === true, role: d.role || prev.role })); })
       .catch(() => {});
@@ -274,7 +275,7 @@ export default function AdminKaryawanPage() {
     try {
       const res = await fetch('/api/employees', {
         method: isEditMode ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await headerAuth(),
         body: JSON.stringify(
           isEditMode
             ? { ...payload, idKaryawan: formData.idKaryawan, role: formData.role, boardAccess: formData.boardAccess, contentHub: formData.contentHub, corporateAccess: formData.corporateAccess, accBrief: formData.accBrief }
@@ -310,7 +311,7 @@ export default function AdminKaryawanPage() {
     try {
       const res = await fetch('/api/employees', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await headerAuth(),
         body: JSON.stringify({ idKaryawan: id }),
       });
       const json = await res.json().catch(() => ({}));

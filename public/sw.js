@@ -118,10 +118,19 @@ self.addEventListener("push", (event) => {
   );
 });
 
+// Hanya alamat di dalam HRIS sendiri (relatif / origin yang sama). Alamat luar → beranda HRIS.
+// (Audit keamanan 22 Okt 2026: notifikasi tidak boleh dipakai membuka situs phishing.)
+function tujuanAman(u) {
+  try {
+    const x = new URL(String(u || "/"), self.location.origin);
+    return x.origin === self.location.origin ? x.pathname + x.search + x.hash : "/";
+  } catch { return "/"; }
+}
+
 // ── Klik notifikasi: buka atau fokuskan HRIS ──
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const tujuan = (event.notification.data && event.notification.data.url) || "/";
+  const tujuan = tujuanAman(event.notification.data && event.notification.data.url);
 
   event.waitUntil(
     (async () => {

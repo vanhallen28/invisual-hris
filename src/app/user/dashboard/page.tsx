@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Camera, Moon, CircleCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { simpanSesi } from "@/lib/sesiLokal";
 import { TOLERANSI_TELAT_MENIT, JAM_KERJA_JAM } from "@/lib/keterlambatan";
 import { nilaiMasuk, jamPulangHariIni, labelKompensasi, formatDurasi, MENIT_LEMBUR_MIN, menitWajib, menitKompensasi, teksMenit, frasaHariKompensasi, type KompensasiAktif, type TandaLembur } from "@/lib/lembur";
 import { izinTelatAccNormal } from "@/lib/izinTerlambat";
@@ -137,7 +138,7 @@ export default function UserDashboardPage() {
             if (email) {
               const { data: emp } = await supabase.from("employees").select("*").eq("email", email).single();
               if (emp && emp.nama) {
-                localStorage.setItem("invisual_session", JSON.stringify(emp));
+                simpanSesi("invisual_session", emp);   // tanpa kolom sensitif (lib/sesiLokal)
                 session = JSON.stringify(emp);
               }
             }

@@ -4,6 +4,7 @@ import { useDashboard } from '@/components/tracker/DashboardContext';
 import { X, Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, Link2, FileText, Image as ImageIcon, Paperclip, MessageSquare, ChevronDown, Send } from 'lucide-react';
 import { useToast } from "@/components/Toast";
 import { unggahMediaPublik } from '@/lib/media';
+import { escapeHtml, sanitasiHtmlDokumen, urlTautanAman } from '@/lib/sanitasiHtml';
 
 // invisual.docs — editor dokumen kanvas (tema gelap) + upload gambar/file + komentar.
 // Di tingkat modul agar tombol tidak dipasang ulang tiap render.
@@ -28,7 +29,8 @@ export default function DocEditor() {
 
   useEffect(() => {
     if (docEditorTarget && ref.current) {
-      ref.current.innerHTML = docEditorTarget.value || '';
+      // Disaring dulu (DOMPurify) — isi dokumen ditulis pengguna; jangan pernah dipasang mentah.
+      ref.current.innerHTML = sanitasiHtmlDokumen(docEditorTarget.value || '');
       setSaved(true); setShowComments(false);
       setTimeout(() => ref.current?.focus(), 50);
     }
@@ -47,7 +49,7 @@ export default function DocEditor() {
   if (!docEditorTarget) return null;
 
   const doSave = () => {
-    const html = ref.current?.innerHTML || '';
+    const html = sanitasiHtmlDokumen(ref.current?.innerHTML || '');
     const text = (ref.current?.innerText || '').trim();
     saveDoc((text || html.includes('<img')) ? html : '');
     setSaved(true);
@@ -55,7 +57,11 @@ export default function DocEditor() {
   const scheduleSave = () => { setSaved(false); clearTimeout(timer.current); timer.current = setTimeout(doSave, 800); };
   const cmd = (c: string, v?: string) => { document.execCommand(c, false, v); ref.current?.focus(); scheduleSave(); };
   const close = () => { clearTimeout(timer.current); doSave(); closeDocEditor(); };
-  const addLink = () => { const url = window.prompt('Tempel URL:'); if (url) cmd('createLink', url); };
+  const addLink = () => {
+    const url = urlTautanAman(window.prompt('Tempel URL:'));   // hanya http(s); javascript:/data: ditolak
+    if (url) cmd('createLink', url);
+    else toast.info('Tautan harus diawali http:// atau https://');
+  };
 
   const upload = async (file: File, asImage: boolean) => {
     if (!supabase || !file) return;
@@ -72,8 +78,9 @@ export default function DocEditor() {
         url = data.publicUrl;
       }
       ref.current?.focus();
-      if (asImage) document.execCommand('insertHTML', false, `<img src="${url}" alt="${safe}" /><p><br/></p>`);
-      else document.execCommand('insertHTML', false, `<a href="${url}" target="_blank" rel="noopener">\uD83D\uDCCE ${file.name}</a>&nbsp;`);
+      // Nama file & URL di-escape — nama file bisa berisi markup (<img onerror…>.pdf).
+      if (asImage) document.execCommand('insertHTML', false, `<img src="${escapeHtml(url)}" alt="${escapeHtml(safe)}" /><p><br/></p>`);
+      else document.execCommand('insertHTML', false, `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">\uD83D\uDCCE ${escapeHtml(file.name)}</a>&nbsp;`);
       scheduleSave();
     } catch (e: any) {
       toast.gagal('Upload gagal: ' + (e?.message || e));

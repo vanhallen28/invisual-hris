@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { saringTerlambat, fleksibelIds, terlambat, tambahJamKe, JAM_KERJA_JAM } from "@/lib/keterlambatan";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { hapusSesiLokal } from "@/lib/sesiLokal";
 import { logAudit } from "@/lib/audit";
 import { pushNotify } from "@/lib/push";
 import { useToast } from "@/components/Toast";
@@ -204,7 +205,7 @@ export default function AdminDashboardPage() {
     const confirmLogout = await toast.konfirmasi("Keluar dari Panel Admin?", { labelYa: "Keluar" });
     if (!confirmLogout) return;
     
-    localStorage.removeItem("invisual_session");
+    hapusSesiLokal();
     await supabase.auth.signOut(); 
     router.replace("/login");
   };

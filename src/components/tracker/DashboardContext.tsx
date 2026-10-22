@@ -12,6 +12,7 @@ import { dbUpdateItemName, dbSetItemMeta, dbSetCellValue, newId, dbAddItem, dbAd
 import { muatViews, dbSimpanViews, dbUbahView, dbHapusView, dbUrutViews, pasangViewsDb, TABEL_VIEWS } from '@/lib/tracker/views';
 import { sudahTercermin } from '@/lib/tracker/gema';
 import { bacaBuka, simpanBuka, terapkanBuka } from '@/lib/tracker/sidebarBuka';
+import { hapusSesiLokal } from '@/lib/sesiLokal';
 
 const LABEL_COLORS = ['bg-[#e2445c]', 'bg-primer-terang', 'bg-[#fdab3d]', 'bg-[#00c875]', 'bg-[#a25ddc]', 'bg-[#ff5ac4]', 'bg-[#9d99ff]', 'bg-emerald-500', 'bg-rose-400'];
 const HEX_COLORS = ['#e2445c', '#579bfc', '#fdab3d', '#00c875', '#a25ddc', '#ff5ac4', '#9d99ff'];
@@ -1795,6 +1796,7 @@ export const DashboardProvider = ({ children, embedded = false }: { children: Re
   const doLogout = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
+    hapusSesiLokal();        // kunci sesi HRIS ikut dibersihkan (lib/sesiLokal)
     bersihkanCacheTracker(); // buang cache agar tak terbawa ke akun berikutnya
     sesiRef.current++;       // hasil muat yang masih berjalan dibuang
     pemuat.reset();

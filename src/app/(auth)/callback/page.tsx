@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { simpanSesi } from "@/lib/sesiLokal";
 import { useToast } from "@/components/Toast";
 
 export default function AuthCallbackPage() {
@@ -60,7 +61,7 @@ export default function AuthCallbackPage() {
         const role = isAdmin ? "admin" : "karyawan";
 
         // 4. Simpan sesi terenkripsi ke lokal browser agar halaman lain tahu siapa yang sedang login
-        localStorage.setItem("invisual_session", JSON.stringify({ ...emp, role }));
+        simpanSesi("invisual_session", { ...emp, role });   // tanpa gaji/NIK/rekening (lib/sesiLokal)
 
         setStatusText("Otentikasi berhasil! Mengalihkan ke ruang kerja...");
 

@@ -6,8 +6,35 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const serviceRole = process.env.SUPABASE_SERVICE_ROLE || '';
 const admin = () => createClient(url, serviceRole, { auth: { autoRefreshToken: false, persistSession: false } });
+
+/**
+ * KEAMANAN (audit 22 Okt 2026): rute ini memakai service_role (melewati RLS) untuk membuat /
+ * mengubah / menghapus akun karyawan — WAJIB hanya untuk admin HR yang login. Dulu tanpa
+ * pemeriksaan sama sekali (siapa pun di internet bisa membuat akun HR / menghapus akun).
+ * Pemanggil mengirim `Authorization: Bearer <access_token>` (lib/authHeader.ts).
+ */
+async function wajibHR(req: Request): Promise<NextResponse | null> {
+  const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  if (!token) return NextResponse.json({ error: 'Tidak berwenang.' }, { status: 401 });
+  try {
+    const { data: u, error } = await createClient(url, anon, { auth: { persistSession: false } }).auth.getUser(token);
+    if (error || !u?.user) return NextResponse.json({ error: 'Sesi tidak valid. Silakan masuk ulang.' }, { status: 401 });
+    if (!String(u.user.email || '').toLowerCase().endsWith('@invisual.studio')) {
+      return NextResponse.json({ error: 'Hanya admin HR yang dapat mengelola data karyawan.' }, { status: 403 });
+    }
+    return null;
+  } catch {
+    return NextResponse.json({ error: 'Sesi tidak valid.' }, { status: 401 });
+  }
+}
+/** Kolom yang TIDAK boleh diubah lewat PATCH: penghubung akun login & kunci baris. */
+const KOLOM_TERLARANG = new Set(['id', 'user_id', 'emailLogin', 'created_at']);
+const bersihkanUbahan = (u: Record<string, any>) => Object.fromEntries(Object.entries(u || {}).filter(([k]) => !KOLOM_TERLARANG.has(k)));
+/** Galat basis data tidak diteruskan mentah ke peramban (nama tabel/kolom); detail ke log server. */
+const galat = (pesan: string, e: any, status = 400) => { console.error('[api/employees]', pesan, e?.message || e); return NextResponse.json({ error: pesan }, { status }); };
 
 const LABEL_COLORS = ['bg-[#e2445c]','bg-[#579bfc]','bg-[#fdab3d]','bg-[#00c875]','bg-[#a25ddc]','bg-[#ff5ac4]','bg-[#9d99ff]','bg-emerald-500','bg-rose-400'];
 const initials = (name: string) => {
@@ -41,6 +68,7 @@ async function applyAccess(sb: any, userId: string, contentHub: any, boardAccess
 
 // Baca hak akses karyawan (untuk mengisi form edit): role, Content Hub, board_access
 export async function GET(req: Request) {
+  const tolak = await wajibHR(req); if (tolak) return tolak;   // pemanggil dulu, baru konfigurasi server
   if (!serviceRole) return noKey();
   try {
     const { searchParams } = new URL(req.url);
@@ -59,16 +87,18 @@ export async function GET(req: Request) {
       boardAccess: (ba || []).map((r: any) => String(r.board_pattern || '').toLowerCase()).filter(Boolean),
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Kesalahan server' }, { status: 500 });
+    return galat('Kesalahan server.', e, 500);
   }
 }
 
 // Buat karyawan: akun auth + employees + members(role)
 export async function POST(req: Request) {
+  const tolak = await wajibHR(req); if (tolak) return tolak;   // pemanggil dulu, baru konfigurasi server
   if (!serviceRole) return noKey();
   try {
     const body = await req.json();
-    const { role = 'member', boardAccess, contentHub, corporateAccess, accBrief, ...emp } = body || {};
+    const { role = 'member', boardAccess, contentHub, corporateAccess, accBrief, ...empMentah } = body || {};
+    const emp: Record<string, any> = bersihkanUbahan(empMentah);
     const email = String(emp.email || '').trim().toLowerCase();
     const pass = String(emp.idKaryawan || '').trim();
     if (!email || pass.length < 6) return NextResponse.json({ error: 'Email wajib & ID Karyawan minimal 6 karakter (dipakai sebagai password awal).' }, { status: 400 });
@@ -92,41 +122,44 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, user_id: userId });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Kesalahan server' }, { status: 500 });
+    return galat('Kesalahan server.', e, 500);
   }
 }
 
 // Update data karyawan + role Tracker
 export async function PATCH(req: Request) {
+  const tolak = await wajibHR(req); if (tolak) return tolak;   // pemanggil dulu, baru konfigurasi server
   if (!serviceRole) return noKey();
   try {
     const body = await req.json();
-    const { idKaryawan, role, boardAccess, contentHub, corporateAccess, accBrief, ...updates } = body || {};
+    const { idKaryawan, role, boardAccess, contentHub, corporateAccess, accBrief, ...ubahanMentah } = body || {};
+    const updates = bersihkanUbahan(ubahanMentah);
     if (!idKaryawan) return NextResponse.json({ error: 'idKaryawan wajib.' }, { status: 400 });
     const sb = admin();
 
     if (updates && Object.keys(updates).length) {
       const { error: ee } = await sb.from('employees').update(updates).eq('idKaryawan', idKaryawan);
-      if (ee) return NextResponse.json({ error: ee.message }, { status: 400 });
+      if (ee) return galat('Gagal menyimpan data karyawan.', ee);
     }
     if (role || boardAccess !== undefined || contentHub !== undefined || corporateAccess !== undefined || accBrief !== undefined) {
       const { data: emp } = await sb.from('employees').select('user_id').eq('idKaryawan', idKaryawan).single();
       if (emp?.user_id) {
         if (role) {
           const { error: me } = await sb.from('members').update({ role: normRole(role) }).eq('id', emp.user_id);
-          if (me) return NextResponse.json({ error: me.message }, { status: 400 });
+          if (me) return galat('Gagal menetapkan role Tracker.', me);
         }
         await applyAccess(sb, emp.user_id, contentHub, boardAccess, corporateAccess, accBrief);
       }
     }
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Kesalahan server' }, { status: 500 });
+    return galat('Kesalahan server.', e, 500);
   }
 }
 
 // Hapus karyawan: akun auth + members + employees
 export async function DELETE(req: Request) {
+  const tolak = await wajibHR(req); if (tolak) return tolak;   // pemanggil dulu, baru konfigurasi server
   if (!serviceRole) return noKey();
   try {
     const { idKaryawan } = (await req.json()) || {};
@@ -139,9 +172,9 @@ export async function DELETE(req: Request) {
       await sb.auth.admin.deleteUser(userId).catch(() => {});
     }
     const { error: ee } = await sb.from('employees').delete().eq('idKaryawan', idKaryawan);
-    if (ee) return NextResponse.json({ error: ee.message }, { status: 400 });
+    if (ee) return galat('Gagal menghapus data karyawan.', ee);
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Kesalahan server' }, { status: 500 });
+    return galat('Kesalahan server.', e, 500);
   }
 }

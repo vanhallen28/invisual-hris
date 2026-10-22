@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { saringTerlambat, fleksibelIds, terlambat } from "@/lib/keterlambatan";
 import { supabase } from "@/lib/supabase";
+import { hapusSesiLokal } from "@/lib/sesiLokal";
 import { useToast } from "@/components/Toast";
 
 export default function AdminDashboardPage() {
@@ -83,6 +84,7 @@ export default function AdminDashboardPage() {
     const confirmLogout = await toast.konfirmasi("Keluar dari Panel Admin?", { labelYa: "Keluar" });
     if (!confirmLogout) return;
     
+    hapusSesiLokal();
     await supabase.auth.signOut(); 
     window.location.href = "/login";
   };

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { hapusSesiLokal } from "@/lib/sesiLokal";
 import Avatar from "@/components/Avatar";
 import PelacakOnline from "@/components/PelacakOnline";
 import { useJebakFokus } from "@/lib/fokus";
@@ -94,8 +95,7 @@ const openLogoutConfirmation = () => setShowLogoutModal(true);
 const executeLogout = async () => {
   setShowLogoutModal(false);
   // HAPUS SEMUA KUNCI AGAR BERSIH
-  localStorage.removeItem("invisualUserSession");
-  localStorage.removeItem("invisual_session");
+  hapusSesiLokal();
   await supabase.auth.signOut();
   window.location.href = "/login";
 };

@@ -4,6 +4,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { hapusSesiLokal } from "@/lib/sesiLokal";
 
 export default function LogoutPage() {
   const router = useRouter();
@@ -11,7 +12,7 @@ export default function LogoutPage() {
   useEffect(() => {
     const performLogout = async () => {
       // 1. Hancurkan sesi lokal (Local Storage)
-      localStorage.removeItem("invisual_session");
+      hapusSesiLokal();   // semua kunci sesi (termasuk data karyawan tersimpan)
 
       // 2. Hancurkan sesi Supabase (Sangat penting untuk Google Auth)
       await supabase.auth.signOut();

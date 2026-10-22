@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import SakelarTema from "@/components/SakelarTema";
 import { supabase } from "@/lib/supabase";
+import { headerAuth } from "@/lib/authHeader";
 import { ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
 import LoadingLogo from "@/components/LoadingLogo";
 import ResetKaryawanLogin from "@/components/admin/ResetKaryawanLogin";
@@ -194,12 +195,13 @@ export default function PengaturanAkunPage() {
       await simpanAturanJamKerja(supabase, a);
       setJkTersimpan(a);
       let berhasil = 0; const gagal: string[] = [];
+      const hAuth = await headerAuth();   // rute /api/employees kini wajib token HR
       for (let i = 0; i < target.length; i += 4) {
         await Promise.all(target.slice(i, i + 4).map(async (e: any) => {
           try {
             const res = await fetch("/api/employees", {
               method: "PATCH",
-              headers: { "Content-Type": "application/json" },
+              headers: hAuth,
               body: JSON.stringify({ idKaryawan: e.idKaryawan, jamMasuk: a.jamMasuk, jamKeluar: a.jamPulang, toleransiTelat: a.toleransiMenit }),
             });
             if (!res.ok) throw new Error(String(res.status));

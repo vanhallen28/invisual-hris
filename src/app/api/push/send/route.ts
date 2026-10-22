@@ -11,6 +11,17 @@ const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || '';
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@invisual.studio';
 
+/**
+ * Audit keamanan 22 Okt 2026: pengirim (karyawan mana pun yang login) dulu bebas menentukan
+ * `url` → notifikasi bisa mengarah ke situs phishing. Kini hanya jalur di dalam HRIS
+ * ("/…", bukan "//…"); selain itu "/". Penerima per permintaan dibatasi.
+ */
+const MAKS_PENERIMA = 200;
+function urlInternal(u: unknown): string {
+  const s = String(u ?? '/').trim();
+  return s.startsWith('/') && !s.startsWith('//') && !s.startsWith('/\\') ? s.slice(0, 300) : '/';
+}
+
 export async function POST(req: Request) {
   if (!serviceRole || !VAPID_PUBLIC || !VAPID_PRIVATE) {
     return NextResponse.json({ error: 'Env push belum lengkap (SUPABASE_SERVICE_ROLE / VAPID).' }, { status: 500 });
@@ -31,7 +42,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const admin = createClient(url, serviceRole, { auth: { persistSession: false } });
 
-    let memberIds: string[] = Array.isArray(body?.memberIds) ? body.memberIds.slice() : [];
+    let memberIds: string[] = Array.isArray(body?.memberIds) ? body.memberIds.slice(0, MAKS_PENERIMA).map(String) : [];
     // Opsi: kirim ke SEMUA admin (@invisual.studio) — di-resolve di server agar
     // tak terhalang RLS saat pemanggilnya karyawan biasa.
     if (body?.toAdmins) {
@@ -56,7 +67,7 @@ export async function POST(req: Request) {
     const payload = JSON.stringify({
       title: String(body?.title || 'Invisual HRIS').slice(0, 80),
       body: String(body?.body || '').slice(0, 160),
-      url: String(body?.url || '/'),
+      url: urlInternal(body?.url),
       tag: String(body?.tag || 'invisual'),
     });
 

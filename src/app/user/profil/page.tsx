@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { Clock } from "lucide-react";
 import SakelarTema from "@/components/SakelarTema";
 import { supabase } from "@/lib/supabase";
+import { simpanSesi } from "@/lib/sesiLokal";
 import LoadingLogo from "@/components/LoadingLogo"; // 🔥 INI KUNCI UNTUK MEMANGGIL KOMPONEN ANDA
 import PerformancePanel from "@/components/PerformancePanel";
 import Avatar from "@/components/Avatar";
@@ -66,7 +67,7 @@ export default function UserProfilePage() {
       if (error) throw error;
       if (data) {
         setProfile(data);
-        localStorage.setItem("invisualUserSession", JSON.stringify(data));
+        simpanSesi("invisualUserSession", data);   // tanpa kolom sensitif (lib/sesiLokal)
         // Riwayat slip gaji resmi (periode final saja — disaring RLS).
         const r = await muatRiwayatSlipSaya(supabase, String(data.idKaryawan || ""));
         // RLS sudah menyaring untuk karyawan; saringan ini menjaga akun HR (yang melihat draf) tetap hanya melihat slip final di Profil.
@@ -86,7 +87,7 @@ export default function UserProfilePage() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'employees' }, (payload) => {
           if (payload.new.email === userEmail) {
             setProfile(payload.new);
-            localStorage.setItem("invisualUserSession", JSON.stringify(payload.new));
+            simpanSesi("invisualUserSession", payload.new);
           }
       }).subscribe();
     return () => { supabase.removeChannel(channel); };
