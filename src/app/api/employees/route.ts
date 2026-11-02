@@ -31,7 +31,8 @@ async function wajibHR(req: Request): Promise<NextResponse | null> {
   }
 }
 /** Kolom yang TIDAK boleh diubah lewat PATCH: penghubung akun login & kunci baris. */
-const KOLOM_TERLARANG = new Set(['id', 'user_id', 'emailLogin', 'created_at']);
+// Kolom akses login hanya boleh diubah lewat RPC atur_akses_login (akses-login.sql).
+const KOLOM_TERLARANG = new Set(['id', 'user_id', 'emailLogin', 'created_at', 'aksesLogin', 'aksesDitutupPada', 'aksesDitutupOleh', 'aksesAlasan', 'tetapAksesSampai']);
 const bersihkanUbahan = (u: Record<string, any>) => Object.fromEntries(Object.entries(u || {}).filter(([k]) => !KOLOM_TERLARANG.has(k)));
 /** Galat basis data tidak diteruskan mentah ke peramban (nama tabel/kolom); detail ke log server. */
 const galat = (pesan: string, e: any, status = 400) => { console.error('[api/employees]', pesan, e?.message || e); return NextResponse.json({ error: pesan }, { status }); };

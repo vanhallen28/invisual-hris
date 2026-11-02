@@ -13,6 +13,8 @@ import { useToast } from "@/components/Toast";
 import { teksTanggal } from "@/lib/tanggalTampil";
 import { KerangkaTabel, KerangkaKepala, KeadaanKosong } from "@/components/Kerangka";
 import { ambilAturanJamKerjaDetail } from "@/lib/jamKerja";
+import { kolomAksesAda } from "@/lib/aksesLogin";
+import { BagianAksesForm, DialogAkses, KeteranganAkses, LencanaAkses, PanelAkses, TombolAkses, useEmailSaya, type ModeAkses } from "@/components/admin/AksesLogin";
 
 export default function AdminKaryawanPage() {
   const toast = useToast();
@@ -27,6 +29,10 @@ export default function AdminKaryawanPage() {
   
   // State Profil Detail
   const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
+
+  // Akses login (akses-login.sql) — terpisah dari Arsip. Menu tersembunyi bila kolomnya belum ada.
+  const [aksesTarget, setAksesTarget] = useState<{ emp: any; mode: ModeAkses } | null>(null);
+  const emailSaya = useEmailSaya();
 
   // Pencarian & Filter
   const [searchQuery, setSearchQuery] = useState("");
@@ -352,6 +358,23 @@ export default function AdminKaryawanPage() {
       .sort((a, b) => a.sisa - b.sisa);
   })();
   const idKontrakSegera = new Set(pengingatKontrak.map((x) => x.emp.idKaryawan));
+  const aksesSiap = kolomAksesAda(employees);
+  const pilihAkses = (emp: any, mode: ModeAkses) => setAksesTarget({ emp, mode });
+  const selesaiAkses = async () => {
+    const id = aksesTarget?.emp?.idKaryawan;
+    setAksesTarget(null);
+    try {
+      const { data, error } = await supabase.from("employees").select("*").order("nama", { ascending: true });
+      if (error || !data) return;
+      setEmployees(data);
+      // Form ubah yang sedang terbuka untuk orang yang sama → samakan status Arsip agar tidak tertimpa saat disimpan.
+      const baru = data.find((e: any) => e.idKaryawan === id);
+      if (baru) {
+        setFormData((prev) => (prev.idKaryawan === id ? { ...prev, isAktif: baru.isAktif !== false } : prev));
+        setSelectedProfile((prev: any) => (prev && prev.idKaryawan === id ? baru : prev));
+      }
+    } catch { /* realtime akan menyusul */ }
+  };
 
   // =========================================================================
   // EFEK TRANSISI HALAMAN MENGGUNAKAN LOGO BERPUTAR LENGKAP (Layar Penuh)
@@ -410,6 +433,8 @@ export default function AdminKaryawanPage() {
           </div>
         </div>
       )}
+
+      {aksesSiap && <PanelAkses employees={employees} emailSaya={emailSaya} onPilih={pilihAkses} />}
 
       <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="w-full md:flex-1 relative">
@@ -486,6 +511,7 @@ export default function AdminKaryawanPage() {
                             {roleMap[emp.user_id] === 'manager' ? 'Manager' : 'Member'}
                           </span>
                         )}
+                        {aksesSiap && <LencanaAkses emp={emp} />}
                       </div>
                     </td>
 
@@ -497,6 +523,7 @@ export default function AdminKaryawanPage() {
 
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {aksesSiap && <TombolAkses emp={emp} emailSaya={emailSaya} onPilih={pilihAkses} />}
                         <button onClick={() => openEditModal(emp)} className="sentuh text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-all border border-transparent hover:border-white/10" title="Ubah data" aria-label={`Ubah data ${emp.nama}`}>
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.89.112l-2.848.316.316-2.848a4.5 4.5 0 011.112-1.89l12.48-12.48zM16.862 4.487L19.5 7.125" /></svg>
                         </button>
@@ -533,12 +560,14 @@ export default function AdminKaryawanPage() {
                   <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md uppercase ${emp.status === 'Tetap' ? 'bg-green-500/10 text-green-400' : emp.status === 'PKWT (Kontrak)' ? 'bg-yellow-500/10 text-yellow-500' : emp.status === 'Internship' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-purple-500/10 text-purple-400'}`}>{emp.status}</span>
                   <span className="text-[11px] text-gray-400 truncate max-w-[45%]">{emp.jabatan || "—"}</span>
                   <span className="text-[11px] text-gray-500 ml-auto whitespace-nowrap">Cuti: {emp.sisaCuti} hari</span>
+                  {aksesSiap && <LencanaAkses emp={emp} />}
                 </div>
                 <div className="flex gap-2 mt-3 pt-3 border-t border-white/5">
                   <button onClick={() => openEditModal(emp)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-primer/10 hover:bg-primer/20 active:scale-95 text-tint-redup rounded-lg text-xs font-bold border border-primer/20 transition-all">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.89.112l-2.848.316.316-2.848a4.5 4.5 0 011.112-1.89l12.48-12.48z" /></svg>
                     Edit Data
                   </button>
+                  {aksesSiap && <TombolAkses emp={emp} emailSaya={emailSaya} onPilih={pilihAkses} varian="teks" />}
                   <button onClick={() => setDeleteConfirm({ show: true, id: emp.idKaryawan, nama: emp.nama })} className="px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 active:scale-95 text-red-400 rounded-lg text-xs font-bold border border-red-500/20 transition-all">
                     Hapus
                   </button>
@@ -622,6 +651,7 @@ export default function AdminKaryawanPage() {
               <div className="bg-input p-5 rounded-2xl border border-white/10 space-y-4">
                 <h4 className="text-[11px] font-bold text-gray-500 tracking-wider uppercase font-mono">B. Kontrak Kepegawaian Invisual</h4>
                 <div className="grid grid-cols-2 gap-y-4 gap-x-4">
+                  {aksesSiap && <KeteranganAkses emp={selectedProfile} />}
                   <div>
                     <label className="text-[11px] text-gray-500 font-bold uppercase block mb-1">Status Hubungan Kerja</label>
                     <span className="inline-block text-[11px] font-bold bg-white/10 text-white border border-white/20 px-2.5 py-1 rounded-md uppercase tracking-wider">{selectedProfile.status}</span>
@@ -718,6 +748,11 @@ export default function AdminKaryawanPage() {
                   </label>
                 </div>
               )}
+
+              {isEditMode && aksesSiap && (() => {
+                const empAkses = employees.find((x) => x.idKaryawan === formData.idKaryawan);
+                return empAkses ? <BagianAksesForm emp={empAkses} emailSaya={emailSaya} onPilih={pilihAkses} /> : null;
+              })()}
 
               <div className="bg-input p-5 rounded-xl border border-white/10">
                 <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 font-mono">A. Identitas Primer Karyawan</h3>
@@ -975,6 +1010,8 @@ export default function AdminKaryawanPage() {
           </div>
         </div>
       )}
+
+      {aksesTarget && <DialogAkses emp={aksesTarget.emp} mode={aksesTarget.mode} onTutup={() => setAksesTarget(null)} onSelesai={selesaiAkses} />}
     </div>
   );
 }

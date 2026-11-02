@@ -39,6 +39,15 @@ export default function LoginPage() {
     };
   }, []);
 
+  // Dikeluarkan karena akses ditutup (layout / callback) → tampilkan alasannya.
+  useEffect(() => {
+    let ditutup = false;
+    try { ditutup = new URLSearchParams(window.location.search).get("akses") === "ditutup"; } catch { /* abaikan */ }
+    if (!ditutup) return;
+    const t = window.setTimeout(() => setErrorMsg("Akses akun Anda sudah ditutup. Hubungi HR bila ini keliru."), 0);
+    return () => window.clearTimeout(t);
+  }, []);
+
   // Saat form muncul, fokus ke kolom email (setelah transisi masuk).
   useEffect(() => {
     if (!terbuka) return;
@@ -60,6 +69,8 @@ export default function LoginPage() {
         password: password,
       });
 
+      // Akun yang aksesnya ditutup HR diblokir oleh Supabase (akses-login.sql) → pesan yang jelas.
+      if (authError && ((authError as any).code === "user_banned" || /banned/i.test(String(authError.message || "")))) throw new Error("Akses akun Anda sudah ditutup. Hubungi HR bila ini keliru.");
       if (authError) throw new Error("Kredensial tidak valid. Periksa kembali email & password Anda.");
 
       // 2. AMBIL DATA KARYAWAN

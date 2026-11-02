@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { hapusSesiLokal } from "@/lib/sesiLokal";
+import { statusAksesSaya } from "@/lib/aksesLogin";
 import PelacakOnline from "@/components/PelacakOnline";
 import MenuLainnya from "@/components/layout/MenuLainnya";
 import { useJebakFokus } from "@/lib/fokus";
@@ -77,6 +78,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return;
       }
       if (!String(user.email || "").toLowerCase().endsWith("@invisual.studio")) { window.location.replace("/user/dashboard"); return; }
+      // Akses login ditutup HR (akses-login.sql) → keluarkan. RPC belum ada / galat → diam.
+      statusAksesSaya(supabase).then(async (st) => {
+        if (!alive || st !== "ditutup") return;
+        hapusSesiLokal();
+        try { await supabase.auth.signOut(); } catch { /* abaikan */ }
+        window.location.replace("/login?akses=ditutup");
+      });
       if (user.user_metadata?.must_change_password === true) {
         window.location.href = "/ganti-password";
       }

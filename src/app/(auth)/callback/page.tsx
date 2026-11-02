@@ -47,10 +47,14 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        if (!emp.isAktif) {
+        // Akses login terpisah dari Arsip (akses-login.sql): bila kolom aksesLogin ada, hanya akses yang
+        // DITUTUP yang ditolak — freelancer/akun arsip yang aksesnya aktif tetap boleh masuk lewat Google.
+        // Sebelum SQL dijalankan (kolom belum ada) → aturan lama: akun arsip ditolak.
+        const aksesDitutup = emp.aksesLogin !== undefined ? emp.aksesLogin === "ditutup" : !emp.isAktif;
+        if (aksesDitutup) {
           await supabase.auth.signOut();
-          toast.gagal("Akun nonaktif. Status kepegawaian dinonaktifkan.");
-          router.replace("/login");
+          toast.gagal(emp.aksesLogin !== undefined ? "Akses akun Anda sudah ditutup. Hubungi HR bila ini keliru." : "Akun nonaktif. Status kepegawaian dinonaktifkan.");
+          router.replace(emp.aksesLogin !== undefined ? "/login?akses=ditutup" : "/login");
           return;
         }
 

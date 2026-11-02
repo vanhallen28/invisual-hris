@@ -12,6 +12,7 @@ import KompresiMediaCard from "@/components/admin/KompresiMediaCard";
 import KartuHariLibur from "@/components/admin/KartuHariLibur";
 import { useToast } from "@/components/Toast";
 import { ambilAturanJamKerja, simpanAturanJamKerja, rapikanJam, teksDurasi, ATURAN_JAM_KERJA_DEFAULT, type AturanJamKerja } from "@/lib/jamKerja";
+import { KartuAksesOtomatis } from "@/components/admin/AksesLogin";
 
 /* Bagian accordion yang bisa dibuka-tutup */
 function Section({ id, open, setOpen, icon, title, subtitle, badge, children }: any) {
@@ -355,6 +356,8 @@ export default function PengaturanAkunPage() {
         </div>
         <p className={`text-[11px] font-bold mt-3 ${blokirTelat ? "text-green-400" : "text-gray-500"}`}>{blokirTelat ? "AKTIF — clock-out diblokir sampai jam wajib pulang" : "MATI — clock-out tidak diblokir"}</p>
       </div>
+
+      <KartuAksesOtomatis />
 
       <div className="p-5 mb-5 rounded-xl border border-white/10 bg-white/[0.03]">
         <div className="flex items-start justify-between gap-4">

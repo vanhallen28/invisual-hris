@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { hapusSesiLokal } from "@/lib/sesiLokal";
+import { statusAksesSaya } from "@/lib/aksesLogin";
 import Avatar from "@/components/Avatar";
 import PelacakOnline from "@/components/PelacakOnline";
 import { useJebakFokus } from "@/lib/fokus";
@@ -71,6 +72,13 @@ useEffect(() => {
         if (!error || (error?.name !== "AuthRetryableFetchError" && /session|jwt|token|auth/i.test(String(error?.message || error?.name || "")))) window.location.replace("/login");
         return;
       }
+      // Akses login ditutup HR (akses-login.sql) → keluarkan. RPC belum ada / galat → diam.
+      statusAksesSaya(supabase).then(async (st) => {
+        if (!alive || st !== "ditutup") return;
+        hapusSesiLokal();
+        try { await supabase.auth.signOut(); } catch { /* abaikan */ }
+        window.location.replace("/login?akses=ditutup");
+      });
       if (data?.user?.user_metadata?.must_change_password === true) {
         window.location.href = "/ganti-password";
       }
