@@ -23,6 +23,13 @@ Satu istilah untuk satu hal. Dipakai di label tombol, judul kartu, pesan toast, 
 | **Pengaturan** | Settings, Akun (kecuali label pendek nav ponsel) | Nama menu. |
 | **Sedang Online** | Hadir online, Presence | Kartu daftar yang sedang membuka HRIS. |
 | **Lainnya** | More, Menu | Tujuan ke-5 nav bawah ponsel HR. |
+| **Management** | Manajemen, Mgmt (kecuali label pendek nav ponsel) | Nama menu section management (Studio Manager, PM, HR, 3 leader, owner). |
+| **Pedoman** | SOP induk, Aturan main (sebagai nama menu), Handbook | Pedoman Induk Sistem Kerja; berversi (v1.0, v1.1, …). Status versi: **Draf · Berlaku · Arsip**. Karyawan menekan "Saya sudah membaca …". |
+| **Usulan** | Pengajuan, Request, Proposal | Usulan perubahan aturan di Log Usulan, bernomor U-2026-001. "Pengajuan" tetap khusus izin/cuti/sakit. Jalur: **Biasa · Darurat · Internal**. |
+| **Cek dampak** | Impact assessment, Review dampak | Penilaian leader/HR atas usulan: **Tidak berdampak · Perlu penyesuaian · Bertentangan** (· Tidak mengisi bila tenggat lewat). |
+| **Serah terima** | Handover, Handoff | Kartu lintas divisi bertenggat (P2). |
+| **Ringkasan harian** | Daily summary, Laporan leader | Maks. 3 poin dari leader sebelum 18.00 (P2). |
+| **Kepatuhan jalur** | Pelanggaran SOP, Compliance | Catatan instruksi/aturan di luar jalur resmi (P5). |
 
 ## Gaya penulisan
 
