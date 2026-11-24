@@ -10,6 +10,7 @@ import { bisa, DIVISI_LABEL, DIVISI_LEADER, PERAN_LABEL, SEMUA_PERAN, type Peran
 import { panggilRpc } from "@/lib/management/usulan";
 import { Dialog, Kosong, Lencana, PesanGalat, kelasInput, kelasLabel, kelasTombol, kelasTombolUtama } from "./ui";
 import ImporCsv from "./ImporCsv";
+import { statusGerbang, type StatusGerbang } from "@/lib/management/gerbang";
 
 type Anggota = { id: string; email: string; nama: string; peran: PeranManagement; divisi: string | null; aktif: boolean };
 const WAJIB: PeranManagement[] = ["studio_manager", "pm", "hr", "leader_sosmed", "leader_service", "leader_marketplace"];
@@ -22,6 +23,8 @@ export default function KelolaAnggota({ peran, impor = false }: { peran: PeranMa
   const [sibuk, setSibuk] = useState<string | null>(null);
   const [galat, setGalat] = useState("");
   const [bukaImpor, setBukaImpor] = useState(false);
+  const [gerbang, setGerbang] = useState<StatusGerbang | null>(null);
+  useEffect(() => { let batal = false; statusGerbang(supabase).then((s) => { if (!batal) setGerbang(s); }); return () => { batal = true; }; }, []);
 
   const muat = useCallback(async () => {
     const { data, error } = await supabase.from("mgmt_anggota").select("id, email, nama, peran, divisi, aktif").order("peran").order("nama");
@@ -60,6 +63,11 @@ export default function KelolaAnggota({ peran, impor = false }: { peran: PeranMa
         ) : <button type="button" className={kelasTombolUtama} onClick={() => setTambah(true)} data-tambah-anggota>+ Tambah anggota</button>}
       </div>
       {bukaImpor && <ImporCsv onTutup={() => setBukaImpor(false)} />}
+      {gerbang?.terpasang && !gerbang.terbuka && (
+        <p className="rounded-lg border border-sky-500/25 bg-sky-500/[0.07] px-3 py-2 text-xs text-sky-200" data-gerbang-tertutup>
+          Belum dibuka untuk anggota: saat ini Management &amp; Pedoman hanya terlihat oleh akun @invisual.studio. Anggota yang ditambahkan di sini baru bisa membukanya setelah sakelar <span className="font-bold">Section Management untuk anggota</span> di Pengaturan dinyalakan.
+        </p>
+      )}
       {kosong.length > 0 && (
         <p className="rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-3 py-2 text-xs text-amber-200" data-peran-kosong>
           Belum ada anggota aktif untuk peran: {kosong.map((p) => PERAN_LABEL[p]).join(", ")}.

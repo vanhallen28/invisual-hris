@@ -2,12 +2,14 @@
 // Pengingat pagi Management (08.30 WIB hari kerja, lewat Vercel Cron → /api/management/pengingat).
 // Data dimuat dengan klien SERVICE ROLE (server saja). Peran per akun dihitung SAMA dengan mgmt_peran_saya() di SQL:
 //   baris mgmt_anggota aktif (user_id / email / emailLogin) + owner (OWNER_EMAILS) + akun @invisual.studio non-owner = SM + PM + HR.
+// Gerbang (management-gerbang.sql): sakelar Pengaturan MATI → hanya akun @invisual.studio yang diingatkan.
 // Isi per akun = hitungPerluTindakan (sama dengan panel "Perlu tindakan") + pengingat baca Pedoman untuk leader/HR.
 // Murni (tanpa alias @/) agar bisa diuji dengan node --experimental-strip-types; pengiriman disuntikkan (kirim).
 /* eslint-disable @typescript-eslint/no-explicit-any -- klien supabase & baris tabel */
 import type { PetaLibur } from "../hariLibur";
 import { isOwnerEmail } from "../owners";
 import { DIVISI_LABEL, type PeranManagement } from "./akses";
+import { emailStudio, gerbangTerbukaServer } from "./gerbang";
 import { adalahHariKerja, isoWib, tambahHariIso, tambahJamKerja } from "./hariKerja";
 import { jenisBebasRingkasan, tanggalPengajuan } from "./harian";
 import { hitungPerluTindakan, type ItemTindakan } from "./perluTindakan";
@@ -69,6 +71,7 @@ export async function jalankanPengingat(sb: any, kirim: KirimFn, sekarang: Date)
   // Hanya jalan setelah management-p2.sql dijalankan (kode boleh dipasang lebih dulu tanpa mengubah apa pun).
   if (!emp || !anggota || !usulan || st === null || rh === null) return { ok: true, dikirim: 0, dilewati: "belum-dipasang" };
 
+  const terbuka = await gerbangTerbukaServer(sb);
   const berlaku = (versi || [])[0] || null;
   const sudahBaca = new Set(berlaku ? ((await baca(sb.from("mgmt_pedoman_baca").select("user_id").eq("versi_id", berlaku.id))) || []).map((r: any) => String(r.user_id)) : []);
   const divisiStaf = new Map((staf || []).map((r: any) => [String(r.id_karyawan), String(r.divisi)]));
@@ -112,6 +115,7 @@ export async function jalankanPengingat(sb: any, kirim: KirimFn, sekarang: Date)
 
   // ── Pengingat baca Pedoman: aktif ≥ 27 jam kerja sejak terbit ──
   const belumBaca = berlaku && berlaku.diterbitkan_pada && tambahJamKerja(new Date(berlaku.diterbitkan_pada), JAM_PENGINGAT_BACA, peta).getTime() < sekarang.getTime()
+    && terbuka   // gerbang tertutup → karyawan tidak melihat Pedoman, jadi tidak ada pengingat soal staf
     ? [...orang.values()].filter((o) => !o.owner && !sudahBaca.has(o.uid))
     : [];
 
@@ -123,6 +127,7 @@ export async function jalankanPengingat(sb: any, kirim: KirimFn, sekarang: Date)
   let dikirim = 0, terkirim = 0;
   for (const o of orang.values()) {
     if (!o.peran.size) continue;
+    if (!terbuka && !emailStudio(o.emailAkun)) continue;   // gerbang tertutup: anggota non-studio tidak berperan
     const peran = [...o.peran], divisi = [...o.divisi];
     const divL = divisi.find((d) => DIVISI_LEADER.includes(d));
     const item: ItemTindakan[] = hitungPerluTindakan({
