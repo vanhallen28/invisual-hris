@@ -9,16 +9,19 @@ import { useToast } from "@/components/Toast";
 import { bisa, DIVISI_LABEL, DIVISI_LEADER, PERAN_LABEL, SEMUA_PERAN, type PeranManagement } from "@/lib/management/akses";
 import { panggilRpc } from "@/lib/management/usulan";
 import { Dialog, Kosong, Lencana, PesanGalat, kelasInput, kelasLabel, kelasTombol, kelasTombolUtama } from "./ui";
+import ImporCsv from "./ImporCsv";
 
 type Anggota = { id: string; email: string; nama: string; peran: PeranManagement; divisi: string | null; aktif: boolean };
 const WAJIB: PeranManagement[] = ["studio_manager", "pm", "hr", "leader_sosmed", "leader_service", "leader_marketplace"];
 
-export default function KelolaAnggota({ peran }: { peran: PeranManagement[] }) {
+/** `impor`: tampilkan "Impor dari sheet" (hanya bila SQL P2 terpasang; Studio Manager — status akhir usulan = keputusan SM). */
+export default function KelolaAnggota({ peran, impor = false }: { peran: PeranManagement[]; impor?: boolean }) {
   const toast = useToast();
   const [baris, setBaris] = useState<Anggota[] | null | undefined>(undefined);
   const [tambah, setTambah] = useState(false);
   const [sibuk, setSibuk] = useState<string | null>(null);
   const [galat, setGalat] = useState("");
+  const [bukaImpor, setBukaImpor] = useState(false);
 
   const muat = useCallback(async () => {
     const { data, error } = await supabase.from("mgmt_anggota").select("id, email, nama, peran, divisi, aktif").order("peran").order("nama");
@@ -49,8 +52,14 @@ export default function KelolaAnggota({ peran }: { peran: PeranManagement[] }) {
           <h2 className="text-sm font-bold text-white">Anggota Management</h2>
           <p className="mt-0.5 text-xs text-gray-500">Penentu siapa yang melihat menu Management. Peran manager di Daily Task tidak dipakai. Owner (Dea, Riza, Tryan) dan akun @invisual.studio (HR, master) sudah otomatis berakses.</p>
         </div>
-        <button type="button" className={kelasTombolUtama} onClick={() => setTambah(true)} data-tambah-anggota>+ Tambah anggota</button>
+        {impor && peran.includes("studio_manager") ? (
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={kelasTombol} onClick={() => setBukaImpor(true)} data-impor-sheet>Impor dari sheet</button>
+            <button type="button" className={kelasTombolUtama} onClick={() => setTambah(true)} data-tambah-anggota>+ Tambah anggota</button>
+          </div>
+        ) : <button type="button" className={kelasTombolUtama} onClick={() => setTambah(true)} data-tambah-anggota>+ Tambah anggota</button>}
       </div>
+      {bukaImpor && <ImporCsv onTutup={() => setBukaImpor(false)} />}
       {kosong.length > 0 && (
         <p className="rounded-lg border border-amber-500/25 bg-amber-500/[0.07] px-3 py-2 text-xs text-amber-200" data-peran-kosong>
           Belum ada anggota aktif untuk peran: {kosong.map((p) => PERAN_LABEL[p]).join(", ")}.

@@ -27,8 +27,10 @@ Satu istilah untuk satu hal. Dipakai di label tombol, judul kartu, pesan toast, 
 | **Pedoman** | SOP induk, Aturan main (sebagai nama menu), Handbook | Pedoman Induk Sistem Kerja; berversi (v1.0, v1.1, …). Status versi: **Draf · Berlaku · Arsip**. Karyawan menekan "Saya sudah membaca …". |
 | **Usulan** | Pengajuan, Request, Proposal | Usulan perubahan aturan di Log Usulan, bernomor U-2026-001. "Pengajuan" tetap khusus izin/cuti/sakit. Jalur: **Biasa · Darurat · Internal**. |
 | **Cek dampak** | Impact assessment, Review dampak | Penilaian leader/HR atas usulan: **Tidak berdampak · Perlu penyesuaian · Bertentangan** (· Tidak mengisi bila tenggat lewat). |
-| **Serah terima** | Handover, Handoff | Kartu lintas divisi bertenggat (P2). |
-| **Ringkasan harian** | Daily summary, Laporan leader | Maks. 3 poin dari leader sebelum 18.00 (P2). |
+| **Serah terima** | Handover, Handoff | Kartu lintas divisi bertenggat (P2). Label: **Berjalan · Hampir tenggat · Terlambat · Ditindaklanjuti · Tepat waktu · Lewat tenggat**. |
+| **Penanggung jawab (PJ)** | PIC, Owner kartu | Peran yang memegang SLA sebuah kartu serah terima (otomatis per jenis; dipilih untuk "Lainnya"). |
+| **Tindak lanjut** | Follow up, Eskalasi | Tanda PM/SM "Sudah ditindaklanjuti" + catatan pada kartu terlambat (KPI PM2). |
+| **Ringkasan harian** | Daily summary, Laporan leader | Maks. 3 poin dari leader sebelum 18.00 (P2). Label: **Tepat waktu · Terlambat · Tidak mengirim · Belum dikirim · Cuti · Belum berlaku · Tanpa leader**. |
 | **Kepatuhan jalur** | Pelanggaran SOP, Compliance | Catatan instruksi/aturan di luar jalur resmi (P5). |
 
 ## Gaya penulisan

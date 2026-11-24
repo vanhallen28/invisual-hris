@@ -1,6 +1,6 @@
 // src/components/management/Management.tsx
 // Kerangka section Management (dipakai /admin/management & /user/management).
-// Tab dikendalikan ?tab= : ringkasan | pedoman | usulan | anggota. Tab P2 (serah-terima, harian) menyusul.
+// Tab dikendalikan ?tab= : ringkasan | pedoman | usulan | serah-terima | harian | anggota. Tab P2 hanya tampil bila tabelnya ada (SQL P2 sudah dijalankan).
 // Akses ditentukan database (mgmt_peran_saya); SQL belum dijalankan → pesan "belum tersedia".
 "use client";
 
@@ -13,12 +13,19 @@ import TabRingkasan from "./TabRingkasan";
 import TabPedoman from "./TabPedoman";
 import TabUsulan from "./TabUsulan";
 import KelolaAnggota from "./KelolaAnggota";
+import TabSerahTerima from "./TabSerahTerima";
+import TabHarian from "./TabHarian";
+import { adaRingkasanHarian } from "@/lib/management/harian";
+import { adaSerahTerima } from "@/lib/management/serahTerima";
 
-type KunciTab = "ringkasan" | "pedoman" | "usulan" | "anggota";
-const TAB: { kunci: KunciTab; label: string; boleh?: (p: PeranManagement[]) => boolean }[] = [
+type KunciTab = "ringkasan" | "pedoman" | "usulan" | "serah-terima" | "harian" | "anggota";
+export type Fitur = { serahTerima: boolean; harian: boolean };
+const TAB: { kunci: KunciTab; label: string; boleh?: (p: PeranManagement[], f: Fitur) => boolean }[] = [
   { kunci: "ringkasan", label: "Ringkasan" },
   { kunci: "pedoman", label: "Pedoman" },
   { kunci: "usulan", label: "Usulan" },
+  { kunci: "serah-terima", label: "Serah Terima", boleh: (_p, f) => f.serahTerima },
+  { kunci: "harian", label: "Harian", boleh: (_p, f) => f.harian },
   { kunci: "anggota", label: "Anggota", boleh: (p) => bisa(p, "kelola_anggota") },
 ];
 
@@ -28,13 +35,14 @@ export default function Management({ portal }: { portal: "admin" | "user" }) {
   const cari = useSearchParams();
   const [peran, setPeran] = useState<PeranManagement[] | null | undefined>(undefined);   // undefined = memuat
   const [divisi, setDivisi] = useState<string[]>([]);
+  const [fitur, setFitur] = useState<Fitur>({ serahTerima: false, harian: false });
 
   useEffect(() => {
     let hidup = true;
     (async () => {
-      const p = await muatPeranSaya(supabase);
+      const [p, st, rh] = await Promise.all([muatPeranSaya(supabase), adaSerahTerima(supabase), adaRingkasanHarian(supabase)]);
       const d = p && p.length ? await muatDivisiSaya(supabase) : [];
-      if (hidup) { setPeran(p); setDivisi(d); }
+      if (hidup) { setPeran(p); setDivisi(d); setFitur({ serahTerima: st, harian: rh }); }
     })();
     return () => { hidup = false; };
   }, []);
@@ -54,7 +62,7 @@ export default function Management({ portal }: { portal: "admin" | "user" }) {
     );
   }
 
-  const tabTampil = TAB.filter((t) => !t.boleh || t.boleh(peran));
+  const tabTampil = TAB.filter((t) => !t.boleh || t.boleh(peran, fitur));
   const diminta = cari.get("tab") as KunciTab | null;
   const tab: KunciTab = tabTampil.some((t) => t.kunci === diminta) ? (diminta as KunciTab) : "ringkasan";
   const pindah = (k: KunciTab) => router.replace(`${pathname}?tab=${k}`, { scroll: false });
@@ -84,10 +92,12 @@ export default function Management({ portal }: { portal: "admin" | "user" }) {
       </div>
 
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
-        {tab === "ringkasan" && <TabRingkasan peran={peran} divisi={divisi} portal={portal} />}
+        {tab === "ringkasan" && <TabRingkasan peran={peran} divisi={divisi} portal={portal} fitur={fitur} />}
         {tab === "pedoman" && <TabPedoman key={`p-${cari.get("sub") || ""}`} peran={peran} divisi={divisi} subAwal={cari.get("sub")} />}
         {tab === "usulan" && <TabUsulan key={`u-${cari.get("id") || ""}`} peran={peran} divisi={divisi} idAwal={cari.get("id")} />}
-        {tab === "anggota" && <KelolaAnggota peran={peran} />}
+        {tab === "serah-terima" && <TabSerahTerima peran={peran} divisi={divisi} />}
+        {tab === "harian" && <TabHarian peran={peran} divisi={divisi} />}
+        {tab === "anggota" && <KelolaAnggota peran={peran} impor={fitur.serahTerima} />}
       </div>
     </div>
   );

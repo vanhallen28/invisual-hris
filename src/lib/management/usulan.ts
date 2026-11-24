@@ -76,6 +76,11 @@ export const ajukanUsulan = (sb: any, d: { judul: string; masalah: string; perub
     p_judul: d.judul, p_masalah: d.masalah, p_perubahan: d.perubahan, p_bagian: d.bagian, p_divisi: d.divisi,
     p_sumber: d.sumber, p_jalur: d.jalur, p_berlaku_sejak: d.berlakuSejak || null, p_atas_nama_owner: !!d.atasNamaOwner,
   });
+/** Impor sekali dari sheet: usulan yang sudah diputuskan sebelum HRIS (P2, mgmt_impor_usulan; hanya PM/SM). */
+export const imporUsulan = (sb: any, d: { judul: string; masalah: string; perubahan: string; bagian: string; divisi: string[]; sumber: string; status: StatusUsulan; tanggal: string | null }) =>
+  panggilRpc<{ id: string; nomor: string; status: StatusUsulan }>(sb, "mgmt_impor_usulan", {
+    p_judul: d.judul, p_masalah: d.masalah, p_perubahan: d.perubahan, p_bagian: d.bagian, p_divisi: d.divisi, p_sumber: d.sumber, p_status: d.status, p_tanggal: d.tanggal,
+  });
 export const teruskanUsulan = (sb: any, id: string, divisi: string[]) => panggilRpc(sb, "mgmt_teruskan_usulan", { p_id: id, p_divisi: divisi });
 export const isiDampak = (sb: any, id: string, divisi: string, nilai: string, alasan: string) =>
   panggilRpc<{ status: StatusUsulan }>(sb, "mgmt_isi_dampak", { p_id: id, p_divisi: divisi, p_nilai: nilai, p_alasan: alasan || null });

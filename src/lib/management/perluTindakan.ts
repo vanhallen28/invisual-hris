@@ -1,6 +1,6 @@
 // src/lib/management/perluTindakan.ts
 // Daftar "Perlu tindakan saya" per peran (murni; dipakai panel Ringkasan dan, di P2, pengingat pagi).
-// Aturan P1 (rencana Task 8):
+// Aturan P1 (rencana Task 8) — P2 (Task 12) di bagian bawah fungsi:
 //   PM/SM        → "Teruskan usulan" untuk tiap usulan berstatus diajukan
 //   Leader/HR    → "Isi cek dampak" untuk baris dampak divisinya yang masih kosong (mendesak bila tenggat < 24 jam)
 //   SM           → "Putuskan" untuk siap_diputuskan & berlaku_darurat
@@ -59,5 +59,32 @@ export function hitungPerluTindakan(d: DataTindakan, peran: PeranManagement[], d
   }
   if (punya("hr", "studio_manager", ...LEADER) && d.pedomanBelumDibaca)
     out.push({ kunci: "pedoman:baca", judul: "Pedoman yang belum Anda konfirmasi", ket: "Baca sampai akhir, lalu tekan konfirmasi", tautan: "?tab=pedoman&sub=baca", mendesak: false });
+
+  // ── P2 (hanya bila datanya dimuat, yaitu management-p2.sql sudah dijalankan) ──
+  const st = d.serahTerima || [];
+  const lewat = (k: any) => Date.parse(k.tenggat) < now;
+  if (punya(...LEADER) && d.hariIniDihitung && d.sudahKirimRingkasan === false) {
+    const jamWib = new Date(now + 7 * 3_600_000).getUTCHours();
+    out.push({ kunci: "ringkasan:hari-ini", judul: "Isi Ringkasan Harian", ket: "Maks. 3 butir Selesai & Hambatan", tautan: "?tab=harian", tenggat: "Sebelum 18.00 WIB", mendesak: jamWib >= 17 });
+  }
+  if (punya(...LEADER)) {   // kartu ke divisi saya, atau yang penanggung jawabnya peran saya (mis. calon klien Sosmed → Dea, PJ Leader Sosmed)
+    for (const k of st.filter((x) => x.status === "berjalan" && (divisi.includes(x.ke_divisi) || (LEADER.includes(x.penanggung_jawab_peran) && peran.includes(x.penanggung_jawab_peran)))))
+      out.push({ kunci: `st-masuk:${k.id}`, judul: divisi.includes(k.ke_divisi) ? "Serah terima masuk" : "Serah terima tanggung jawab Anda", ket: k.judul, tautan: "?tab=serah-terima", tenggat: k.tenggat, mendesak: lewat(k) });
+  }
+  if (punya("pm")) {
+    for (const k of st.filter((x) => x.status === "berjalan" && lewat(x) && !x.ditindaklanjuti_pada))
+      out.push({ kunci: `st-terlambat:${k.id}`, judul: "Kartu terlambat", ket: `${k.judul} — tandai "Sudah ditindaklanjuti" dengan catatan`, tautan: "?tab=serah-terima", tenggat: k.tenggat, mendesak: true });
+  }
+  const sudah = new Set(out.map((x) => x.kunci));
+  for (const r of d.ringkasanHariIni || []) {
+    if (!r.butuh_divisi || !(punya("pm") || divisi.includes(r.butuh_divisi)) || sudah.has(`bantuan:${r.id}`)) continue;
+    sudah.add(`bantuan:${r.id}`);
+    const hambatan = (r.hambatan || []).join("; ");
+    out.push({ kunci: `bantuan:${r.id}`, judul: `Butuh bantuan dari ${DIV[r.butuh_divisi] || r.butuh_divisi}`, ket: `${DIV[r.divisi] || r.divisi}${hambatan ? `: ${hambatan}` : ""}`, tautan: "?tab=harian", mendesak: false });
+  }
+  if (punya("owner")) {
+    for (const k of st.filter((x) => x.status === "berjalan" && x.jenis === "review_dea"))
+      out.push({ kunci: `review:${k.id}`, judul: "Review Dea menunggu", ket: k.judul, tautan: "?tab=serah-terima", tenggat: k.tenggat, mendesak: lewat(k) });
+  }
   return out;
 }

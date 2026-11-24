@@ -1,26 +1,18 @@
 // src/app/api/push/send/route.ts
 // Mengirim Web Push ke anggota tertentu. Memakai service_role (server-only).
+// Pengiriman & pembersihan langganan ada di lib/server/kirimPush (dipakai juga pengingat Management).
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import webpush from 'web-push';
+import { kirimPush } from '@/lib/server/kirimPush';
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const serviceRole = process.env.SUPABASE_SERVICE_ROLE || '';
 const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || '';
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@invisual.studio';
 
-/**
- * Audit keamanan 22 Okt 2026: pengirim (karyawan mana pun yang login) dulu bebas menentukan
- * `url` → notifikasi bisa mengarah ke situs phishing. Kini hanya jalur di dalam HRIS
- * ("/…", bukan "//…"); selain itu "/". Penerima per permintaan dibatasi.
- */
+/** Penerima per permintaan dibatasi (audit keamanan 22 Okt 2026; URL dibatasi di kirimPush). */
 const MAKS_PENERIMA = 200;
-function urlInternal(u: unknown): string {
-  const s = String(u ?? '/').trim();
-  return s.startsWith('/') && !s.startsWith('//') && !s.startsWith('/\\') ? s.slice(0, 300) : '/';
-}
 
 export async function POST(req: Request) {
   if (!serviceRole || !VAPID_PUBLIC || !VAPID_PRIVATE) {
@@ -55,43 +47,10 @@ export async function POST(req: Request) {
     memberIds = Array.from(new Set(memberIds)).filter((id) => id && id !== senderId);
     if (!memberIds.length) return NextResponse.json({ ok: true, sent: 0 });
 
-    const { data: subs } = await admin
-      .from('push_subscriptions')
-      .select('*')
-      .in('member_id', memberIds);
+    const r = await kirimPush(admin, memberIds, { title: body?.title, body: body?.body, url: body?.url, tag: body?.tag });
+    if (!r.langganan) return NextResponse.json({ ok: true, sent: 0 });
 
-    if (!subs?.length) return NextResponse.json({ ok: true, sent: 0 });
-
-    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
-
-    const payload = JSON.stringify({
-      title: String(body?.title || 'Invisual HRIS').slice(0, 80),
-      body: String(body?.body || '').slice(0, 160),
-      url: urlInternal(body?.url),
-      tag: String(body?.tag || 'invisual'),
-    });
-
-    let sent = 0;
-    const dead: string[] = [];
-
-    await Promise.all(
-      subs.map(async (s: any) => {
-        try {
-          await webpush.sendNotification(
-            { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-            payload
-          );
-          sent++;
-        } catch (err: any) {
-          // 404/410 = langganan sudah mati → bersihkan
-          if (err?.statusCode === 404 || err?.statusCode === 410) dead.push(s.endpoint);
-        }
-      })
-    );
-
-    if (dead.length) await admin.from('push_subscriptions').delete().in('endpoint', dead);
-
-    return NextResponse.json({ ok: true, sent, cleaned: dead.length });
+    return NextResponse.json({ ok: true, sent: r.sent, cleaned: r.dead });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Gagal mengirim notifikasi' }, { status: 500 });
   }
