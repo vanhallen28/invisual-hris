@@ -17,11 +17,14 @@ import TabSerahTerima from "./TabSerahTerima";
 import TabHarian from "./TabHarian";
 import { adaRingkasanHarian } from "@/lib/management/harian";
 import { adaSerahTerima } from "@/lib/management/serahTerima";
+import { adaTugas } from "@/lib/management/tugas";
+import TabTugas from "./TabTugas";
 
-type KunciTab = "ringkasan" | "pedoman" | "usulan" | "serah-terima" | "harian" | "anggota";
-export type Fitur = { serahTerima: boolean; harian: boolean };
+type KunciTab = "ringkasan" | "tugas" | "pedoman" | "usulan" | "serah-terima" | "harian" | "anggota";
+export type Fitur = { serahTerima: boolean; harian: boolean; tugas?: boolean };
 const TAB: { kunci: KunciTab; label: string; boleh?: (p: PeranManagement[], f: Fitur) => boolean }[] = [
   { kunci: "ringkasan", label: "Ringkasan" },
+  { kunci: "tugas", label: "Tugas", boleh: (_p, f) => !!f.tugas },
   { kunci: "pedoman", label: "Pedoman" },
   { kunci: "usulan", label: "Usulan" },
   { kunci: "serah-terima", label: "Serah Terima", boleh: (_p, f) => f.serahTerima },
@@ -40,9 +43,9 @@ export default function Management({ portal }: { portal: "admin" | "user" }) {
   useEffect(() => {
     let hidup = true;
     (async () => {
-      const [p, st, rh] = await Promise.all([muatPeranSaya(supabase), adaSerahTerima(supabase), adaRingkasanHarian(supabase)]);
+      const [p, st, rh, tg] = await Promise.all([muatPeranSaya(supabase), adaSerahTerima(supabase), adaRingkasanHarian(supabase), adaTugas(supabase)]);
       const d = p && p.length ? await muatDivisiSaya(supabase) : [];
-      if (hidup) { setPeran(p); setDivisi(d); setFitur({ serahTerima: st, harian: rh }); }
+      if (hidup) { setPeran(p); setDivisi(d); setFitur({ serahTerima: st, harian: rh, tugas: tg }); }
     })();
     return () => { hidup = false; };
   }, []);
@@ -93,6 +96,7 @@ export default function Management({ portal }: { portal: "admin" | "user" }) {
 
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {tab === "ringkasan" && <TabRingkasan peran={peran} divisi={divisi} portal={portal} fitur={fitur} />}
+        {tab === "tugas" && <TabTugas key={`t-${cari.get("sub") || ""}`} peran={peran} divisi={divisi} fitur={fitur} subAwal={cari.get("sub")} />}
         {tab === "pedoman" && <TabPedoman key={`p-${cari.get("sub") || ""}`} peran={peran} divisi={divisi} subAwal={cari.get("sub")} />}
         {tab === "usulan" && <TabUsulan key={`u-${cari.get("id") || ""}`} peran={peran} divisi={divisi} idAwal={cari.get("id")} />}
         {tab === "serah-terima" && <TabSerahTerima peran={peran} divisi={divisi} />}

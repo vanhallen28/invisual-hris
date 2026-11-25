@@ -52,18 +52,26 @@ export default function TabRingkasan({ peran, divisi, fitur }: { peran: PeranMan
         fitur?.harian ? muatRingkasan(supabase, hari, hari) : Promise.resolve(null),
         fitur?.harian ? muatCutiLeader(supabase, hari, hari) : Promise.resolve([]),
       ]);
+      // Tugas (tugas.sql): hanya dimuat bila tabnya ada — tanpa SQL tidak ada kueri tambahan.
+      const [tgs, idSaya] = fitur?.tugas
+        ? await Promise.all([
+            supabase.from("mgmt_tugas").select("id,judul,untuk_anggota,dari_email,tenggat,status").eq("status", "berjalan").then((r) => (r.error ? null : r.data), () => null),
+            supabase.rpc("mgmt_anggota_id_saya").then((r) => (r.error ? null : r.data), () => null),
+          ])
+        : [null, null];
       if (!hidup) return;
       setItem(hitungPerluTindakan({
         usulan: usulan || [], dampak, tautanPedoman: tautan.map((t) => String(t.usulan_id)), pedomanBelumDibaca: belumBaca, peta,
         serahTerima: st || undefined, ringkasanHariIni: rh || undefined,
         sudahKirimRingkasan: rh ? rh.some((r) => r.user_id === uid) : undefined,
         hariIniDihitung: rh && divL && adalahLeader(peran) ? hariDihitung(hari, peta, petaCutiLeader(cuti).get(divL) || new Set()) : undefined,
+        tugas: tgs || undefined, anggotaSaya: typeof idSaya === "string" ? idSaya : null, emailSaya: au?.user?.email ? String(au.user.email).toLowerCase() : null,
       }, peran, divisi, new Date()));
       const pc = petaCutiLeader(cuti);
       setPapan({ usulan: (usulan || []) as Papan["usulan"], baca, st, rh, cuti: new Set(DIVISI_LEADER.filter((d) => pc.get(d)?.has(hari))), hariKerja: adalahHariKerja(hari, peta) });
     })();
     return () => { hidup = false; };
-  }, [peran, divisi, fitur?.serahTerima, fitur?.harian]);
+  }, [peran, divisi, fitur?.serahTerima, fitur?.harian, fitur?.tugas]);
 
   const sekarang = new Date();
   const berjalan = (papan?.usulan || []).filter((u) => !sudahDiputuskan(u.status));

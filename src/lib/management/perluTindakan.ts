@@ -23,6 +23,10 @@ export type DataTindakan = {
   ringkasanHariIni?: any[];
   sudahKirimRingkasan?: boolean;
   hariIniDihitung?: boolean;
+  // Tugas (tugas.sql): tugas berjalan, baris anggota saya, email saya
+  tugas?: any[];
+  anggotaSaya?: string | null;
+  emailSaya?: string | null;
 };
 
 const LEADER = ["leader_sosmed", "leader_service", "leader_marketplace"];
@@ -81,6 +85,14 @@ export function hitungPerluTindakan(d: DataTindakan, peran: PeranManagement[], d
     sudah.add(`bantuan:${r.id}`);
     const hambatan = (r.hambatan || []).join("; ");
     out.push({ kunci: `bantuan:${r.id}`, judul: `Butuh bantuan dari ${DIV[r.butuh_divisi] || r.butuh_divisi}`, ket: `${DIV[r.divisi] || r.divisi}${hambatan ? `: ${hambatan}` : ""}`, tautan: "?tab=harian", mendesak: false });
+  }
+  // ── Tugas yang diberikan (hanya bila tugas.sql terpasang) ──
+  for (const t of (d.tugas || []).filter((x) => x.status === "berjalan")) {
+    const sisa = Date.parse(t.tenggat) - now;
+    if (d.anggotaSaya && t.untuk_anggota === d.anggotaSaya)
+      out.push({ kunci: `tugas:${t.id}`, judul: "Tugas untuk Anda", ket: t.judul, tautan: "?tab=tugas", tenggat: t.tenggat, mendesak: sisa < 4 * 3_600_000 });
+    else if (d.emailSaya && t.dari_email === d.emailSaya && sisa < 0)
+      out.push({ kunci: `tugas-terlambat:${t.id}`, judul: "Tugas yang Anda berikan terlambat", ket: t.judul, tautan: "?tab=tugas&sub=tim", tenggat: t.tenggat, mendesak: true });
   }
   if (punya("owner")) {
     for (const k of st.filter((x) => x.status === "berjalan" && x.jenis === "review_dea"))
