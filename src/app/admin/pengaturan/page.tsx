@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import SakelarTema from "@/components/SakelarTema";
 import SakelarGerbang from "@/components/management/SakelarGerbang";
+import SakelarStruktur from "@/components/struktur/SakelarStruktur";
 import { supabase } from "@/lib/supabase";
 import { headerAuth } from "@/lib/authHeader";
 import { ambilPosisi, KANTOR_DEFAULT } from "@/lib/lokasi";
@@ -362,6 +363,8 @@ export default function PengaturanAkunPage() {
 
       {/* Section Management: hanya @invisual.studio sampai dibuka untuk anggota (management-gerbang.sql) */}
       <SakelarGerbang className="mb-5" />
+      {/* Struktur perusahaan: hanya @invisual.studio sampai dibuka untuk semua karyawan (struktur.sql) */}
+      <SakelarStruktur className="mb-5" />
 
       <div className="p-5 mb-5 rounded-xl border border-white/10 bg-white/[0.03]">
         <div className="flex items-start justify-between gap-4">

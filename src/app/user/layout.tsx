@@ -15,6 +15,7 @@ import PelacakOnline from "@/components/PelacakOnline";
 import { useJebakFokus } from "@/lib/fokus";
 import BannerPedoman from "@/components/management/BannerPedoman";
 import { useMenuManagement } from "@/components/management/useMenuManagement";
+import { useMenuStruktur } from "@/components/struktur/useMenuStruktur";
 
 
 
@@ -31,6 +32,8 @@ const modalKeluar = useRef<HTMLDivElement>(null);
 // Section Management: anggota → menu Management; karyawan lain → menu Pedoman (bila ada versi berlaku).
 // Database belum dipasang → keduanya tidak tampil (perilaku lama).
 const { peran: peranMgmt, adaPedoman } = useMenuManagement();
+// Struktur Perusahaan: menu hanya tampil bila struktur.sql terpasang & akun boleh melihat (sakelar Pengaturan).
+const lihatStruktur = useMenuStruktur();
 useJebakFokus(modalKeluar, showLogoutModal, () => setShowLogoutModal(false));
 
 
@@ -135,6 +138,7 @@ const navItems = [
     : adaPedoman
       ? [{ name: "Pedoman", short: "Pedoman", href: "/user/pedoman", icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /> }]
       : []),
+  ...(lihatStruktur ? [{ name: "Struktur", short: "Struktur", href: "/user/struktur", icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3h4.5v3.75h-4.5zM12 6.75v3.75M6 10.5h12M6 10.5v2.25M12 10.5v2.25M18 10.5v2.25M3.75 12.75h4.5v3.75h-4.5zM9.75 12.75h4.5v3.75h-4.5zM15.75 12.75h4.5v3.75h-4.5z" /> }] : []),
 ];
 
 
