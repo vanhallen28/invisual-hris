@@ -15,16 +15,19 @@ import { cariWarna, gayaWarna, pemakaianWarna, type WarnaPalet } from "@/lib/str
 import { Kosong, Lencana, PesanGalat, kelasTombol } from "@/components/management/ui";
 import LaciPosisi, { type Pilihan } from "./LaciPosisi";
 import EditorPalet from "./EditorPalet";
+import Karakter from "./Karakter";
+import { PETA_KOSONG, idKaryawanUntuk, muatPetaId, type PetaIdKaryawan } from "@/lib/struktur/karakter";
 import "./warna-kartu.css";   // gaya kartu berwarna — hanya dimuat di halaman ini
 
 const LABEL_JENIS: Record<string, string> = { owner: "Owner", studio_manager: "Management", pm: "Pendukung", hr: "Pendukung", leader: "Leader" };
 
-function TombolSimpul({ s, dipilih, onPilih, warna }: { s: Simpul; dipilih: boolean; onPilih: () => void; warna: WarnaPalet | null }) {
+function TombolSimpul({ s, dipilih, onPilih, warna, idKaryawan }: { s: Simpul; dipilih: boolean; onPilih: () => void; warna: WarnaPalet | null; idKaryawan: string | null }) {
   const p = s.posisi;
   const g = gayaWarna(warna);
   return (
     <button type="button" onClick={onPilih} aria-pressed={dipilih} data-simpul={p.jenis} data-warna={g["data-warna"]} style={g.style}
-      className={`grid w-44 max-w-full gap-0.5 rounded-xl border bg-kartu px-3.5 py-3 text-left transition-colors sm:w-48 ${dipilih ? "border-tint ring-1 ring-tint" : "border-white/15 hover:border-white/35"} ${p.jenis === "pm" || p.jenis === "hr" ? "border-dashed" : ""}${g.className ? ` ${g.className}` : ""}`}>
+      className={`grid w-44 max-w-full justify-items-center gap-0.5 rounded-xl border bg-kartu px-3.5 py-3 text-center transition-colors sm:w-48 ${dipilih ? "border-tint ring-1 ring-tint" : "border-white/15 hover:border-white/35"} ${p.jenis === "pm" || p.jenis === "hr" ? "border-dashed" : ""}${g.className ? ` ${g.className}` : ""}`}>
+      <span className="mb-1.5 inline-flex"><Karakter id={idKaryawan} nama={s.nama} /></span>
       <span className="font-mono text-[10px] uppercase tracking-wider text-gray-500">{LABEL_JENIS[p.jenis]}{p.jenis === "leader" && p.divisi ? ` · ${LABEL_DIVISI[p.divisi]}` : ""}</span>
       <span className={`text-sm font-semibold ${s.nama ? "text-white" : "italic text-gray-500"}`}>{s.nama || "Belum ada pemegang"}</span>
       <span className="text-xs text-gray-400">{p.judul}</span>
@@ -48,6 +51,7 @@ export default function Struktur({ portal }: { portal: "admin" | "user" }) {
   const [sibukTempat, setSibukTempat] = useState<string | null>(null);
   const [galatTempat, setGalatTempat] = useState<string | null>(null);
   const [aturPalet, setAturPalet] = useState(false);
+  const [petaId, setPetaId] = useState<PetaIdKaryawan>(PETA_KOSONG);
   const laci = useRef<HTMLDivElement>(null);
   const editorPalet = useRef<HTMLDivElement>(null);
 
@@ -59,6 +63,7 @@ export default function Struktur({ portal }: { portal: "admin" | "user" }) {
   useEffect(() => {
     let hidup = true;
     muatStruktur(supabase).then((h) => { if (hidup) setHasil(h); });
+    muatPetaId(supabase).then((k) => { if (hidup) setPetaId(k); });   // nama pemegang → idKaryawan (gagal → inisial)
     return () => { hidup = false; };
   }, []);
 
@@ -83,7 +88,7 @@ export default function Struktur({ portal }: { portal: "admin" | "user" }) {
     }
   };
   const kunciPilihan = pilihan?.jenis === "simpul" ? pilihan.kunci : pilihan?.jenis === "staf" ? `staf:${pilihan.staf.id}` : null;
-  const simpul = (s: Simpul) => <TombolSimpul key={s.kunci} s={s} dipilih={kunciPilihan === s.kunci} warna={cariWarna(data.palet, s.posisi.warna)} onPilih={() => pilih({ jenis: "simpul", kunci: s.kunci, posisiId: s.posisi.id, nama: s.nama })} />;
+  const simpul = (s: Simpul) => <TombolSimpul key={s.kunci} s={s} dipilih={kunciPilihan === s.kunci} warna={cariWarna(data.palet, s.posisi.warna)} idKaryawan={idKaryawanUntuk(petaId, s.nama)} onPilih={() => pilih({ jenis: "simpul", kunci: s.kunci, posisiId: s.posisi.id, nama: s.nama })} />;
   const fiturWarna = !!data.palet;
   const pakai = pemakaianWarna(data.posisi);
   const legenda = (data.palet?.warna || []).filter((w) => pakai.has(w.id));
@@ -114,8 +119,9 @@ export default function Struktur({ portal }: { portal: "admin" | "user" }) {
     const g = gayaWarna(cariWarna(data.palet, cariPosisiStaf(data.posisi, st.divisi, st.jabatan)?.warna), "chip-warna");
     return (
       <button key={st.id} type="button" onClick={() => pilih({ jenis: "staf", staf: st })} aria-pressed={kunciPilihan === `staf:${st.id}`} data-staf={st.id} data-warna={g["data-warna"]} style={g.style}
-        className={`rounded-full border px-2.5 py-1 text-left text-xs transition-colors ${kunciPilihan === `staf:${st.id}` ? "border-tint text-white" : "border-white/10 bg-white/[0.04] text-gray-300 hover:border-white/30"}${g.className ? ` ${g.className}` : ""}`}>
-        {st.nama}{st.jabatan ? <span className="ml-1 text-gray-500">{st.jabatan}</span> : null}
+        className={`inline-flex max-w-full items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-center text-xs transition-colors ${kunciPilihan === `staf:${st.id}` ? "border-tint text-white" : "border-white/10 bg-white/[0.04] text-gray-300 hover:border-white/30"}${g.className ? ` ${g.className}` : ""}`}>
+        <Karakter id={st.id} nama={st.nama} ukuran="kecil" />
+        <span className="min-w-0">{st.nama}{st.jabatan ? <span className="ml-1 text-gray-500">{st.jabatan}</span> : null}</span>
       </button>
     );
   };
@@ -169,9 +175,9 @@ export default function Struktur({ portal }: { portal: "admin" | "user" }) {
               <span aria-hidden className="absolute -top-6 left-1/2 hidden h-6 w-px bg-white/15 md:block" />
               {bagan.divisi.map((g) => (
                 <div key={g.divisi} className={`grid min-w-0 content-start gap-2.5 rounded-xl border border-white/10 bg-white/[0.015] p-3 ${g.divisi === "lainnya" ? "md:col-span-3" : ""}`} data-divisi={g.divisi}>
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-gray-500">Divisi {LABEL_DIVISI[g.divisi]}</span>
+                  <span className="text-center font-mono text-[10px] uppercase tracking-wider text-gray-500">Divisi {LABEL_DIVISI[g.divisi]}</span>
                   {g.leader.length > 0 && <div className="grid gap-2 [&>button]:w-full">{g.leader.map(simpul)}</div>}
-                  <div className={aturTempat ? "grid min-w-0 gap-1.5" : "flex flex-wrap gap-1.5"}>
+                  <div className={aturTempat ? "grid min-w-0 gap-1.5" : "flex flex-wrap justify-center gap-1.5"}>
                     {g.staf.length ? g.staf.map(chipStaf) : <span className="text-xs text-gray-600">Belum ada staf</span>}
                   </div>
                 </div>
@@ -179,9 +185,9 @@ export default function Struktur({ portal }: { portal: "admin" | "user" }) {
             </div>
             {(bagan.belumDitempatkan.length > 0 || aturTempat) && (
               <div className="w-full rounded-xl border border-dashed border-white/15 p-3" data-belum-ditempatkan>
-                <p className="mb-2 text-xs text-gray-400"><span className="font-semibold text-gray-300">Belum ditempatkan ({bagan.belumDitempatkan.length})</span>
+                <p className={`mb-2 text-xs text-gray-400 ${aturTempat ? "" : "text-center"}`}><span className="font-semibold text-gray-300">Belum ditempatkan ({bagan.belumDitempatkan.length})</span>
                   {data.bolehEdit ? (aturTempat ? " · pilih divisi untuk tiap orang." : " · tekan \"Atur penempatan staf\" untuk memilih divisinya.") : null}</p>
-                <div className={aturTempat ? "grid gap-1.5 md:grid-cols-2" : "flex flex-wrap gap-1.5"}>
+                <div className={aturTempat ? "grid gap-1.5 md:grid-cols-2" : "flex flex-wrap justify-center gap-1.5"}>
                   {bagan.belumDitempatkan.length ? bagan.belumDitempatkan.map(chipStaf) : <span className="text-xs text-gray-600">Semua staf sudah ditempatkan.</span>}
                 </div>
               </div>
@@ -192,7 +198,8 @@ export default function Struktur({ portal }: { portal: "admin" | "user" }) {
 
         <div ref={laci} className="scroll-mt-20 lg:sticky lg:top-6">
           {pilihan
-            ? <LaciPosisi key={kunciPilihan || ""} pilihan={pilihan} data={data} bagan={bagan} portal={portal} onTersimpan={muat} onAturPalet={bukaPalet} />
+            ? <LaciPosisi key={kunciPilihan || ""} pilihan={pilihan} data={data} bagan={bagan} portal={portal} onTersimpan={muat} onAturPalet={bukaPalet}
+                idKaryawan={pilihan.jenis === "staf" ? pilihan.staf.id : idKaryawanUntuk(petaId, pilihan.nama)} />
             : <Kosong>Pilih peran atau nama di bagan untuk melihat jobdesk, SOP, tugas rutin, dan KPI-nya.</Kosong>}
         </div>
       </div>

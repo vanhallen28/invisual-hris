@@ -14,6 +14,7 @@ import {
   type Bagan, type ButirRutin, type DataStruktur, type Posisi, type Ritme, type Staf, type SumberOtomatis, type VersiRiwayat,
 } from "@/lib/struktur/struktur";
 import { aturWarnaPosisi, teksKontras, type Palet } from "@/lib/struktur/warna";
+import Karakter from "./Karakter";
 import { Kosong, Lencana, PesanGalat, kelasInput, kelasLabel, kelasTombol, kelasTombolUtama } from "@/components/management/ui";
 
 export type Pilihan = { jenis: "simpul"; kunci: string; posisiId: string; nama: string | null } | { jenis: "staf"; staf: Staf };
@@ -115,8 +116,10 @@ function PemilihWarna({ palet, aktif, catatan, sibuk, onPilih, onAturPalet }: {
   );
 }
 
-export default function LaciPosisi({ pilihan, data, bagan, portal, onTersimpan, onAturPalet }: {
+export default function LaciPosisi({ pilihan, data, bagan, portal, onTersimpan, onAturPalet, idKaryawan = null }: {
   pilihan: Pilihan; data: DataStruktur; bagan: Bagan; portal: "admin" | "user"; onTersimpan: () => Promise<unknown>; onAturPalet?: () => void;
+  /** Untuk karakter (avatar) di kepala laci; sama dengan halaman Karyawan & Kehadiran. */
+  idKaryawan?: string | null;
 }) {
   void portal;
   const staf = pilihan.jenis === "staf" ? pilihan.staf : null;
@@ -165,8 +168,9 @@ export default function LaciPosisi({ pilihan, data, bagan, portal, onTersimpan, 
   if (staf && (!staf.divisi || !staf.jabatan)) {
     return (
       <section className="grid gap-3 rounded-xl border border-white/10 bg-kartu p-5" data-laci>
-        <div><span className="font-mono text-[10px] uppercase tracking-wider text-gray-500">Staf</span><h2 className="font-display text-xl font-bold text-white">{staf.nama}</h2>
-          <p className="text-sm text-gray-400">{staf.jabatan || "Tanpa jabatan"}</p></div>
+        <div className="flex items-center gap-3"><Karakter id={idKaryawan} nama={staf.nama} ukuran="besar" />
+          <div className="min-w-0"><span className="font-mono text-[10px] uppercase tracking-wider text-gray-500">Staf</span><h2 className="font-display text-xl font-bold text-white">{staf.nama}</h2>
+          <p className="text-sm text-gray-400">{staf.jabatan || "Tanpa jabatan"}</p></div></div>
         <Kosong>{!staf.jabatan ? "Jabatan orang ini belum diisi di data Karyawan. Jobdesk staf ditulis per jabatan, jadi isi jabatannya dulu." : "Orang ini belum ditempatkan ke divisi. Jobdesk staf ditulis per jabatan di tiap divisi, jadi tempatkan dulu lewat \"Atur penempatan staf\"."}</Kosong>
       </section>
     );
@@ -221,11 +225,14 @@ export default function LaciPosisi({ pilihan, data, bagan, portal, onTersimpan, 
   return (
     <section className="grid gap-4 rounded-xl border border-white/10 bg-kartu p-5" data-laci aria-live="polite">
       <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+        {nama ? <Karakter id={idKaryawan} nama={nama} ukuran="besar" /> : null}
         <div className="min-w-0">
           <span className="font-mono text-[10px] uppercase tracking-wider text-gray-500">{posisi.jenis === "staf" ? "Staf" : "Peran"}</span>
           <h2 className="font-display text-xl font-bold text-white">{nama || "Belum ada pemegang"}</h2>
           <p className="text-sm text-gray-400">{posisi.jenis === "staf" && posisi.divisi ? `${posisi.judul} · ${LABEL_DIVISI[posisi.divisi]}` : posisi.judul}</p>
           <p className="mt-0.5 text-xs text-gray-500">Atasan: {atasan}</p>
+        </div>
         </div>
         {bisaEditTab && !edit && <button type="button" className={kelasTombol} onClick={mulaiEdit} data-edit-posisi>Edit</button>}
       </div>
