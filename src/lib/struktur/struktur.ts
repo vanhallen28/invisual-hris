@@ -3,7 +3,9 @@
 // Baca lewat RPC org_struktur() (hak lihat ditentukan database: @invisual.studio selalu, karyawan lain bila
 // sakelar `struktur_terbuka` nyala). Tulis hanya lewat RPC (hanya @invisual.studio).
 // Murni (tanpa alias @/) agar bisa diuji dengan node --experimental-strip-types.
+// Warna kartu & palet: ./warna.ts (struktur-warna.sql).
 /* eslint-disable @typescript-eslint/no-explicit-any -- klien supabase diteruskan dari pemanggil */
+import { bacaPalet, type Palet } from "./warna";
 
 export type JenisPosisi = "owner" | "studio_manager" | "pm" | "hr" | "leader" | "staf";
 export type Divisi = "sosmed" | "service" | "marketplace" | "lainnya";
@@ -15,10 +17,12 @@ export type Posisi = {
   id: string; jenis: JenisPosisi; judul: string; divisi: Divisi | null; peran_mgmt: string | null;
   pemegang_manual: string[]; urutan: number; jobdesk_md: string; sop_md: string; rutin: ButirRutin[];
   bagian_pedoman: string | null; versi: number; diubah_oleh?: string | null; diubah_pada?: string | null;
+  /** Id warna dari palet (struktur-warna.sql); null = tanpa warna. */
+  warna?: string | null;
 };
 export type Pemegang = { peran: string; divisi: string | null; nama: string };
 export type Staf = { id: string; nama: string; jabatan: string | null; divisi: Divisi | null };
-export type DataStruktur = { bolehEdit: boolean; terbuka: boolean; posisi: Posisi[]; pemegang: Pemegang[]; staf: Staf[] };
+export type DataStruktur = { bolehEdit: boolean; terbuka: boolean; posisi: Posisi[]; pemegang: Pemegang[]; staf: Staf[]; /** null = struktur-warna.sql belum dijalankan */ palet: Palet | null };
 export type HasilMuat = { status: "belum_dipasang" } | { status: "tertutup" } | { status: "galat"; pesan: string } | { status: "ok"; data: DataStruktur };
 
 export const KUNCI_SAKELAR_STRUKTUR = "struktur_terbuka";
@@ -60,10 +64,11 @@ export function bacaHasilStruktur(raw: any): HasilMuat {
     pemegang_manual: Array.isArray(p.pemegang_manual) ? p.pemegang_manual.map(String) : [], urutan: Number(p.urutan) || 0,
     jobdesk_md: teks(p.jobdesk_md), sop_md: teks(p.sop_md), rutin: rapikanRutin(p.rutin), bagian_pedoman: p.bagian_pedoman ?? null,
     versi: Number(p.versi) || 1, diubah_oleh: p.diubah_oleh ?? null, diubah_pada: p.diubah_pada ?? null,
+    warna: typeof p.warna === "string" && p.warna ? p.warna : null,
   }));
   const pemegang: Pemegang[] = (Array.isArray(raw.pemegang) ? raw.pemegang : []).map((x: any) => ({ peran: teks(x.peran), divisi: x.divisi ?? null, nama: teks(x.nama) }));
   const staf: Staf[] = (Array.isArray(raw.staf) ? raw.staf : []).map((x: any) => ({ id: String(x.id), nama: teks(x.nama), jabatan: x.jabatan ? String(x.jabatan) : null, divisi: x.divisi ?? null }));
-  return { status: "ok", data: { bolehEdit: raw.boleh_edit === true, terbuka: raw.terbuka === true, posisi, pemegang, staf } };
+  return { status: "ok", data: { bolehEdit: raw.boleh_edit === true, terbuka: raw.terbuka === true, posisi, pemegang, staf, palet: bacaPalet(raw.palet) } };
 }
 
 export async function muatStruktur(sb: any): Promise<HasilMuat> {

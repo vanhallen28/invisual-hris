@@ -1,0 +1,23 @@
+/* src/components/struktur/warna-kartu.css — dimuat HANYA oleh halaman Struktur (Struktur.tsx). */
+/* Kartu & chip berwarna (palet, struktur-warna.sql).
+   Hanya elemen yang DIBERI warna yang memakai kelas ini; kartu tanpa warna tidak berubah di tema mana pun.
+   Variabel per elemen: --kw (warna palet), --kw-teks (tinta/putih, dipilih dari kontras).
+   • Tema gelap: semburat tipis warna di atas permukaan kartu + garis aksen kiri; teks tetap terang.
+   • Tema Neo-Brutal (data-tema="terang"): kartu diisi penuh warna palet; teks memakai --kw-teks. */
+.kartu-warna {
+  background-color: color-mix(in oklab, var(--kw) 16%, var(--color-kartu));
+  background-image: linear-gradient(90deg, var(--kw) 0 3px, transparent 3px);   /* garis aksen kiri (bukan box-shadow: cincin "dipilih" tetap tampil) */
+}
+.chip-warna {
+  background-color: color-mix(in oklab, var(--kw) 22%, var(--color-kartu));
+  border-color: color-mix(in oklab, var(--kw) 55%, transparent);
+}
+html[data-tema="terang"] :is(.kartu-warna, .chip-warna) {
+  background-color: var(--kw);
+  --color-white: var(--kw-teks);
+  --color-gray-300: color-mix(in oklab, var(--kw-teks) 85%, transparent);
+  --color-gray-400: color-mix(in oklab, var(--kw-teks) 80%, transparent);
+  --color-gray-500: color-mix(in oklab, var(--kw-teks) 72%, transparent);
+}
+html[data-tema="terang"] .kartu-warna { background-image: none; }
+html[data-tema="terang"] .chip-warna { border-color: color-mix(in oklab, var(--kw-teks) 35%, transparent); }

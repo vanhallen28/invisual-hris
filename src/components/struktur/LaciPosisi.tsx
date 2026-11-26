@@ -2,6 +2,7 @@
 // Rincian satu posisi: Jobdesk · SOP · Tugas rutin · KPI (dari Pedoman) · Riwayat (hanya @invisual.studio).
 // Edit (hanya @invisual.studio): judul, pemegang manual, jobdesk, SOP, tugas rutin. Setiap simpan = versi baru;
 // tabrakan dengan pengubah lain ditolak database (versi). Posisi staf dibuat saat pertama kali disimpan.
+// Warna kartu (struktur-warna.sql, hanya @invisual.studio): dipilih dari palet, langsung tersimpan, tanpa versi baru.
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -12,6 +13,7 @@ import {
   pastikanPosisiStaf, pisahPemegang, simpanPosisi, validasiRutin,
   type Bagan, type ButirRutin, type DataStruktur, type Posisi, type Ritme, type Staf, type SumberOtomatis, type VersiRiwayat,
 } from "@/lib/struktur/struktur";
+import { aturWarnaPosisi, teksKontras, type Palet } from "@/lib/struktur/warna";
 import { Kosong, Lencana, PesanGalat, kelasInput, kelasLabel, kelasTombol, kelasTombolUtama } from "@/components/management/ui";
 
 export type Pilihan = { jenis: "simpul"; kunci: string; posisiId: string; nama: string | null } | { jenis: "staf"; staf: Staf };
@@ -89,8 +91,32 @@ function EditorRutin({ nilai, ubah }: { nilai: ButirRutin[]; ubah: (r: ButirRuti
   );
 }
 
-export default function LaciPosisi({ pilihan, data, bagan, portal, onTersimpan }: {
-  pilihan: Pilihan; data: DataStruktur; bagan: Bagan; portal: "admin" | "user"; onTersimpan: () => Promise<unknown>;
+/** Pilihan warna kartu dari palet. Satu posisi = satu warna (berlaku untuk semua kartu posisi ini). */
+function PemilihWarna({ palet, aktif, catatan, sibuk, onPilih, onAturPalet }: {
+  palet: Palet; aktif: string | null; catatan: string | null; sibuk: boolean; onPilih: (id: string | null) => void; onAturPalet?: () => void;
+}) {
+  return (
+    <div className="grid gap-1.5" data-pemilih-warna>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 text-xs text-gray-500">Warna kartu</span>
+        <button type="button" disabled={sibuk} onClick={() => onPilih(null)} aria-pressed={!aktif} aria-label="Tanpa warna" title="Tanpa warna" data-pilih-warna=""
+          className={`grid size-7 place-items-center rounded-md border text-[13px] leading-none text-gray-500 disabled:opacity-50 ${!aktif ? "border-tint ring-2 ring-tint" : "border-dashed border-white/25 hover:border-white/50"}`}>⌀</button>
+        {palet.warna.map((w) => (
+          <button key={w.id} type="button" disabled={sibuk} onClick={() => onPilih(w.id)} aria-pressed={aktif === w.id} aria-label={`Warna ${w.nama}`} title={w.nama} data-pilih-warna={w.id}
+            style={{ backgroundColor: w.hex, color: teksKontras(w.hex) }}
+            className={`grid size-7 place-items-center rounded-md border text-[12px] font-black leading-none disabled:opacity-50 ${aktif === w.id ? "border-tint ring-2 ring-tint" : "border-white/20 hover:border-white/50"}`}>
+            {aktif === w.id ? "✓" : ""}
+          </button>
+        ))}
+        {onAturPalet && <button type="button" onClick={onAturPalet} className="ml-1 text-xs text-tint underline underline-offset-2" data-buka-palet>Atur palet</button>}
+      </div>
+      {catatan && <p className="text-xs text-gray-500">{catatan}</p>}
+    </div>
+  );
+}
+
+export default function LaciPosisi({ pilihan, data, bagan, portal, onTersimpan, onAturPalet }: {
+  pilihan: Pilihan; data: DataStruktur; bagan: Bagan; portal: "admin" | "user"; onTersimpan: () => Promise<unknown>; onAturPalet?: () => void;
 }) {
   void portal;
   const staf = pilihan.jenis === "staf" ? pilihan.staf : null;
@@ -107,6 +133,8 @@ export default function LaciPosisi({ pilihan, data, bagan, portal, onTersimpan }
   const [lihatVersi, setLihatVersi] = useState<number | null>(null);
   const [yakinKembali, setYakinKembali] = useState<number | null>(null);
   const [pedoman, setPedoman] = useState<string | null | undefined>(undefined);
+  const [sibukWarna, setSibukWarna] = useState(false);
+  const [galatWarna, setGalatWarna] = useState<string | null>(null);
 
   useEffect(() => {
     if (tab !== "kpi" || pedoman !== undefined) return;
@@ -169,6 +197,24 @@ export default function LaciPosisi({ pilihan, data, bagan, portal, onTersimpan }
     await onTersimpan();
   };
 
+  const pilihWarna = async (idWarna: string | null) => {
+    if (idWarna === (posisi.warna || null)) return;
+    setSibukWarna(true); setGalatWarna(null);
+    let id = posisi.id;
+    if (!id && posisi.jenis === "staf" && posisi.divisi) {
+      const b = await pastikanPosisiStaf(supabase, posisi.divisi, posisi.judul);
+      if (!b.ok) { setSibukWarna(false); return setGalatWarna(b.pesan); }
+      id = b.id!;
+    }
+    const g = await aturWarnaPosisi(supabase, id, idWarna);
+    if (g) setGalatWarna(g);
+    await onTersimpan();
+    setSibukWarna(false);
+  };
+  const jumlahKartu = pilihan.jenis === "simpul" ? bagan.owner.concat(bagan.sm, bagan.pendukung, bagan.divisi.flatMap((d) => d.leader)).filter((s) => s.posisi.id === posisi.id).length : 0;
+  const catatanWarna = posisi.jenis === "staf" && posisi.divisi ? `Berlaku untuk semua ${posisi.judul} di divisi ${LABEL_DIVISI[posisi.divisi]}.`
+    : jumlahKartu > 1 ? `Berlaku untuk ${jumlahKartu} kartu posisi ${posisi.judul}.` : null;
+
   const TAB: [Tab, string][] = [["jobdesk", "Jobdesk"], ["sop", "SOP"], ["rutin", "Tugas rutin"], ["kpi", "KPI"], ...(data.bolehEdit && posisiAsli ? [["riwayat", "Riwayat"] as [Tab, string]] : [])];
   const kpi = posisi.jenis === "staf" ? null : kpiDariPedoman(pedoman || "", posisi.bagian_pedoman);
 
@@ -183,6 +229,13 @@ export default function LaciPosisi({ pilihan, data, bagan, portal, onTersimpan }
         </div>
         {bisaEditTab && !edit && <button type="button" className={kelasTombol} onClick={mulaiEdit} data-edit-posisi>Edit</button>}
       </div>
+
+      {data.bolehEdit && data.palet && !edit && (
+        <div className="grid gap-2">
+          <PemilihWarna palet={data.palet} aktif={posisi.warna || null} catatan={catatanWarna} sibuk={sibukWarna} onPilih={pilihWarna} onAturPalet={onAturPalet} />
+          <PesanGalat pesan={galatWarna} />
+        </div>
+      )}
 
       <div role="tablist" aria-label="Rincian posisi" className="flex gap-4 overflow-x-auto border-b border-white/10">
         {TAB.map(([k, l]) => (
